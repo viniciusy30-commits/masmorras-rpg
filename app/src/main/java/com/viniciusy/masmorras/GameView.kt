@@ -57,8 +57,8 @@ class GameView @JvmOverloads constructor(
         val r = max(w, h) * 0.78f
         vignette = RadialGradient(
             w / 2f, h / 2f, r,
-            intArrayOf(0x00000000, 0x00000000, 0x88000000.toInt(), 0xDD000000.toInt()),
-            floatArrayOf(0f, 0.45f, 0.8f, 1f),
+            intArrayOf(0x00000000, 0x00000000, 0x33000000, 0x88000000.toInt()),
+            floatArrayOf(0f, 0.55f, 0.85f, 1f),
             Shader.TileMode.CLAMP
         )
     }
@@ -66,18 +66,20 @@ class GameView @JvmOverloads constructor(
     fun startGame(classe: Classe) {
         map = TileMap()
         val (sx, sy) = map.getPlayerSpawn()
+        map.prewarm(sx, sy)
         player = Player(sx, sy, classe)
         enemies.clear()
         projectiles.clear()
         particles.clear()
         texts.clear()
-        val spawns = map.getEnemySpawns(16)
+        val spawns = map.getEnemySpawns(26)
         spawns.forEachIndexed { i, (ex, ey) ->
             enemies.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0))
         }
         // chefe na última sala
         val (bx, by) = map.getBossSpawn()
         enemies.add(Enemy(bx, by, 2))
+        for ((ox, oy) in listOf(-90f to 0f, 90f to 0f, 0f to 90f, 0f to -90f)) enemies.add(Enemy(bx + ox, by + oy, 1))
         gameOver = false
         victory = false
         running = true
@@ -182,6 +184,7 @@ class GameView @JvmOverloads constructor(
             map.isWall(x, y + r) || map.isWall(x, y - r)
 
     private fun burst(x: Float, y: Float, n: Int, color: Int) {
+        if (particles.size > 220) return
         repeat(n) {
             val a = Random.nextFloat() * 6.2832f
             val sp = 60f + Random.nextFloat() * 160f
@@ -286,6 +289,7 @@ class GameView @JvmOverloads constructor(
                 e.x = if (!blockedAt(nx, oy, rr)) nx else ox
                 e.y = if (!blockedAt(e.x, ny, rr)) ny else oy
             }
+            if (map.inSafeZone(e.x, e.y) && !map.inSafeZone(ox, oy)) { e.x = ox; e.y = oy }
             e.ground = map.heightAt(e.x, e.y)
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
@@ -362,7 +366,7 @@ class GameView @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
         VoxelArt.flash = 0f
-        canvas.drawColor(0xFF0A090D.toInt())
+        canvas.drawColor(0xFF1B2E1A.toInt())
 
         canvas.save()
         if (shake > 0f) {
@@ -373,12 +377,14 @@ class GameView @JvmOverloads constructor(
 
         // personagens e paredes ordenados por profundidade
         drawList.clear()
-        drawList.addAll(enemies)
+        for (e in enemies) {
+            if (e.x + 140f > camX && e.x - 140f < camX + w && e.y + 140f > camY && e.y - 220f < camY + h) drawList.add(e)
+        }
         player?.let { drawList.add(it) }
         drawList.sortBy { it.y }
         var i = 0
         val startRow = (camY / map.tileSize).toInt().coerceAtLeast(0)
-        val endRow = (((camY + h) / map.tileSize).toInt() + 1).coerceAtMost(map.height - 1)
+        val endRow = (((camY + h) / map.tileSize).toInt() + 5).coerceAtMost(map.height - 1)
         for (ty in startRow..endRow) {
             map.drawRow(canvas, paint, ty, camX, camY, w)
             while (i < drawList.size && feetRow(drawList[i]) <= ty) {

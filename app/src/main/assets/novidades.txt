@@ -1,6 +1,7 @@
-#id 2026-10-24-d
-#titulo Relevo, pulo, rolamento e esqueletos 3D
-- Novo botão PULAR: o Guerreiro salta (dá pra desviar de inimigos no ar) e cai com poeira
-- Novo botão ROLAR: cambalhota rápida para frente, invulnerável enquanto rola
-- Mapa com relevo: plataformas de pedra com degraus em algumas salas. Suba pelos degraus ou pule em cima dos blocos
-- Inimigos agora são Esqueletos 3D em cubos (comum, de elmo e escudo, e o Rei Esqueleto com coroa e capa roxa) com animação de andar e golpe
+#id 2026-10-24-e
+#titulo Mundo aberto: Vilarejo inicial
+- Fim das masmorras fechadas: agora o mapa é um mundo aberto com floresta, rio com ponte, lagoa e ruínas
+- Você começa no vilarejo (casas, taverna, ferraria, celeiro, poço, barracas e postes de luz). Inimigos não entram na zona segura
+- Inimigos agora ficam em grupos pelo mapa e só perseguem quando você chega perto. O chefe e seus guardas ficam nas ruínas a noroeste
+- Texturas novas: grama com flores, terra, pedra da praça, areia, tábuas e água com espuma
+- Menos lag: o chão é desenhado uma vez e reaproveitado, e o que está fora da tela não é desenhado

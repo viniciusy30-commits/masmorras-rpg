@@ -211,6 +211,15 @@ class Enemy(
     var yaw = 0f
     private var yawInit = false
 
+    // mundo aberto: fica parado/vagando até o jogador chegar perto
+    val homeX = x
+    val homeY = y
+    var alerted = false
+    private var wanderT = 0f
+    private var wanderDX = 0f
+    private var wanderDY = 0f
+    private val aggro: Float get() = if (tipo == 2) 620f else 440f
+
     fun palette(): Int = when (tipo) {
         0 -> 0xFFE8E4D4.toInt()
         1 -> 0xFFB0BEC5.toInt()
@@ -220,16 +229,43 @@ class Enemy(
     fun update(dt: Float, player: Player) {
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
-        if (!alive || !player.alive) return
+        if (!alive) return
         val dx = player.x - x
         val dy = player.y - y
         val dist = kotlin.math.sqrt(dx * dx + dy * dy)
-        if (dist > 1f) {
-            faceX = dx / dist
-            faceY = dy / dist
-            x += (dx / dist) * speed * dt * 60f
-            y += (dy / dist) * speed * dt * 60f
-            walkPhase += speed * dt * 4.2f
+        if (player.alive) {
+            if (alerted) { if (dist > aggro * 1.9f) alerted = false }
+            else if (dist < aggro) alerted = true
+        } else alerted = false
+
+        var mx = 0f
+        var my = 0f
+        var sp = 0f
+        if (alerted) {
+            if (dist > 1f) { mx = dx / dist; my = dy / dist; sp = speed }
+        } else {
+            wanderT -= dt
+            if (wanderT <= 0f) {
+                wanderT = 1.5f + kotlin.random.Random.nextFloat() * 2.5f
+                if (kotlin.random.Random.nextFloat() < 0.45f) { wanderDX = 0f; wanderDY = 0f }
+                else {
+                    val a = kotlin.random.Random.nextFloat() * 6.2832f
+                    wanderDX = kotlin.math.cos(a); wanderDY = sin(a)
+                }
+            }
+            val hx = homeX - x
+            val hy = homeY - y
+            val hd = kotlin.math.sqrt(hx * hx + hy * hy)
+            if (hd > 160f) { wanderDX = hx / hd; wanderDY = hy / hd }
+            mx = wanderDX; my = wanderDY
+            sp = speed * 0.35f
+        }
+        if (sp > 0f && (mx != 0f || my != 0f)) {
+            faceX = mx
+            faceY = my
+            x += mx * sp * dt * 60f
+            y += my * sp * dt * 60f
+            walkPhase += sp * dt * 4.2f
         }
         // giro suave
         val target = atan2(faceX, faceY)
@@ -244,7 +280,7 @@ class Enemy(
             yaw += d * min(1f, dt * 10f)
         }
         val now = System.currentTimeMillis()
-        if (attackAnim <= 0f && dist < radius + player.radius + 22f && now - lastHit > hitCooldown - 250L) {
+        if (alerted && player.alive && attackAnim <= 0f && dist < radius + player.radius + 22f && now - lastHit > hitCooldown - 250L) {
             attackAnim = 1f
         }
     }
