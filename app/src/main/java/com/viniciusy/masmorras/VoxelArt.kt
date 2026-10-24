@@ -61,7 +61,7 @@ object VoxelArt {
 
         paint.style = Paint.Style.FILL
 
-        paint.color = if (sideColor != 0) tint(sideColor) else shade(c, 0.66f)
+        paint.color = if (sideColor != 0) tint(sideColor) else shade(c, 0.72f)
         path.reset()
         path.moveTo(r, y)
         path.lineTo(r + dx, y - dx)
@@ -70,7 +70,7 @@ object VoxelArt {
         path.close()
         canvas.drawPath(path, paint)
 
-        paint.color = if (topColor != 0) tint(topColor) else shade(c, 1.15f)
+        paint.color = if (topColor != 0) tint(topColor) else shade(c, 1.12f)
         path.reset()
         path.moveTo(l, t)
         path.lineTo(l + dx, t - dx)
@@ -79,7 +79,7 @@ object VoxelArt {
         path.close()
         canvas.drawPath(path, paint)
 
-        paint.color = shade(c, 0.9f)
+        paint.color = shade(c, 0.92f)
         canvas.drawRect(l, t, r, y, paint)
 
         if (h > 6f) {
