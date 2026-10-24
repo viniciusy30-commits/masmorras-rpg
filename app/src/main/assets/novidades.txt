@@ -1,8 +1,8 @@
-#id 2026-10-24-f
-#titulo Vilarejo em cubos (estilo Minecraft/Hytale)
-- Visual todo em cubos: casas, árvores, pedras, poço, barracas e postes montados com blocos 3D
-- Vilarejo novo e maior: igreja com torre, taverna de 2 andares, ferraria com forja, celeiro e casas de estilos diferentes (reboco, pedra, madeira e mansão)
-- Praça bonita: fonte com jatos de água, canteiros de flores, bancos, barracas de feira e piso de pedra em xadrez com anel azul
-- Texturas em pixels 8x8 estilo Minecraft: grama com flores e cogumelos, terra, areia, pedra, tábuas e água com espuma
-- Árvores variadas: carvalho, pinheiro, bétula, cerejeira rosa e outono
-- Mais leve: tudo é desenhado uma vez e reaproveitado
+#id 2026-10-24-g
+#titulo Vilarejo em cubos, refeito
+- Visual refeito do zero no estilo Minecraft/Hytale: texturas de 16x16 (grama, terra, pedra, tijolo, tábuas, telhas, vidro)
+- Casas bem maiores e diferentes: chalé de reboco, casa de pedra com lucarnas, cabana de toras com varanda, mansão de 2 andares com sacada, taverna, ferraria, celeiro e igreja com torre
+- Detalhes: telhados inclinados, janelas com venezianas e caixas de flores, portas com lanterna, chaminés com fumaça, vigas de madeira, hera, barris, caixotes e lenha
+- Praça nova: piso de lajotas em xadrez com anel azul, fonte de dois níveis com jatos de água, canteiros de flores, bancos e barracas listradas
+- Árvores em cubos: carvalho, pinheiro, bétula, cerejeira e outono
+- Os prédios aparecem em segundos ao iniciar o jogo (são montados em segundo plano para não travar)

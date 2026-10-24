@@ -31,7 +31,7 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
     }
 
     private class Obj(val kind: Int, val tx: Int, val ty: Int, val w: Int, val h: Int, val v: Int) {
-        var spr: VoxelSprites.Spr? = null
+        @Volatile var spr: VoxelSprites.Spr? = null
     }
 
     // kinds: 0 árvore, 1 pedra, 2 casa, 3 poço, 4 barraca, 5 poste, 6 pilar, 8 taverna, 9 celeiro, 10 ferraria,
@@ -352,10 +352,30 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         for (cy in ccy - 2..ccy + 2) for (cx in ccx - 2..ccx + 2) {
             if (cx in 0 until cw && cy in 0 until chh) getChunk(cx, cy, true)
         }
-        for (k in 0..6) treeSprite(k)
-        for (o in objs) {
-            if (abs((o.tx + o.w / 2f) * tileSize - wx) < 1500f && abs((o.ty + o.h) * tileSize - wy) < 1800f) sprite(o)
+        startSpriteThread(wx, wy)
+    }
+
+    @Volatile private var treesReady = false
+    private var spritesStarted = false
+
+    /** Gera os sprites em cubos em segundo plano (os mais próximos do jogador primeiro). */
+    private fun startSpriteThread(wx: Float, wy: Float) {
+        if (spritesStarted) return
+        spritesStarted = true
+        val order = objs.sortedBy {
+            val dx = (it.tx + it.w / 2f) * tileSize - wx
+            val dy = (it.ty + it.h.toFloat()) * tileSize - wy
+            dx * dx + dy * dy
         }
+        Thread {
+            try {
+                for (k in 0..6) treeSprites[k] = VoxelSprites.tree(k)
+                treesReady = true
+                for (o in order) o.spr = makeSprite(o)
+            } catch (e: Throwable) {
+                e.printStackTrace()
+            }
+        }.start()
     }
 
     private fun getChunk(cx: Int, cy: Int, bake: Boolean): Bitmap? {
@@ -370,14 +390,15 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
         if (!bake) return null
         val px = (CH * tileSize).toInt()
-        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.RGB_565)
-        val c = Canvas(bmp)
+        val arr = IntArray(px * px)
         for (ly in 0 until CH) for (lx in 0 until CH) {
             val tx = cx * CH + lx
             val ty = cy * CH + ly
             if (tx >= width || ty >= height) continue
-            bakeTile(c, bakePaint, tx, ty, lx * tileSize, ly * tileSize)
+            bakeTile(arr, px, tx, ty, lx * 64, ly * 64)
         }
+        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.RGB_565)
+        bmp.setPixels(arr, 0, px, 0, 0, px, px)
         chunks[idx] = bmp
         lru.add(idx)
         if (lru.size > MAX_CHUNKS) {
@@ -440,38 +461,35 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
     }
 
-    // ───────────── TEXTURAS EM TEXELS 8x8 (estilo Minecraft) ─────────────
+    // ───────────── CHÃO: TEXELS DE 4px (16x16 por tile, estilo Minecraft) ─────────────
 
-    private val GRASS = intArrayOf(
-        col(0xFF5AA547), col(0xFF5AA547), col(0xFF519B41), col(0xFF519B41), col(0xFF4A9239), col(0xFF67B24F), col(0xFF58A245)
-    )
-    private val DGRASS = intArrayOf(col(0xFF3F8040), col(0xFF3F8040), col(0xFF387438), col(0xFF438944), col(0xFF336B35))
-    private val DIRT = intArrayOf(
-        col(0xFF9A7B4F), col(0xFF9A7B4F), col(0xFF8F7048), col(0xFF8F7048), col(0xFFA6875A), col(0xFF7E6340), col(0xFF6E5638)
-    )
-    private val SAND = intArrayOf(col(0xFFE0CC8E), col(0xFFE0CC8E), col(0xFFD8C384), col(0xFFE8D69C), col(0xFFCFB979))
-    private val FOREST = intArrayOf(col(0xFF14281A), col(0xFF1A3322), col(0xFF0F2014))
-    private val WATER_S = intArrayOf(col(0xFF3C95B5), col(0xFF3A90B0), col(0xFF4AA3C2), col(0xFF3C95B5))
-    private val WATER_D = intArrayOf(col(0xFF1E6A93), col(0xFF1B6490), col(0xFF24739C))
     private val DIRS = arrayOf(intArrayOf(-1, 0), intArrayOf(1, 0), intArrayOf(0, -1), intArrayOf(0, 1))
 
     private fun soft(g: Int) = g == 0 || g == 1 || g == 3 || g == 4
 
-    private fun palFor(g: Int): IntArray = when (g) {
-        1 -> DIRT
-        3 -> SAND
-        4 -> DGRASS
-        else -> GRASS
+    private fun put4(arr: IntArray, stride: Int, x: Int, y: Int, c: Int) {
+        val col = c or (0xFF shl 24)
+        for (yy in 0..3) {
+            val b = (y + yy) * stride + x
+            for (xx in 0..3) arr[b + xx] = col
+        }
     }
 
-    private fun bakeTile(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float) {
+    private fun groundTexId(g: Int, tx: Int, ty: Int): Int = when (g) {
+        1 -> if (hash(tx, ty, 21) % 3 == 0) Tex.DIRT2 else Tex.DIRT
+        3 -> Tex.SAND
+        4 -> Tex.DGRASS
+        else -> if (noise(tx * 0.8f, ty * 0.8f) > 0.1f) Tex.GRASS2 else Tex.GRASS
+    }
+
+    private fun bakeTile(arr: IntArray, stride: Int, tx: Int, ty: Int, ox: Int, oy: Int) {
         val t = tiles[ty][tx]
-        bp.style = Paint.Style.FILL
         val g = ground[ty][tx]
         val water = t == 2 || t == 8
         val nbG = IntArray(4) { -1 }
         val forest = BooleanArray(4)
         val wat = BooleanArray(4)
+        val nonPlank = BooleanArray(4)
         for (k in 0..3) {
             val nx = tx + DIRS[k][0]
             val ny = ty + DIRS[k][1]
@@ -480,97 +498,91 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
             forest[k] = nt == 1
             wat[k] = nt == 2 || nt == 8
             val ng = ground[ny][nx]
+            nonPlank[k] = ng != 5
             if (!water && soft(g) && nt != 1 && nt != 2 && nt != 8 && soft(ng) && ng != g) nbG[k] = ng
         }
+        val sxo = hash(tx, ty, 1) and 15
+        val syo = (hash(tx, ty, 1) shr 4) and 15
         val plaza = hypot(tx + 0.5f - vcx, ty + 0.5f - vcy)
-        val tf = 0.96f + 0.06f * noise(tx.toFloat(), ty.toFloat())
-        for (j in 0..7) for (i in 0..7) {
-            val hv = hash(tx * 8 + i, ty * 8 + j, 90)
-            val k = (hv shr 9) % 100
-            var color: Int
+        var tex: IntArray? = null
+        if (t != 1 && !water && g != 5) {
+            val id = when (g) {
+                2 -> if (plaza < 5.3f) (if ((tx + ty) % 2 == 0) Tex.FLAG else Tex.FLAG3) else if (plaza < 6.4f) Tex.FLAG2 else Tex.COBBLE
+                else -> groundTexId(g, tx, ty)
+            }
+            tex = Tex.get(id)
+        }
+        val wTex = Tex.get(if (t == 2) Tex.WATER else Tex.DEEP)
+        val fTex = Tex.get(Tex.LEAF_D)
+        val pTex = Tex.get(Tex.PLANKS_L)
+        for (j in 0..15) for (i in 0..15) {
+            val hv = hash(tx * 16 + i, ty * 16 + j, 90)
+            var c: Int
             if (t == 1) {
-                color = FOREST[hv % FOREST.size]
+                c = Tex.sh(fTex[((j + syo) and 15) * 16 + ((i + sxo) and 15)], 0.38f)
             } else if (water) {
-                val foam = (i == 0 && !wat[0]) || (i == 7 && !wat[1]) || (j == 0 && !wat[2]) || (j == 7 && !wat[3])
-                val pal = if (t == 2) WATER_S else WATER_D
-                color = if (foam && hv % 100 < 78) col(0xFFDDF2F7) else pal[hv % pal.size]
-            } else {
-                var gt = g
-                if (i == 0 && nbG[0] >= 0 && k < 45) gt = nbG[0]
-                else if (i == 7 && nbG[1] >= 0 && k < 45) gt = nbG[1]
-                else if (j == 0 && nbG[2] >= 0 && k < 45) gt = nbG[2]
-                else if (j == 7 && nbG[3] >= 0 && k < 45) gt = nbG[3]
-                color = when (gt) {
-                    2 -> cobbleTexel(tx, ty, i, j, hv, plaza)
-                    5 -> plankTexel(tx, ty, i, j, hv)
-                    else -> { val pl = palFor(gt); VoxelArt.shade(pl[hv % pl.size], tf) }
+                c = wTex[((j + syo) and 15) * 16 + ((i + sxo) and 15)]
+                val r0 = minOf(minOf(if (!wat[0]) i else 99, if (!wat[1]) 15 - i else 99), minOf(if (!wat[2]) j else 99, if (!wat[3]) 15 - j else 99))
+                if (r0 == 0 && hv % 100 < 78) c = 0xDDF2F7
+                else if (r0 == 1 && hv % 100 < 30) c = 0xA8DCE8
+            } else if (g == 5) {
+                c = pTex[(i and 15) * 16 + (j and 15)]
+                if (j <= 1 && ty > 0 && ground[ty - 1][tx] != 5) {
+                    c = if (j == 0) 0x6D4524 else 0x4A2F18
+                } else if (j >= 14 && ty + 1 < height && ground[ty + 1][tx] != 5) {
+                    c = if (j == 15) 0x4A2F18 else 0x6D4524
                 }
+            } else {
+                var tt = tex!!
+                var gt = g
+                // mistura orgânica nas bordas entre tipos de chão
+                for (k in 0..3) {
+                    if (nbG[k] < 0) continue
+                    val ring = when (k) { 0 -> i; 1 -> 15 - i; 2 -> j; else -> 15 - j }
+                    if (ring > 1) continue
+                    val pr = if (ring == 0) 55 else 22
+                    if (hash(tx * 16 + i, ty * 16 + j, 91 + k) % 100 < pr) { gt = nbG[k]; break }
+                }
+                if (gt != g) tt = Tex.get(groundTexId(gt, tx, ty))
+                c = tt[((j + syo) and 15) * 16 + ((i + sxo) and 15)]
                 if (soft(g)) {
                     var f = 1f
-                    if (forest[0]) f = minOf(f, if (i == 0) 0.74f else if (i == 1) 0.87f else 1f)
-                    if (forest[1]) f = minOf(f, if (i == 7) 0.74f else if (i == 6) 0.87f else 1f)
-                    if (forest[2]) f = minOf(f, if (j == 0) 0.74f else if (j == 1) 0.87f else 1f)
-                    if (forest[3]) f = minOf(f, if (j == 7) 0.74f else if (j == 6) 0.87f else 1f)
-                    if (f < 1f) color = VoxelArt.shade(color, f)
+                    for (k in 0..3) if (forest[k]) {
+                        val ring = when (k) { 0 -> i; 1 -> 15 - i; 2 -> j; else -> 15 - j }
+                        val ff = if (ring == 0) 0.72f else if (ring == 1) 0.82f else if (ring == 2) 0.92f else 1f
+                        if (ff < f) f = ff
+                    }
+                    if (f < 1f) c = Tex.sh(c, f)
                 }
             }
-            bp.color = color
-            c.drawRect(lx + i * 8f, ly + j * 8f, lx + i * 8f + 8f, ly + j * 8f + 8f, bp)
+            put4(arr, stride, ox + i * 4, oy + j * 4, c)
         }
-        if (!water && t != 1 && (g == 0 || g == 4)) grassDecor(c, bp, tx, ty, lx, ly, g == 4)
+        if (t == 0 && (g == 0 || g == 4)) grassDecor(arr, stride, tx, ty, ox, oy, g == 4)
     }
 
-    private fun cobbleTexel(tx: Int, ty: Int, i: Int, j: Int, hv: Int, d: Float): Int {
-        val row = j / 4
-        val off = if (row % 2 == 0) 0 else 2
-        if (j % 4 == 0 || (i + off) % 4 == 0) return col(0xFF5A5652)
-        val sid = (i + off) / 4
-        val sf = 0.88f + (hash(tx * 3 + sid, ty * 5 + row, 77) % 100) / 100f * 0.26f
-        var base = col(0xFF93908B)
-        if (d < 4.4f) base = if ((tx + ty) % 2 == 0) col(0xFFBBA77F) else col(0xFF9A9690)
-        else if (d < 5.1f) base = col(0xFF5F7185)
-        val nf = 0.94f + (hv % 100) / 100f * 0.1f
-        return VoxelArt.shade(base, sf * nf)
-    }
-
-    private fun plankTexel(tx: Int, ty: Int, i: Int, j: Int, hv: Int): Int {
-        if (ty > 0 && ground[ty - 1][tx] != 5 && j <= 1) return if (j == 0) col(0xFF6D4524) else col(0xFF4A2F18)
-        if (ty + 1 < height && ground[ty + 1][tx] != 5 && j >= 6) return if (j == 6) col(0xFF6D4524) else col(0xFF4A2F18)
-        if (i % 4 == 3) return col(0xFF4A2F18)
-        if (i % 4 == 1 && (j == 2 || j == 5)) return col(0xFF2E1D0E)
-        val f = 0.88f + (hv % 100) / 100f * 0.24f
-        return VoxelArt.shade(col(0xFF8A5A2B), f)
-    }
-
-    private fun grassDecor(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, dark: Boolean) {
+    private fun grassDecor(arr: IntArray, stride: Int, tx: Int, ty: Int, ox: Int, oy: Int, dark: Boolean) {
         val h = hash(tx, ty, 3)
-        if (h % 4 == 0) {
-            val ti = 1 + hash(tx, ty, 4) % 5
-            val tj = 2 + hash(tx, ty, 5) % 4
-            bp.color = if (dark) col(0xFF2A6A2E) else col(0xFF3C8A34)
-            c.drawRect(lx + ti * 8f, ly + tj * 8f, lx + ti * 8f + 8f, ly + tj * 8f + 8f, bp)
-            bp.color = if (dark) col(0xFF4E9A4C) else col(0xFF7BCB62)
-            c.drawRect(lx + ti * 8f + 2f, ly + (tj - 1) * 8f, lx + ti * 8f + 6f, ly + tj * 8f, bp)
+        if (h % 5 == 0) {
+            val ti = 2 + hash(tx, ty, 4) % 12
+            val tj = 3 + hash(tx, ty, 5) % 11
+            put4(arr, stride, ox + ti * 4, oy + tj * 4, if (dark) 0x2A6A2E else 0x3C8A34)
+            put4(arr, stride, ox + ti * 4, oy + (tj - 1) * 4, if (dark) 0x4E9A4C else 0x7BCB62)
         }
-        if (!dark && h % 7 == 1) {
-            val ti = 1 + hash(tx, ty, 6) % 5
-            val tj = 1 + hash(tx, ty, 7) % 5
-            val fc = intArrayOf(col(0xFFF5F5F5), col(0xFFFFE066), col(0xFFFF8FB1), col(0xFF9FC5FF), col(0xFFE53935))
-            bp.color = col(0xFF2F7A2F)
-            c.drawRect(lx + ti * 8f + 3f, ly + (tj + 1) * 8f, lx + ti * 8f + 5f, ly + (tj + 2) * 8f, bp)
-            bp.color = fc[hash(tx, ty, 8) % 5]
-            c.drawRect(lx + ti * 8f + 1f, ly + tj * 8f + 1f, lx + ti * 8f + 7f, ly + tj * 8f + 7f, bp)
-            bp.color = col(0xFFFFD54F)
-            c.drawRect(lx + ti * 8f + 3f, ly + tj * 8f + 3f, lx + ti * 8f + 5f, ly + tj * 8f + 5f, bp)
-        } else if (dark && h % 19 == 1) {
-            val ti = 1 + hash(tx, ty, 6) % 5
-            val tj = 2 + hash(tx, ty, 7) % 4
-            bp.color = col(0xFFE9E0D0)
-            c.drawRect(lx + ti * 8f + 2f, ly + tj * 8f + 3f, lx + ti * 8f + 6f, ly + tj * 8f + 8f, bp)
-            bp.color = col(0xFFD6453A)
-            c.drawRect(lx + ti * 8f - 1f, ly + tj * 8f - 2f, lx + ti * 8f + 9f, ly + tj * 8f + 3f, bp)
-            bp.color = col(0xFFFFFFFF)
-            c.drawRect(lx + ti * 8f + 1f, ly + tj * 8f - 1f, lx + ti * 8f + 3f, ly + tj * 8f + 1f, bp)
+        if (!dark && h % 6 == 1) {
+            val ti = 3 + hash(tx, ty, 6) % 10
+            val tj = 3 + hash(tx, ty, 7) % 10
+            val fc = intArrayOf(0xF5F5F5, 0xFFE066, 0xFF8FB1, 0x9FC5FF, 0xE53935)
+            val c = fc[hash(tx, ty, 8) % 5]
+            put4(arr, stride, ox + ti * 4, oy + (tj + 1) * 4, 0x2F7A2F)
+            put4(arr, stride, ox + (ti - 1) * 4, oy + tj * 4, c)
+            put4(arr, stride, ox + (ti + 1) * 4, oy + tj * 4, c)
+            put4(arr, stride, ox + ti * 4, oy + (tj - 1) * 4, c)
+            put4(arr, stride, ox + ti * 4, oy + tj * 4, 0xFFD54F)
+        } else if (dark && h % 17 == 1) {
+            val ti = 3 + hash(tx, ty, 6) % 10
+            val tj = 3 + hash(tx, ty, 7) % 10
+            put4(arr, stride, ox + ti * 4, oy + (tj + 1) * 4, 0xE9E0D0)
+            for (d in -1..1) put4(arr, stride, ox + (ti + d) * 4, oy + tj * 4, if (d == 0) 0xFFFFFF else 0xD6453A)
         }
     }
 
@@ -578,9 +590,6 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
 
     private val treeSprites = arrayOfNulls<VoxelSprites.Spr>(7)
     private val miscSprites = HashMap<Int, VoxelSprites.Spr>()
-
-    private fun treeSprite(v: Int): VoxelSprites.Spr =
-        treeSprites[v] ?: VoxelSprites.tree(v).also { treeSprites[v] = it }
 
     private fun treeVariant(v: Int, g: Int): Int {
         val r = v % 100
@@ -594,22 +603,18 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
     private fun misc(key: Int, make: () -> VoxelSprites.Spr): VoxelSprites.Spr =
         miscSprites[key] ?: make().also { miscSprites[key] = it }
 
-    private fun sprite(o: Obj): VoxelSprites.Spr {
-        o.spr?.let { return it }
-        val s = when (o.kind) {
-            0 -> treeSprite(treeVariant(o.v, ground[o.ty][o.tx]))
-            1 -> misc(100 + o.v % 4) { VoxelSprites.rock(o.v % 4) }
-            3 -> misc(300) { VoxelSprites.well() }
-            4 -> misc(400 + o.v % 3) { VoxelSprites.stall(o.v % 3) }
-            5 -> misc(500) { VoxelSprites.lamp() }
-            6 -> misc(600 + o.v % 2) { VoxelSprites.pillar(o.v % 2) }
-            12 -> misc(1200) { VoxelSprites.fountain() }
-            13 -> misc(1300) { VoxelSprites.bench() }
-            14 -> misc(1400 + o.v % 3) { VoxelSprites.flowerbed(o.v % 3) }
-            else -> VoxelSprites.house(o.kind, o.v % 4, o.w, o.h, o.v)
-        }
-        o.spr = s
-        return s
+    /** Roda só na thread de sprites. */
+    private fun makeSprite(o: Obj): VoxelSprites.Spr = when (o.kind) {
+        0 -> treeSprites[treeVariant(o.v, ground[o.ty][o.tx])]!!
+        1 -> misc(100 + o.v % 4) { VoxelSprites.rock(o.v % 4) }
+        3 -> misc(300) { VoxelSprites.well() }
+        4 -> misc(400 + o.v % 3) { VoxelSprites.stall(o.v % 3) }
+        5 -> misc(500) { VoxelSprites.lamp() }
+        6 -> misc(600 + o.v % 2) { VoxelSprites.pillar(o.v % 2) }
+        12 -> misc(1200) { VoxelSprites.fountain() }
+        13 -> misc(1300) { VoxelSprites.bench() }
+        14 -> misc(1400 + o.v % 3) { VoxelSprites.flowerbed(o.v % 3) }
+        else -> VoxelSprites.house(o.kind, o.v % 4, o.w, o.h, o.v)
     }
 
     private fun blit(canvas: Canvas, s: VoxelSprites.Spr, cx: Float, baseY: Float) {
@@ -626,12 +631,13 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         for (tx in sx..ex) {
             val t = tiles[ty][tx]
             if (t == 1) {
-                if (treeEdge[ty][tx]) {
+                if (treeEdge[ty][tx] && treesReady) {
                     val v = hash(tx, ty, 12)
                     if (v % 3 == 0) continue
                     val off = ((v shr 5) % 20 - 10).toFloat()
                     val variant = if (v % 10 < 6) 2 + (v / 16) % 2 else if (v % 10 < 8) 0 else if (v % 10 < 9) 4 else 6
-                    blit(canvas, treeSprite(variant), tx * ts - camX + ts / 2f + off, (ty + 1) * ts - camY - 4f)
+                    val s = treeSprites[variant] ?: continue
+                    blit(canvas, s, tx * ts - camX + ts / 2f + off, (ty + 1) * ts - camY - 4f)
                 }
             } else if (t == 6) {
                 drawProp(canvas, paint, tx, ty, tx * ts - camX, ty * ts - camY)
@@ -640,10 +646,9 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         val list = rowObjs[ty]
         for (i in 0 until list.size) {
             val o = list[i]
+            val s = o.spr ?: continue
             val cx = (o.tx + o.w / 2f) * ts - camX
-            val m = o.w * ts + 240f
-            if (cx + m < 0f || cx - m > viewW) continue
-            val s = sprite(o)
+            if (cx + s.bmp.width < 0f || cx - s.bmp.width > viewW) continue
             val baseY = (o.ty + o.h) * ts - camY - 4f
             blit(canvas, s, cx, baseY)
             effects(canvas, paint, o, s, Math.round(cx - s.padL).toFloat(), Math.round(baseY - (s.bmp.height - s.padB)).toFloat())
@@ -666,8 +671,10 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
                 }
                 for (i in 0..2) {
                     val tt = (t * 0.5f + i * 0.33f) % 1f
-                    p.color = VoxelArt.alpha(col(0xFFE6E6E6), 0.5f * (1f - tt))
-                    c.drawRect(x - 4f + tt * 16f + sin(tt * 6f + i) * 3f, y - tt * 50f, x + 4f + tt * 16f + sin(tt * 6f + i) * 3f + tt * 8f, y - tt * 50f + 8f + tt * 8f, p)
+                    val px = x - 4f + tt * 16f + sin(tt * 6f + i) * 3f
+                    p.color = VoxelArt.alpha(col(0xFFE6E6E6), 0.55f * (1f - tt))
+                    val sz = 8f + tt * 8f
+                    c.drawRect(px, y - tt * 56f, px + sz, y - tt * 56f + sz, p)
                 }
             }
             5 -> {
@@ -686,10 +693,10 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
                     val px = x + cos(a) * tt * 34f
                     val py = y - (1f - (2f * tt - 1f) * (2f * tt - 1f)) * 30f + tt * tt * 26f
                     p.color = VoxelArt.alpha(col(0xFFBFE6F5), 0.85f * (1f - tt * 0.5f))
-                    c.drawRect(px - 2.5f, py - 2.5f, px + 2.5f, py + 2.5f, p)
+                    c.drawRect(px - 3f, py - 3f, px + 3f, py + 3f, p)
                 }
                 p.color = VoxelArt.alpha(col(0xFFDFF4FB), 0.8f)
-                c.drawRect(x - 2.5f, y - 22f - 4f * sin(t * 6f), x + 2.5f, y + 4f, p)
+                c.drawRect(x - 3f, y - 22f - 4f * sin(t * 6f), x + 3f, y + 4f, p)
             }
         }
     }
