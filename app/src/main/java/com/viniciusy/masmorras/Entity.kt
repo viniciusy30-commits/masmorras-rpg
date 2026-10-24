@@ -78,6 +78,8 @@ class Player(
     var rollDY = 1f
     var lastRoll = 0L
     var landed = 0f
+    var landSquash = 0f
+    var attackPunch = 0f
 
     val rolling: Boolean get() = rollT > 0f
     val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
@@ -87,6 +89,7 @@ class Player(
     fun doAttack(now: Long) {
         lastAttack = now
         attackAnim = 1f
+        attackPunch = 1f
     }
 
     fun jump(): Boolean {
@@ -122,7 +125,10 @@ class Player(
             vz -= 1500f * dt
             alt += vz * dt
             if (alt <= groundPx) {
-                if (vz < -140f) landed = (-vz) / 400f
+                if (vz < -140f) {
+                    landed = (-vz) / 400f
+                    landSquash = ((-vz) / 380f).coerceIn(0.15f, 0.55f)
+                }
                 alt = groundPx
                 vz = 0f
             }
@@ -151,6 +157,8 @@ class Player(
         if (attackAnim > 0f) {
             attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 3f else 4f)).coerceAtLeast(0f)
         }
+        landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
+        attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
         if (classe.maxMp > 0f && mp < classe.maxMp) {
             mp = (mp + 8f * dt).coerceAtMost(classe.maxMp)
         }
@@ -159,12 +167,19 @@ class Player(
     override fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float) {
         val sx = x - camX
         val sy = y - camY
-        val s = radius / 24f
+        // Squash horizontal + stretch vertical no push do ataque / aterrissagem
+        val squashX = 1f + landSquash * 0.22f - attackPunch * 0.08f
+        val squashY = 1f - landSquash * 0.18f + attackPunch * 0.12f
+        val s = (radius / 24f) * ((squashX + squashY) * 0.5f)
         val gy = sy + radius * 0.55f - ground
         val feet = sy + radius * 0.55f - alt
         val up = (alt - ground).coerceAtLeast(0f)
         val k = (1f - up / 90f).coerceIn(0.4f, 1f)
         val moving = hypot(vx, vy) > 1f
+        // Offset de “punch” na direção do golpe
+        val punchOff = attackPunch * 10f
+        val drawX = sx + facingX * punchOff
+        val drawY = feet + facingY * punchOff * 0.35f
 
         // Sombra no chão (encolhe quando pula)
         paint.style = Paint.Style.FILL
@@ -184,7 +199,10 @@ class Player(
         Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Warrior3D.inAir = up > 1f
         Warrior3D.airVz = vz
-        Sprites.drawHero(canvas, paint, classe, sx, feet, s, walkPhase, moving, facingX, facingY, attackAnim)
+        canvas.save()
+        canvas.scale(squashX, squashY, drawX, drawY)
+        Sprites.drawHero(canvas, paint, classe, drawX, drawY, s / ((squashX + squashY) * 0.5f), walkPhase, moving, facingX, facingY, attackAnim)
+        canvas.restore()
         VoxelArt.flash = 0f
 
         if (!classe.isRanged) {

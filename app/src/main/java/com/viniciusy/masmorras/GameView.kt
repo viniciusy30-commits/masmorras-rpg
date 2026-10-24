@@ -31,12 +31,24 @@ class GameView @JvmOverloads constructor(
 
     private var camX = 0f
     private var camY = 0f
+    private var camVX = 0f
+    private var camVY = 0f
+    private var lookAheadX = 0f
+    private var lookAheadY = 0f
+    private var camZoom = 1f
+    private var targetZoom = 1f
     private var time = 0f
     private var shake = 0f
     private var lastTime = System.nanoTime()
     private var running = false
     private var gameOver = false
     private var victory = false
+
+    // Framing estilo Minecraft Dungeons: herói um pouco abaixo do centro
+    private val FRAME_X = 0.50f
+    private val FRAME_Y = 0.62f
+    private val CAM_SMOOTH = 8.5f
+    private val LOOK_AHEAD = 70f
 
     var onGameOver: ((Boolean) -> Unit)? = null // true = vitória
 
@@ -83,8 +95,14 @@ class GameView @JvmOverloads constructor(
         victory = false
         running = true
         shake = 0f
-        val desiredX = (sx - width * 0.48f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        val desiredY = (sy - height * 0.52f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        camVX = 0f
+        camVY = 0f
+        lookAheadX = 0f
+        lookAheadY = 0f
+        camZoom = 1f
+        targetZoom = 1f
+        val desiredX = (sx - width * FRAME_X).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        val desiredY = (sy - height * FRAME_Y).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
         camX = desiredX
         camY = desiredY
         lastTime = System.nanoTime()
@@ -350,12 +368,41 @@ class GameView @JvmOverloads constructor(
             onGameOver?.invoke(true)
         }
 
-        val desiredX = (p.x - width * 0.48f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        val desiredY = (p.y - height * 0.52f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
-        camX += (desiredX - camX) * 0.16f
-        camY += (desiredY - camY) * 0.16f
+        // Câmera estilo Minecraft Dungeons: look-ahead + spring suave + zoom dinâmico
+        val speed = hypot(p.vx, p.vy)
+        val laTargetX = p.facingX * LOOK_AHEAD * (0.35f + (speed / 220f).coerceIn(0f, 1f) * 0.65f)
+        val laTargetY = p.facingY * LOOK_AHEAD * (0.35f + (speed / 220f).coerceIn(0f, 1f) * 0.65f)
+        lookAheadX += (laTargetX - lookAheadX) * (1f - kotlin.math.exp(-dt * 4.5f))
+        lookAheadY += (laTargetY - lookAheadY) * (1f - kotlin.math.exp(-dt * 4.5f))
+
+        val desiredX = (p.x + lookAheadX - width * FRAME_X)
+            .coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        val desiredY = (p.y + lookAheadY - height * FRAME_Y)
+            .coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+
+        // Spring damping (mais cinematográfico que lerp linear)
+        val ax = (desiredX - camX) * CAM_SMOOTH
+        val ay = (desiredY - camY) * CAM_SMOOTH
+        camVX += ax * dt
+        camVY += ay * dt
+        camVX *= (1f - 6.2f * dt).coerceIn(0.5f, 1f)
+        camVY *= (1f - 6.2f * dt).coerceIn(0.5f, 1f)
+        camX += camVX * dt
+        camY += camVY * dt
         camX = camX.coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
         camY = camY.coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+
+        // Zoom leve: afasta um pouco quando corre / em combate perto de vários inimigos
+        var nearEnemies = 0
+        enemies.forEach { e ->
+            if (e.alive && hypot(e.x - p.x, e.y - p.y) < 160f) nearEnemies++
+        }
+        targetZoom = when {
+            nearEnemies >= 4 -> 0.92f
+            speed > 140f -> 0.96f
+            else -> 1f
+        }
+        camZoom += (targetZoom - camZoom) * (1f - kotlin.math.exp(-dt * 3.2f))
     }
 
     private fun feetRow(e: Entity): Int = ((e.y + e.radius * 0.6f) / map.tileSize).toInt()
@@ -368,8 +415,15 @@ class GameView @JvmOverloads constructor(
         canvas.drawColor(0xFF11181C.toInt())
 
         canvas.save()
+        // Zoom centrado no meio da tela (sensação de profundidade MCD)
+        if (camZoom != 1f) {
+            canvas.scale(camZoom, camZoom, w * 0.5f, h * 0.55f)
+        }
         if (shake > 0f) {
-            canvas.translate((Random.nextFloat() - 0.5f) * shake * 24f, (Random.nextFloat() - 0.5f) * shake * 24f)
+            val intensity = shake * 28f
+            val sx = sin(time * 62f) * intensity * 0.55f + (Random.nextFloat() - 0.5f) * intensity * 0.45f
+            val sy = cos(time * 51f) * intensity * 0.45f + (Random.nextFloat() - 0.5f) * intensity * 0.55f
+            canvas.translate(sx, sy)
         }
 
         map.drawFloor(canvas, paint, camX, camY, w, h)
@@ -432,15 +486,27 @@ class GameView @JvmOverloads constructor(
             canvas.drawText(t.text, sx, sy, paint)
         }
 
-        val txt = "Inimigos: ${enemies.size}"
-        paint.textSize = 28f
+        // HUD inferior estilo Dungeons (pill escuro + accent)
+        val aliveCount = enemies.count { it.alive }
+        val txt = "⚔  $aliveCount"
+        paint.textSize = 26f
+        paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.LEFT
         val tw = paint.measureText(txt)
+        val pillL = 14f
+        val pillT = h - 78f
+        val pillR = pillL + tw + 36f
+        val pillB = h - 28f
         paint.style = Paint.Style.FILL
-        paint.color = 0x88000000.toInt()
-        canvas.drawRoundRect(10f, h - 82f, 10f + tw + 40f, h - 22f, 16f, 16f, paint)
-        paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawText(txt, 30f, h - 40f, paint)
+        paint.color = 0xCC0A0E12.toInt()
+        canvas.drawRoundRect(pillL, pillT, pillR, pillB, 18f, 18f, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 2f
+        paint.color = 0x44FFCC80.toInt()
+        canvas.drawRoundRect(pillL, pillT, pillR, pillB, 18f, 18f, paint)
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFFFFE0B2.toInt()
+        canvas.drawText(txt, pillL + 18f, h - 44f, paint)
     }
 
     fun getPlayer(): Player? = player

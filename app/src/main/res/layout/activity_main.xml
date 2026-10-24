@@ -20,45 +20,57 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="MASMORRAS"
-            android:textSize="42sp"
+            android:textSize="46sp"
             android:textStyle="bold"
             android:textColor="@color/accent"
-            android:letterSpacing="0.15"
-            android:shadowColor="#000"
-            android:shadowDx="2"
-            android:shadowDy="2"
-            android:shadowRadius="4"/>
+            android:letterSpacing="0.18"
+            android:shadowColor="#000000"
+            android:shadowDx="0"
+            android:shadowDy="4"
+            android:shadowRadius="8"/>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Hack &amp; Slash estilo Dungeons"
-            android:textSize="14sp"
+            android:layout_marginTop="6dp"
+            android:text="RPG"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="#FFCC80"
+            android:letterSpacing="0.35"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:text="Câmera e combate estilo Minecraft Dungeons"
+            android:textSize="13sp"
             android:textColor="@color/text_secondary"/>
 
         <View
-            android:layout_width="120dp"
-            android:layout_height="4dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="32dp"
+            android:layout_width="140dp"
+            android:layout_height="3dp"
+            android:layout_marginTop="28dp"
+            android:layout_marginBottom="28dp"
             android:background="@color/primary"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnJogar"
-            android:layout_width="220dp"
-            android:layout_height="56dp"
+            android:layout_width="240dp"
+            android:layout_height="58dp"
             android:text="@string/jogar"
             android:textSize="18sp"
             android:textStyle="bold"
+            app:cornerRadius="14dp"
             style="@style/Widget.MaterialComponents.Button"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnConfig"
-            android:layout_width="220dp"
-            android:layout_height="48dp"
-            android:layout_marginTop="12dp"
+            android:layout_width="240dp"
+            android:layout_height="50dp"
+            android:layout_marginTop="14dp"
             android:text="@string/configuracoes"
+            app:cornerRadius="14dp"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
     </LinearLayout>
 
@@ -107,43 +119,47 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 
-        <!-- HUD -->
+        <!-- HUD estilo Dungeons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="12dp"
-            android:background="#99000000">
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="12dp"
+            android:background="#CC0A0E12">
 
             <TextView
                 android:id="@+id/tvClasseHud"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="@color/accent"
+                android:textColor="#FFCC80"
                 android:textStyle="bold"
-                android:textSize="14sp"/>
+                android:textSize="13sp"
+                android:letterSpacing="0.08"/>
 
             <ProgressBar
                 android:id="@+id/hpBar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="12dp"
-                android:layout_marginTop="4dp"
+                android:layout_height="14dp"
+                android:layout_marginTop="6dp"
                 android:max="100"
                 android:progress="100"
                 android:progressTint="@color/hp_green"
-                android:progressBackgroundTint="#44FFFFFF"/>
+                android:progressBackgroundTint="#33FFFFFF"/>
 
             <ProgressBar
                 android:id="@+id/mpBar"
                 style="?android:attr/progressBarStyleHorizontal"
                 android:layout_width="match_parent"
-                android:layout_height="8dp"
-                android:layout_marginTop="4dp"
+                android:layout_height="9dp"
+                android:layout_marginTop="5dp"
                 android:max="100"
                 android:progress="100"
                 android:progressTint="@color/mp_blue"
-                android:progressBackgroundTint="#44FFFFFF"
+                android:progressBackgroundTint="#33FFFFFF"
                 android:visibility="gone"/>
         </LinearLayout>
 

@@ -1,10 +1,9 @@
-#id 2026-10-24-h
-#titulo Valedouro reconstruído
-- Fim da inclinação: casas, árvores e decorações agora são desenhadas em vista simétrica, sem entortar para o lado
-- Casas viradas para todas as direções: norte, sul, leste e oeste, todas de frente para a praça; as de leste/oeste têm empena e entrada pela lateral, com alpendre e lajes no chão
-- Praça refeita: fonte de pedra com bacia larga e dois níveis, mural de avisos, bancos, canteiros, carroças e 5 barracas (frutas, pães, ervas, tecidos e equipamentos)
-- Postes de madeira com lanternas de ferro iluminando a praça
-- Taverna Caneca Dourada maior, com varanda coberta, placa entalhada com caneca dourada, duas lanternas e janelas âmbar
-- Ofícios com placas: ferreiro (bigorna), carpinteiro (serra) e alfaiate (tesoura e tecidos secando)
-- Residências antigas de 2 andares com vigas escuras e hera, casas simples de palha, celeiro, hortas, cercas baixas e varais
-- Trilhas de terra saem da porta de cada casa na direção em que ela está virada
+#id 2026-10-24-i
+#titulo Câmera e animações estilo Minecraft Dungeons
+- Câmera com look-ahead na direção do movimento (como em Dungeons)
+- Framing do herói mais baixo na tela e spring suave (não trava no personagem)
+- Zoom dinâmico: afasta um pouco em corrida e em combate com vários inimigos
+- Shake de tela com ruído suave (menos “tremido aleatório”)
+- Squash/stretch na aterrissagem e impulso visual no golpe (juice de animação)
+- HUD inferior redesenhado (pill escuro com accent dourado)
+- Menu principal polido: tipografia, subtítulo e botões com cantos arredondados
