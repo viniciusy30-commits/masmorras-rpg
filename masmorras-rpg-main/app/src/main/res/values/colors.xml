@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#2E7D32</color>
+    <color name="primary_dark">#1B5E20</color>
+    <color name="accent">#FFC107</color>
+    <color name="background">#121212</color>
+    <color name="surface">#1E1E1E</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0B0</color>
+    <color name="hp_green">#4CAF50</color>
+    <color name="hp_red">#F44336</color>
+    <color name="mp_blue">#2196F3</color>
+    <color name="guerreiro">#C62828</color>
+    <color name="mago">#1565C0</color>
+    <color name="arqueiro">#2E7D32</color>
+    <color name="barbaro">#E65100</color>
+</resources>
