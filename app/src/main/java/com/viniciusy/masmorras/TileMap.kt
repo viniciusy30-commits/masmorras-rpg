@@ -30,12 +30,13 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         private const val MAX_CHUNKS = 64
     }
 
-    private class Obj(val kind: Int, val tx: Int, val ty: Int, val w: Int, val h: Int, val v: Int) {
+    private class Obj(val kind: Int, val tx: Int, val ty: Int, val w: Int, val h: Int, val v: Int, val style: Int = -1, val dir: Int = 0) {
         @Volatile var spr: VoxelSprites.Spr? = null
     }
 
     // kinds: 0 árvore, 1 pedra, 2 casa, 3 poço, 4 barraca, 5 poste, 6 pilar, 8 taverna, 9 celeiro, 10 ferraria,
-    // 11 igreja, 12 fonte, 13 banco, 14 canteiro
+    // 11 igreja, 12 fonte, 13 banco, 14 canteiro, 15 mural de avisos, 16 carroça, 17 varal, 18 horta, 19 cerca,
+    // 20 carpinteiro, 21 alfaiate.  dir: 0 porta ao sul, 1 ao norte, 2 a leste, 3 a oeste
     private val objs = ArrayList<Obj>()
     private val rowObjs = Array(height) { ArrayList<Obj>() }
 
@@ -120,7 +121,6 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
         road(4, 35, width - 5, 37)       // leste-oeste
         road(47, 4, 49, height - 5)      // norte-sul
-        road(34, 47, 68, 48)             // rua sul do vilarejo
         road(20, 14, 21, 35)             // trilha para as ruínas
         road(14, 13, 21, 14)
         // ponte
@@ -153,8 +153,8 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
     }
 
-    private fun addObj(kind: Int, tx: Int, ty: Int, w: Int = 1, h: Int = 1, solid: Boolean = true): Obj {
-        val o = Obj(kind, tx, ty, w, h, hash(tx, ty, 7))
+    private fun addObj(kind: Int, tx: Int, ty: Int, w: Int = 1, h: Int = 1, solid: Boolean = true, style: Int = -1, dir: Int = 0): Obj {
+        val o = Obj(kind, tx, ty, w, h, hash(tx, ty, 7), style, dir)
         objs.add(o)
         rowObjs[ty + h - 1].add(o)
         if (solid) for (y in ty until ty + h) for (x in tx until tx + w) if (inB(x, y)) tiles[y][x] = 7
@@ -171,12 +171,21 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         return true
     }
 
-    private fun doorPath(x: Int, y0: Int) {
-        for (y in y0 until minOf(height, y0 + 16)) {
-            if (!inB(x, y) || tiles[y][x] != 0) return
-            val g = ground[y][x]
+    /** Trilha de terra saindo da porta, na direção em que a casa está virada. */
+    private fun doorPath(x: Int, y: Int, w: Int, h: Int, dir: Int) {
+        var cx: Int; var cy: Int; val dx: Int; val dy: Int
+        when (dir) {
+            1 -> { cx = x + w / 2; cy = y - 1; dx = 0; dy = -1 }
+            2 -> { cx = x + w; cy = y + h - 1; dx = 1; dy = 0 }
+            3 -> { cx = x - 1; cy = y + h - 1; dx = -1; dy = 0 }
+            else -> { cx = x + w / 2; cy = y + h; dx = 0; dy = 1 }
+        }
+        for (i in 0 until 16) {
+            if (!inB(cx, cy) || tiles[cy][cx] != 0) return
+            val g = ground[cy][cx]
             if (g == 1 || g == 2 || g == 5) return
-            ground[y][x] = 1
+            ground[cy][cx] = 1
+            cx += dx; cy += dy
         }
     }
 
@@ -195,52 +204,80 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
     }
 
+    private fun free(x: Int, y: Int, w: Int, h: Int): Boolean {
+        for (yy in y until y + h) for (xx in x until x + w) if (!inB(xx, yy) || tiles[yy][xx] != 0) return false
+        return true
+    }
+
+    private fun put(kind: Int, x: Int, y: Int, w: Int = 1, h: Int = 1, style: Int = -1, dir: Int = 0) {
+        if (free(x, y, w, h)) addObj(kind, x, y, w, h, true, style, dir)
+    }
+
     private fun buildVillage() {
-        // (x, y, w, h, tipo) - portas viradas para o sul
+        // (x, y, w, h, tipo, estilo, direção da porta: 0 sul, 1 norte, 2 leste, 3 oeste)
+        // Casas ao redor da praça, todas viradas para ela; periferia virada para as ruas e plantações.
         val houses = listOf(
-            intArrayOf(39, 19, 5, 4, 11),   // igreja
-            intArrayOf(33, 27, 5, 4, 2),
-            intArrayOf(24, 29, 5, 4, 9),    // celeiro
-            intArrayOf(54, 22, 5, 4, 10),   // ferraria
-            intArrayOf(60, 28, 5, 4, 2),
-            intArrayOf(66, 28, 5, 4, 2),
-            intArrayOf(58, 38, 7, 5, 8),    // taverna
-            intArrayOf(34, 43, 5, 4, 2),
-            intArrayOf(40, 43, 5, 4, 2),
-            intArrayOf(53, 43, 5, 4, 2),
-            intArrayOf(65, 43, 5, 4, 2)
+            // lado norte (portas ao sul)
+            intArrayOf(51, 25, 7, 5, 8, -1, 0),     // taverna Caneca Dourada
+            intArrayOf(38, 17, 5, 4, 11, -1, 0),    // igreja
+            intArrayOf(35, 24, 5, 4, 2, 4, 0),      // residência antiga
+            intArrayOf(41, 24, 4, 4, 2, 0, 0),
+            intArrayOf(59, 24, 4, 4, 2, 1, 0),
+            intArrayOf(64, 22, 5, 4, 10, -1, 0),    // ferraria
+            intArrayOf(29, 22, 5, 4, 2, 3, 0),
+            // lado oeste (portas a leste)
+            intArrayOf(36, 29, 4, 5, 2, 0, 2),
+            intArrayOf(36, 38, 4, 5, 21, -1, 2),    // alfaiate
+            // lado leste (portas a oeste)
+            intArrayOf(59, 30, 4, 5, 2, 1, 3),
+            intArrayOf(59, 38, 4, 5, 20, -1, 3),    // carpinteiro
+            // lado sul (portas ao norte)
+            intArrayOf(38, 45, 5, 4, 2, 4, 1),      // residência antiga
+            intArrayOf(43, 45, 4, 4, 2, 0, 1),
+            intArrayOf(51, 45, 4, 4, 2, 1, 1),
+            intArrayOf(56, 45, 5, 4, 2, 3, 1),
+            // periferia: casas simples, celeiro e plantações
+            intArrayOf(24, 26, 5, 4, 9, -1, 0),     // celeiro
+            intArrayOf(29, 32, 3, 3, 2, 5, 0),
+            intArrayOf(27, 39, 3, 3, 2, 5, 2),
+            intArrayOf(68, 32, 3, 3, 2, 5, 3),
+            intArrayOf(68, 40, 3, 3, 2, 5, 1)
         )
         for (h in houses) {
             if (!canPlace(h[0], h[1], h[2], h[3], 0)) continue
-            addObj(h[4], h[0], h[1], h[2], h[3])
-            doorPath(h[0] + h[2] / 2, h[1] + h[3])
+            addObj(h[4], h[0], h[1], h[2], h[3], true, h[5], h[6])
+            doorPath(h[0], h[1], h[2], h[3], h[6])
         }
-        // praça: fonte central, poço, barracas, bancos, canteiros, postes
-        addObj(12, 47, 35, 3, 3)
-        addObj(3, 37, 32)
-        for (st in listOf(intArrayOf(43, 32), intArrayOf(53, 32), intArrayOf(43, 40), intArrayOf(53, 40))) {
-            addObj(4, st[0], st[1], 2, 1)
-        }
-        for (bn in listOf(intArrayOf(45, 33), intArrayOf(51, 33), intArrayOf(45, 39), intArrayOf(51, 39))) {
-            addObj(13, bn[0], bn[1], 2, 1)
-        }
-        for (fb in listOf(intArrayOf(44, 30), intArrayOf(52, 30), intArrayOf(44, 42), intArrayOf(52, 42))) {
-            if (tiles[fb[1]][fb[0]] == 0) addObj(14, fb[0], fb[1], 2, 1)
-        }
+        // praça: fonte ao centro, mural de avisos, barracas de mercado, bancos, canteiros e postes com lanternas
+        put(12, 47, 35, 3, 3)
+        put(15, 44, 36, 2, 1)
+        put(3, 45, 29)
+        put(4, 43, 32, 2, 1, 0)     // frutas
+        put(4, 51, 32, 2, 1, 1)     // pães
+        put(4, 43, 41, 2, 1, 2)     // ervas
+        put(4, 51, 41, 2, 1, 3)     // tecidos
+        put(4, 54, 38, 2, 1, 4)     // equipamentos de aventura
+        put(16, 52, 33, 2, 1)
+        put(16, 43, 38, 2, 1)
+        for (bn in listOf(intArrayOf(45, 34), intArrayOf(50, 34), intArrayOf(45, 38), intArrayOf(50, 38))) put(13, bn[0], bn[1], 2, 1)
+        for (fb in listOf(intArrayOf(44, 30), intArrayOf(52, 30), intArrayOf(44, 43), intArrayOf(52, 43))) put(14, fb[0], fb[1], 2, 1)
         for (l in listOf(
-            intArrayOf(46, 34), intArrayOf(50, 34), intArrayOf(46, 38), intArrayOf(50, 38),
-            intArrayOf(39, 34), intArrayOf(57, 34), intArrayOf(40, 49), intArrayOf(46, 49),
-            intArrayOf(52, 49), intArrayOf(58, 49)
-        )) {
-            if (tiles[l[1]][l[0]] == 0) addObj(5, l[0], l[1])
-        }
-        // caixotes e barris perto das construções
+            intArrayOf(46, 32), intArrayOf(50, 32), intArrayOf(46, 41), intArrayOf(50, 41),
+            intArrayOf(43, 35), intArrayOf(54, 35), intArrayOf(40, 35), intArrayOf(58, 35), intArrayOf(48, 28), intArrayOf(48, 44)
+        )) put(5, l[0], l[1])
+        for (tr in listOf(intArrayOf(41, 31), intArrayOf(55, 31), intArrayOf(55, 41), intArrayOf(41, 43))) put(0, tr[0], tr[1])
+        // hortas, cercas e varais
+        put(18, 26, 33, 2, 1); put(18, 32, 33, 2, 1); put(18, 66, 33, 2, 1); put(18, 66, 41, 2, 1)
+        put(19, 26, 32, 2, 1); put(19, 32, 32, 2, 1); put(19, 66, 32, 2, 1)
+        put(17, 31, 27, 3, 1); put(17, 63, 27, 3, 1); put(17, 42, 28, 2, 1)
+        // caixotes e barris encostados nas construções (sem bloquear a entrada)
         for (o in objs.toList()) {
-            if (o.kind != 2 && o.kind != 8 && o.kind != 9 && o.kind != 10) continue
+            if (o.kind != 2 && o.kind != 8 && o.kind != 9 && o.kind != 10 && o.kind != 20 && o.kind != 21) continue
+            if (o.dir >= 2) continue
             val by = o.ty + o.h - 1
             for (px in intArrayOf(o.tx - 1, o.tx + o.w)) {
                 if (inB(px, by) && tiles[by][px] == 0 && ground[by][px] != 1 && ground[by][px] != 2 &&
-                    hash(px, by, 9) % 100 < 60
+                    hash(px, by, 9) % 100 < 40
                 ) tiles[by][px] = 6
             }
         }
@@ -608,13 +645,18 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         0 -> treeSprites[treeVariant(o.v, ground[o.ty][o.tx])]!!
         1 -> misc(100 + o.v % 4) { VoxelSprites.rock(o.v % 4) }
         3 -> misc(300) { VoxelSprites.well() }
-        4 -> misc(400 + o.v % 3) { VoxelSprites.stall(o.v % 3) }
+        4 -> misc(400 + o.style) { VoxelSprites.stall(o.style) }
         5 -> misc(500) { VoxelSprites.lamp() }
         6 -> misc(600 + o.v % 2) { VoxelSprites.pillar(o.v % 2) }
         12 -> misc(1200) { VoxelSprites.fountain() }
         13 -> misc(1300) { VoxelSprites.bench() }
         14 -> misc(1400 + o.v % 3) { VoxelSprites.flowerbed(o.v % 3) }
-        else -> VoxelSprites.house(o.kind, o.v % 4, o.w, o.h, o.v)
+        15 -> misc(1500) { VoxelSprites.noticeBoard() }
+        16 -> misc(1600) { VoxelSprites.cart() }
+        17 -> misc(1700 + o.w) { VoxelSprites.clothesline(o.w) }
+        18 -> misc(1800 + o.v % 3) { VoxelSprites.garden(o.v % 3) }
+        19 -> misc(1900 + o.w) { VoxelSprites.fence(o.w) }
+        else -> VoxelSprites.house(o.kind, if (o.style >= 0) o.style else o.v % 4, o.w, o.h, o.v, o.dir)
     }
 
     private fun blit(canvas: Canvas, s: VoxelSprites.Spr, cx: Float, baseY: Float) {
@@ -660,7 +702,7 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         val t = VoxelArt.time
         p.style = Paint.Style.FILL
         when (o.kind) {
-            2, 8, 10 -> {
+            2, 8, 10, 20, 21 -> {
                 if (s.fx <= 0f) return
                 val x = dx + s.fx
                 val y = dy + s.fy

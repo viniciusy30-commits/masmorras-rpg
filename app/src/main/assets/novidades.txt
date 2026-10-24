@@ -1,8 +1,10 @@
-#id 2026-10-24-g
-#titulo Vilarejo em cubos, refeito
-- Visual refeito do zero no estilo Minecraft/Hytale: texturas de 16x16 (grama, terra, pedra, tijolo, tábuas, telhas, vidro)
-- Casas bem maiores e diferentes: chalé de reboco, casa de pedra com lucarnas, cabana de toras com varanda, mansão de 2 andares com sacada, taverna, ferraria, celeiro e igreja com torre
-- Detalhes: telhados inclinados, janelas com venezianas e caixas de flores, portas com lanterna, chaminés com fumaça, vigas de madeira, hera, barris, caixotes e lenha
-- Praça nova: piso de lajotas em xadrez com anel azul, fonte de dois níveis com jatos de água, canteiros de flores, bancos e barracas listradas
-- Árvores em cubos: carvalho, pinheiro, bétula, cerejeira e outono
-- Os prédios aparecem em segundos ao iniciar o jogo (são montados em segundo plano para não travar)
+#id 2026-10-24-h
+#titulo Valedouro reconstruído
+- Fim da inclinação: casas, árvores e decorações agora são desenhadas em vista simétrica, sem entortar para o lado
+- Casas viradas para todas as direções: norte, sul, leste e oeste, todas de frente para a praça; as de leste/oeste têm empena e entrada pela lateral, com alpendre e lajes no chão
+- Praça refeita: fonte de pedra com bacia larga e dois níveis, mural de avisos, bancos, canteiros, carroças e 5 barracas (frutas, pães, ervas, tecidos e equipamentos)
+- Postes de madeira com lanternas de ferro iluminando a praça
+- Taverna Caneca Dourada maior, com varanda coberta, placa entalhada com caneca dourada, duas lanternas e janelas âmbar
+- Ofícios com placas: ferreiro (bigorna), carpinteiro (serra) e alfaiate (tesoura e tecidos secando)
+- Residências antigas de 2 andares com vigas escuras e hera, casas simples de palha, celeiro, hortas, cercas baixas e varais
+- Trilhas de terra saem da porta de cada casa na direção em que ela está virada

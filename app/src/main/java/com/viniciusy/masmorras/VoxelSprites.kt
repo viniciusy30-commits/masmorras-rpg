@@ -314,25 +314,25 @@ object VoxelSprites {
     private fun solidC(p: Pix, x: Int, y: Int, w: Int, h: Int, c: Int, al: Float = 1f) =
         solid(p, x, y, w, h, (c shr 16) and 255, (c shr 8) and 255, c and 255, al)
 
-    fun side(p: Pix, xr: Int, yt: Int, yb: Int, d: Int, tex: Int, light: Float, tint: FloatArray? = null) {
-        val t = Tex.get(tex)
-        for (k in 0 until d) for (y in yt - k until yb - k)
-            texPut(p, xr + k, y, t, k shr 2, (y - (yt - k)) shr 2, light, tint)
-    }
+    /** Projeção frontal simétrica: a lateral não é mais desenhada (era ela que entortava tudo). */
+    fun side(p: Pix, xr: Int, yt: Int, yb: Int, d: Int, tex: Int, light: Float, tint: FloatArray? = null) {}
 
     fun top(p: Pix, xl: Int, xr: Int, yt: Int, d0: Int, d1: Int, tex: Int, light: Float, tint: FloatArray? = null, inset: Int = 0) {
         val t = Tex.get(tex)
-        for (k in d0 until d1) for (x in xl + k + inset until xr + k - inset)
-            texPut(p, x, yt - k - 1, t, (x - (xl + k)) shr 2, k shr 2, light, tint)
+        for (k in d0 until d1) for (x in xl + inset until xr - inset)
+            texPut(p, x, yt - k - 1, t, (x - xl) shr 2, k shr 2, light, tint)
     }
 
     fun box(p: Pix, x: Int, y: Int, w: Int, h: Int, d: Int, tf: Int, ts: Int = tf, tt: Int = tf, tint: FloatArray? = null,
             l0: Float = 1f, l1: Float = 0.7f, l2: Float = 1.15f, bevel: Boolean = true) {
-        if (d > 0) {
-            side(p, x + w, y, y + h, d, ts, l1, tint)
-            top(p, x, x + w, y, 0, d, tt, l2, tint)
-        }
+        if (d > 0) top(p, x, x + w, y, 0, d, tt, l2, tint)
         front(p, x, y, w, h, tf, l0, 0, 0, tint)
+        if (d > 0 && w >= 8) {
+            val sw = max(2, w / 8)
+            solid(p, x + w - sw, y, sw, h, 0, 0, 0, 0.17f)
+            solid(p, x, y, 2, h, 255, 255, 255, 0.07f)
+            solid(p, x, y - d, w, 1, 0, 0, 0, 0.12f)
+        }
         if (bevel) {
             solid(p, x, y + h - 2, w, 2, 0, 0, 0, 0.18f)
             solid(p, x, y, w, 1, 255, 255, 255, 0.10f)
@@ -396,11 +396,14 @@ object VoxelSprites {
 
     // ───────────────────────── PEÇAS DE CASA ─────────────────────────
 
+    private var warm = false
+
     private fun window(p: Pix, cx: Int, cy: Int, w: Int, h: Int, shutter: IntArray, flowers: Boolean, glass: Int) {
         val x = cx - w / 2
         val y = cy - h / 2
         front(p, x - 4, y - 4, w + 8, h + 8, Tex.PLANKS_D, 1f)
         front(p, x, y, w, h, glass, 1f)
+        if (warm) solid(p, x, y, w, h, 255, 190, 90, 0.6f)
         solid(p, x, y, w, 8, 255, 255, 255, 0.18f)
         solid(p, x + w / 2 - 1, y, 2, h, 58, 38, 22); solid(p, x, y + h / 2 - 1, w, 2, 58, 38, 22)
         val st = tn(shutter[0] / 255f * 1.25f, shutter[1] / 255f * 1.25f, shutter[2] / 255f * 1.25f)
@@ -521,6 +524,13 @@ object VoxelSprites {
             }
             5 -> { barrel(p, x0 + w - 70, fy); barrel(p, x0 + w - 42, fy, 0.9f); crate(p, x0 + 14, fy); benchS(p, x0 + 50, fy); signBoard(p, x0, w, wy) }
             6 -> { hay(p, x0 - 26, fy); hay(p, x0 - 18, fy - 26, 36, 24); crate(p, x0 + w - 40, fy); barrel(p, x0 + w - 70, fy) }
+            8 -> {
+                for (px in intArrayOf(x0 - 66, x0 - 8)) solid(p, px, fy - 84, 5, 84, 58, 38, 22)
+                solid(p, x0 - 66, fy - 84, 63, 3, 58, 38, 22)
+                val cc = arrayOf(intArrayOf(200, 60, 70), intArrayOf(70, 110, 200), intArrayOf(230, 200, 80))
+                for (k in 0..2) solid(p, x0 - 60 + k * 18, fy - 81, 14, 34 + (k % 2) * 8, cc[k][0], cc[k][1], cc[k][2])
+                barrel(p, x0 + w - 36, fy); crate(p, x0 + w - 66, fy, 22)
+            }
             7 -> {
                 solid(p, x0 + 12, fy - 74, 84, 62, 30, 24, 22)
                 front(p, x0 + 22, fy - 44, 64, 32, Tex.EMBER, 1f)
@@ -533,27 +543,66 @@ object VoxelSprites {
     }
 
     // ───────────────────────── CASA GENÉRICA ─────────────────────────
+    // dir: 0 = porta voltada ao sul (fachada), 1 = porta voltada ao norte (vista dos fundos),
+    //      2 = porta voltada a leste, 3 = porta voltada a oeste (a fachada vira a empena e a entrada fica na lateral)
+
+    private fun tradeSign(p: Pix, bx: Int, by: Int, trade: Int) {
+        solid(p, bx - 4, by - 4, 42, 4, 58, 38, 22)
+        solid(p, bx + 6, by, 2, 6, 60, 60, 60); solid(p, bx + 26, by, 2, 6, 60, 60, 60)
+        box(p, bx, by + 6, 34, 28, 3, Tex.PLANKS_L, bevel = false)
+        when (trade) {
+            1 -> { solid(p, bx + 6, by + 14, 22, 6, 60, 60, 70); solid(p, bx + 10, by + 20, 14, 8, 60, 60, 70); solid(p, bx + 22, by + 10, 5, 5, 200, 80, 40) }
+            2 -> { solid(p, bx + 5, by + 12, 24, 5, 190, 190, 200); for (k in 0..5) solid(p, bx + 6 + k * 4, by + 17, 2, 3, 190, 190, 200); solid(p, bx + 5, by + 20, 24, 7, 120, 80, 40) }
+            3 -> { solid(p, bx + 9, by + 11, 3, 18, 200, 200, 210); solid(p, bx + 22, by + 11, 3, 18, 200, 200, 210); solid(p, bx + 7, by + 24, 7, 5, 200, 60, 70); solid(p, bx + 20, by + 24, 7, 5, 200, 60, 70) }
+        }
+    }
+
+    private fun tavernSign(p: Pix, cx: Int, by: Int) {
+        solid(p, cx - 46, by - 6, 92, 5, 58, 38, 22)
+        box(p, cx - 40, by, 80, 40, 4, Tex.PLANKS_D, bevel = false)
+        solid(p, cx - 40, by, 80, 3, 232, 190, 80); solid(p, cx - 40, by + 37, 80, 3, 232, 190, 80)
+        solid(p, cx - 12, by + 10, 22, 24, 232, 175, 40)
+        solid(p, cx - 12, by + 10, 22, 4, 255, 250, 235)
+        solid(p, cx - 12, by + 14, 4, 20, 255, 215, 90)
+        solid(p, cx + 10, by + 16, 8, 4, 232, 175, 40); solid(p, cx + 14, by + 16, 4, 14, 232, 175, 40); solid(p, cx + 10, by + 26, 8, 4, 232, 175, 40)
+        for (lx in intArrayOf(cx - 58, cx + 48)) {
+            solid(p, lx + 4, by - 6, 2, 8, 50, 50, 55)
+            box(p, lx, by + 2, 10, 14, 4, Tex.GLASS, bevel = false)
+            solid(p, lx, by + 2, 10, 14, 255, 200, 90, 0.5f)
+            for (yy in by - 14 until by + 34) for (xx in lx - 22 until lx + 32) {
+                val dx = (xx - (lx + 5)).toFloat(); val dy = (yy - (by + 9)).toFloat()
+                val dd = sqrt(dx * dx + dy * dy)
+                if (dd < 27f) p.put(xx, yy, 255f, 214f, 120f, 0.30f * (1f - dd / 27f))
+            }
+        }
+    }
 
     private fun buildHouse(
-        tw: Int, td: Int, stories: Int, wall: Int, roof: Int, timber: Boolean, shutter: IntArray,
+        tw: Int, td: Int, stories: Int, wall: Int, roof: Int, timber: Boolean, shutter: IntArray, dir: Int,
         stoneDoor: Boolean = false, dormers: Int = 0, chimneys: Int = 1, porch: Boolean = false, extra: Int = 0,
-        upper: Int = -1, seed: Int = 0, noWin: Boolean = false, barn: Boolean = false, gableTex: Int = wall
+        upper: Int = -1, seed: Int = 0, noWin: Boolean = false, barn: Boolean = false, gableTex: Int = wall,
+        trade: Int = 0, tavern: Boolean = false
     ): Spr {
         val w = tw * 64
-        val d = (td * 64 * 0.42f).toInt()
+        val d = td * 64
         val storyH = 92
         val wallH = storyH * stories
-        val rise = (d * 0.62f).toInt()
+        val gable = dir >= 2
         val ov = 14
-        val padL = 30; val padR = d + 60; val padT = 30; val padB = 24
-        val roofH = d / 2 + rise + 60
-        val wb = w + padL + padR
-        val hb = wallH + roofH + padT + padB + 40
-        val p = Pix(wb, hb)
-        val x0 = padL; val fy = hb - padB; val wy = fy - wallH
-        ellipseShadow(p, x0 + w / 2 + d / 3, fy + 2, w / 2 + d / 2 + 14, 12, 0.3f)
-        box(p, x0 - 3, fy - 12, w + 6, 12, d + 2, Tex.STONEBRICK, bevel = false)
-        box(p, x0, wy, w, wallH - 10, d, wall, bevel = false)
+        val gh = if (gable) (w * 0.34f).toInt().coerceIn(56, 104) else 0
+        val rd = (d * 0.30f).toInt()
+        val rs = (d * 0.30f).toInt() + 16
+        val roofTop = (if (gable) gh + rd else rs + 24) + 64
+        val pad = 100; val padB = 24; val padT = 40
+        val p = Pix(w + pad * 2, wallH + roofTop + padT + padB)
+        val hb = p.h
+        val x0 = pad; val fy = hb - padB; val wy = fy - wallH
+        val cxm = x0 + w / 2
+        warm = tavern
+        ellipseShadow(p, cxm, fy + 2, w / 2 + 28, 12, 0.3f)
+        box(p, x0 - 3, fy - 12, w + 6, 12, 0, Tex.STONEBRICK, bevel = false)
+        box(p, x0, wy, w, wallH - 10, 0, wall, bevel = false)
+        solid(p, x0 + w - 6, wy, 6, wallH - 10, 0, 0, 0, 0.14f); solid(p, x0, wy, 3, wallH - 10, 255, 255, 255, 0.07f)
         if (upper >= 0 && stories > 1) {
             front(p, x0, wy, w, storyH, upper, 1f)
             front(p, x0, wy + storyH, w, storyH - 10, wall, 1f)
@@ -573,129 +622,148 @@ object VoxelSprites {
             }
             for (k in 0..13) { solid(p, x0 + 8 + k, wy + 16 + k, 3, 3, 95, 62, 36); solid(p, x0 + w - 11 - k, wy + 16 + k, 3, 3, 95, 62, 36) }
         }
+        val hasDoor = dir != 1
+        val doorX = when (dir) { 2 -> x0 + w - 46; 3 -> x0 + 46; else -> cxm }
         val slots = max(2, w / 80)
-        val doorX = x0 + w / 2
         if (!noWin) {
             for (s in 0 until stories) {
                 val cy = fy - storyH * s - storyH / 2 - 8
                 for (k in 0 until slots) {
                     val cx = x0 + (w * (k + 0.5f) / slots).toInt()
-                    if (s == 0 && abs(cx - doorX) < 56) continue
+                    if (hasDoor && s == 0 && abs(cx - doorX) < 56) continue
+                    if (tavern && s == 1 && abs(cx - doorX) < 62) continue
                     val sc = if ((k + s + seed) % 2 == 0) shutter else intArrayOf(shutter[0] * 8 / 10, shutter[1] * 8 / 10, shutter[2] * 8 / 10)
                     window(p, cx, cy, 28, 32, sc, s == 0, Tex.GLASS)
                 }
             }
         }
         if (barn) {
-            val bw = 84; val bh = 84
-            front(p, doorX - bw / 2 - 5, fy - bh - 5, bw + 10, bh + 5, Tex.PLASTER_W, 1f)
-            front(p, doorX - bw / 2, fy - bh, bw, bh, Tex.BARN_V, 1f)
-            for (t in 0..9) {
-                val xx = doorX - bw / 2 + t * bw / 9
-                solid(p, xx - 2, fy - bh + t * bh / 9 - 2, 5, 5, 241, 235, 221)
-                solid(p, xx - 2, fy - t * bh / 9 - 3, 5, 5, 241, 235, 221)
+            if (hasDoor) {
+                val bw = 84; val bh = 84
+                front(p, doorX - bw / 2 - 5, fy - bh - 5, bw + 10, bh + 5, Tex.PLASTER_W, 1f)
+                front(p, doorX - bw / 2, fy - bh, bw, bh, Tex.BARN_V, 1f)
+                for (t in 0..9) {
+                    val xx = doorX - bw / 2 + t * bw / 9
+                    solid(p, xx - 2, fy - bh + t * bh / 9 - 2, 5, 5, 241, 235, 221)
+                    solid(p, xx - 2, fy - t * bh / 9 - 3, 5, 5, 241, 235, 221)
+                }
+                solid(p, doorX - 1, fy - bh, 3, bh, 241, 235, 221)
+                box(p, doorX - 60, fy - 6, 120, 6, 0, Tex.STONEBRICK, bevel = false)
             }
-            solid(p, doorX - 1, fy - bh, 3, bh, 241, 235, 221)
-            front(p, doorX - 18, wy + 20, 36, 34, Tex.PLASTER_W, 1f)
-            front(p, doorX - 14, wy + 24, 28, 26, Tex.DARK, 1f)
-            box(p, doorX - 60, fy - 6, 120, 6, 10, Tex.STONEBRICK, bevel = false)
-        } else {
+            front(p, cxm - 18, wy + 20, 36, 34, Tex.PLASTER_W, 1f)
+            front(p, cxm - 14, wy + 24, 28, 26, Tex.DARK, 1f)
+        } else if (hasDoor) {
             door(p, doorX, fy, if (tw >= 6) 44 else 36, 64, stoneDoor, tw >= 6)
         }
-        if (porch) {
+        if (porch && hasDoor) {
             for (px in intArrayOf(doorX - 50, doorX + 42)) box(p, px, fy - 70, 8, 70, 4, Tex.PLANKS_D, bevel = false)
             box(p, doorX - 58, fy - 82, 116, 12, 14, Tex.PLANKS_D, bevel = false)
+            if (tavern) box(p, doorX - 70, fy - 98, 140, 14, 16, roof, bevel = false)
+        }
+        if (gable && !porch) {
+            box(p, doorX - 34, fy - 100, 68, 8, 14, Tex.PLANKS_D, bevel = false)
+            for (px in intArrayOf(doorX - 36, doorX + 30)) box(p, px, fy - 92, 6, 92, 3, Tex.PLANKS_D, bevel = false)
+        }
+        if (gable) {
+            for (i in 0..2) box(p, if (dir == 2) x0 + w + 6 + i * 30 else x0 - 36 - i * 30, fy - 5, 26, 5, 8, Tex.COBBLE, bevel = false)
         }
         val yE = wy + 6
-        val sx = d / 2 - ov
-        val sy = d / 2 + rise + 6
-        tri(p, x0 + w, wy, x0 + w + d, wy - d, x0 + w + d / 2, wy - d / 2 - rise, gableTex, 0.72f, null, x0 + w, wy)
-        slope(p, x0 - ov, yE, w + 2 * ov, sx, sy, roof)
-        solid(p, x0 - ov, yE, w + 2 * ov, 3, 40, 28, 20)
-        solid(p, x0 - ov, yE + 3, w + 2 * ov, 4, 0, 0, 0, 0.3f)
-        solid(p, x0 - ov + sx, yE - sy - 2, w + 2 * ov, 5, 50, 36, 28)
-        line(p, x0 + w + ov, yE, x0 + w + ov + sx, yE - sy, 50, 36, 28, 3)
-        line(p, x0 - ov, yE, x0 - ov + sx, yE - sy, 50, 36, 28, 3)
-        for (k in 0 until dormers) {
-            val t = 0.42f
-            val dx = x0 + w * (k + 1) / (dormers + 1) + (sx * t).toInt() - 18
-            val dy = (yE - sy * t).toInt()
-            front(p, dx - 3, dy - 40, 42, 34, Tex.PLANKS_D, 1f)
-            front(p, dx + 3, dy - 34, 30, 28, Tex.GLASS, 1f)
-            solid(p, dx + 17, dy - 34, 2, 28, 58, 38, 22); solid(p, dx + 3, dy - 22, 30, 2, 58, 38, 22)
-            tri(p, dx - 8, dy - 40, dx + 44, dy - 40, dx + 18, dy - 66, roof, 1f, null, dx, dy)
-            line(p, dx - 8, dy - 40, dx + 18, dy - 66, 50, 36, 28, 3); line(p, dx + 44, dy - 40, dx + 18, dy - 66, 50, 36, 28, 3)
-        }
         var fxx = 0; var fyy = 0
-        for (k in 0 until chimneys) {
-            val t = 0.62f
-            val cxx = x0 + (w * (0.80f - 0.45f * k)).toInt() + (sx * t).toInt()
-            val ybot = (yE - sy * t).toInt() + 8
-            val ytop = yE - sy - 34
-            chimney(p, cxx, ybot, ytop)
-            if (k == 0) { fxx = cxx + 11; fyy = ytop - 8 }
+        if (!gable) {
+            front(p, x0 - ov, yE - rs, w + 2 * ov, rs, roof, 1f)
+            front(p, x0 - ov, yE - rs - 24, w + 2 * ov, 24, roof, 0.74f)
+            solid(p, x0 - ov, yE - rs - 27, w + 2 * ov, 6, 50, 36, 28)
+            solid(p, x0 - ov, yE - rs - 24, 3, rs + 24, 50, 36, 28); solid(p, x0 + w + ov - 3, yE - rs - 24, 3, rs + 24, 50, 36, 28)
+            solid(p, x0 - ov, yE, w + 2 * ov, 3, 40, 28, 20)
+            solid(p, x0 - ov, yE + 3, w + 2 * ov, 4, 0, 0, 0, 0.3f)
+            for (k in 0 until dormers) {
+                val dx = x0 + w * (k + 1) / (dormers + 1) - 21
+                val dy = yE - rs / 2 + 22
+                front(p, dx - 3, dy - 40, 42, 34, Tex.PLANKS_D, 1f)
+                front(p, dx + 3, dy - 34, 30, 28, Tex.GLASS, 1f)
+                if (warm) solid(p, dx + 3, dy - 34, 30, 28, 255, 190, 90, 0.6f)
+                solid(p, dx + 17, dy - 34, 2, 28, 58, 38, 22); solid(p, dx + 3, dy - 22, 30, 2, 58, 38, 22)
+                tri(p, dx - 8, dy - 40, dx + 44, dy - 40, dx + 18, dy - 66, roof, 1f, null, dx, dy)
+                line(p, dx - 8, dy - 40, dx + 18, dy - 66, 50, 36, 28, 3); line(p, dx + 44, dy - 40, dx + 18, dy - 66, 50, 36, 28, 3)
+            }
+            for (k in 0 until chimneys) {
+                val cxx = x0 + (w * (0.78f - 0.46f * k)).toInt()
+                val ybot = yE - rs + 6
+                val ytop = ybot - 52
+                chimney(p, cxx, ybot, ytop)
+                if (k == 0) { fxx = cxx + 11; fyy = ytop - 8 }
+            }
+        } else {
+            val bx = x0 - ov; val ex = x0 + w + ov
+            val rt = Tex.get(roof)
+            for (x in bx until ex) {
+                val u = if (x < cxm) (x - bx).toFloat() / (cxm - bx) else (ex - x).toFloat() / (ex - cxm)
+                val yd = (yE - gh * u).toInt()
+                val lt = if (x < cxm) 1f else 0.76f
+                for (y in yd - rd until yd) texPut(p, x, y, rt, (x - x0) shr 2, (y - yd + rd) shr 2, lt, null)
+            }
+            val gt = Tex.get(gableTex)
+            for (x in x0 until x0 + w) {
+                val u = 1f - abs(x - cxm).toFloat() / (w / 2 + ov)
+                val yd = (yE - gh * u).toInt()
+                for (y in yd + 3 until yE) texPut(p, x, y, gt, (x - x0) shr 2, (y - yd) shr 2, 0.95f, null)
+            }
+            front(p, cxm - 12, yE - gh / 2 - 8, 24, 24, Tex.PLANKS_D, 1f)
+            front(p, cxm - 8, yE - gh / 2 - 4, 16, 16, Tex.GLASS, 1f)
+            if (warm) solid(p, cxm - 8, yE - gh / 2 - 4, 16, 16, 255, 190, 90, 0.6f)
+            line(p, bx, yE, cxm, yE - gh, 50, 36, 28, 4); line(p, ex, yE, cxm, yE - gh, 50, 36, 28, 4)
+            line(p, bx, yE - rd, cxm, yE - gh - rd, 50, 36, 28, 3); line(p, ex, yE - rd, cxm, yE - gh - rd, 50, 36, 28, 3)
+            solid(p, cxm - 2, yE - gh - rd, 4, rd, 50, 36, 28)
+            solid(p, x0 - 4, yE, w + 8, 3, 40, 28, 20)
+            for (k in 0 until chimneys) {
+                val cxx = if (k == 0) cxm + w / 5 else cxm - w / 3
+                val u = 1f - abs(cxx - cxm).toFloat() / (w / 2 + ov)
+                val ybot = (yE - gh * u).toInt() - rd / 2 + 8
+                val ytop = ybot - 54
+                chimney(p, cxx, ybot, ytop)
+                if (k == 0) { fxx = cxx + 11; fyy = ytop - 8 }
+            }
         }
         extras(extra, p, x0, fy, w, wy, doorX)
-        // detalhes da face lateral (janelas e vigas), em perspectiva
-        if (!barn) sideDetails(p, x0, fy, w, d, wy, stories, timber, shutter, storyH)
-        return toSpr(p, x0 + w / 2, padB, fxx, fyy)
-    }
-
-    private fun sideDetails(p: Pix, x0: Int, fy: Int, w: Int, d: Int, wy: Int, stories: Int, timber: Boolean, shutter: IntArray, storyH: Int) {
-        val npos = if (d > 110) 2 else 1
-        for (s in 0 until stories) {
-            val cy = fy - storyH * s - storyH / 2 - 8
-            for (k in 0 until npos) {
-                val dp = d * (k + 1) / (npos + 1)
-                val sb = Pix(60, 70)
-                window(sb, 30, 35, 22, 28, shutter, false, Tex.GLASS)
-                for (c in 0 until sb.w) {
-                    val kk = dp - 30 + c
-                    if (kk < 0 || kk > d) continue
-                    for (r in 0 until sb.h) {
-                        val v = sb.a[r * sb.w + c]
-                        val al = (v ushr 24) / 255f
-                        if (al <= 0f) continue
-                        p.put(x0 + w + kk, cy - 35 + r - kk, ((v shr 16) and 255) * 0.72f, ((v shr 8) and 255) * 0.72f, (v and 255) * 0.72f, al)
-                    }
-                }
-            }
-        }
-        if (timber) {
-            val t = Tex.get(Tex.PLANKS_D)
-            for (kk in intArrayOf(0, d / 2, d - 8)) for (c in 0..7) {
-                val y0 = wy - kk - c
-                for (y in y0 until fy - 22 - kk - c) texPut(p, x0 + w + kk + c, y, t, 0, (y - y0) shr 2, 0.7f, null)
-            }
-        }
+        if (trade > 0 && hasDoor) tradeSign(p, doorX + 52, wy + 6, trade)
+        if (tavern && hasDoor) tavernSign(p, doorX, fy - 176)
+        warm = false
+        return toSpr(p, cxm, padB, fxx, fyy)
     }
 
     // ───────────────────────── CHAMADAS DO TILEMAP ─────────────────────────
 
-    fun house(kind: Int, style: Int, w: Int, h: Int, v: Int): Spr = when (kind) {
-        8 -> buildHouse(w, h, 2, Tex.PLASTER_Y, Tex.ROOF_BROWN, true, intArrayOf(180, 70, 50), chimneys = 2, extra = 5, upper = Tex.PLANKS_D, seed = v)
-        9 -> buildHouse(w, h, 1, Tex.BARN_V, Tex.ROOF_BROWN, false, intArrayOf(120, 60, 40), extra = 6, noWin = true, barn = true, chimneys = 0, gableTex = Tex.PLANKS_D)
-        10 -> buildHouse(w, h, 1, Tex.STONEBRICK, Tex.ROOF_SLATE, false, intArrayOf(70, 70, 80), extra = 7, seed = v)
+    fun house(kind: Int, style: Int, w: Int, h: Int, v: Int, dir: Int): Spr = when (kind) {
+        8 -> buildHouse(w, h, 2, Tex.PLASTER_Y, Tex.ROOF_BROWN, true, intArrayOf(180, 70, 50), dir, chimneys = 2, extra = 5, upper = Tex.PLANKS_D, seed = v, porch = true, tavern = true)
+        9 -> buildHouse(w, h, 1, Tex.BARN_V, Tex.ROOF_BROWN, false, intArrayOf(120, 60, 40), dir, extra = 6, noWin = true, barn = true, chimneys = 0, gableTex = Tex.PLANKS_D)
+        10 -> buildHouse(w, h, 1, Tex.STONEBRICK, Tex.ROOF_SLATE, false, intArrayOf(70, 70, 80), dir, extra = 7, seed = v, trade = 1)
         11 -> church(w, h)
+        20 -> buildHouse(w, h, 1, Tex.PLANKS, Tex.ROOF_BROWN, false, intArrayOf(120, 90, 50), dir, extra = 3, seed = v, trade = 2, gableTex = Tex.PLANKS_D)
+        21 -> buildHouse(w, h, 1, Tex.PLASTER_W, Tex.ROOF_BLUE, true, intArrayOf(150, 70, 110), dir, extra = 8, seed = v, trade = 3)
         else -> when (style) {
-            0 -> buildHouse(w, h, 1, Tex.PLASTER, Tex.ROOF_RED, true, intArrayOf(60, 140, 90), extra = 1, seed = v)
-            1 -> buildHouse(w, h, 1, Tex.STONEBRICK, Tex.ROOF_BLUE, false, intArrayOf(70, 110, 170), stoneDoor = true, dormers = if (w >= 5) 2 else 1, extra = 2, seed = v)
-            2 -> buildHouse(w, h, 1, Tex.LOG, Tex.ROOF_BROWN, false, intArrayOf(160, 70, 50), porch = true, extra = 3, seed = v, gableTex = Tex.PLANKS_D)
-            else -> buildHouse(w, h, 2, Tex.PLASTER_W, Tex.ROOF_GREEN, true, intArrayOf(110, 80, 150), dormers = 2, chimneys = 2, extra = 4, seed = v)
+            0 -> buildHouse(w, h, 1, Tex.PLASTER, Tex.ROOF_RED, true, intArrayOf(60, 140, 90), dir, extra = 1, seed = v)
+            1 -> buildHouse(w, h, 1, Tex.STONEBRICK, Tex.ROOF_BLUE, false, intArrayOf(70, 110, 170), dir, stoneDoor = true, dormers = if (w >= 5) 2 else 1, extra = 2, seed = v)
+            2 -> buildHouse(w, h, 1, Tex.LOG, Tex.ROOF_BROWN, false, intArrayOf(160, 70, 50), dir, porch = true, extra = 3, seed = v, gableTex = Tex.PLANKS_D)
+            3 -> buildHouse(w, h, 2, Tex.PLASTER_W, Tex.ROOF_GREEN, true, intArrayOf(110, 80, 150), dir, dormers = 2, chimneys = 2, extra = 4, seed = v)
+            4 -> buildHouse(w, h, 2, Tex.PLASTER_B, Tex.ROOF_SLATE, true, intArrayOf(90, 70, 60), dir, porch = true, dormers = 2, chimneys = 2, extra = 2, upper = Tex.PLANKS_D, seed = v)
+            else -> buildHouse(w, h, 1, Tex.LOG, Tex.THATCH, false, intArrayOf(120, 90, 60), dir, extra = 6, seed = v, gableTex = Tex.PLANKS_D)
         }
     }
 
     private fun church(tw: Int, td: Int): Spr {
         val w = tw * 64
-        val d = (td * 64 * 0.42f).toInt()
+        val d = td * 64
         val towerW = 112; val towerH = 250; val wallH = 140
-        val p = Pix(w + 170, 540)
-        val x0 = 40; val fy = 516
-        ellipseShadow(p, x0 + w / 2 + 40, fy + 2, w / 2 + 70, 16, 0.3f)
+        val pad = 70
+        val rs = (d * 0.28f).toInt() + 16
+        val ov = 14
+        val p = Pix(w + pad * 2, 540)
+        val x0 = pad; val fy = 516
+        ellipseShadow(p, x0 + w / 2, fy + 2, w / 2 + 40, 16, 0.3f)
         val nx = x0 + towerW - 8
         val nw = w - towerW + 8
-        box(p, x0 - 3, fy - 12, w + 6, 12, d + 2, Tex.STONEBRICK, bevel = false)
-        box(p, nx, fy - wallH, nw, wallH - 10, d, Tex.PLASTER_W, bevel = false)
+        box(p, x0 - 3, fy - 12, w + 6, 12, 0, Tex.STONEBRICK, bevel = false)
+        box(p, nx, fy - wallH, nw, wallH - 10, 0, Tex.PLASTER_W, bevel = false)
         solid(p, nx, fy - wallH + 8, nw, 10, 0, 0, 0, 0.28f)
         for (k in 0..1) {
             val cx = nx + nw * (k + 1) / 3 + (if (k == 1) 14 else -4)
@@ -704,12 +772,12 @@ object VoxelSprites {
             solid(p, cx - 1, fy - wallH + 42, 2, 62, 58, 38, 22); solid(p, cx - 14, fy - wallH + 66, 28, 2, 58, 38, 22)
             solid(p, cx - 14, fy - wallH + 42, 28, 12, 200, 70, 60, 0.5f)
         }
-        val rise = 70; val ov = 14; val yE = fy - wallH + 6
-        val sx = d / 2 - ov; val sy = d / 2 + rise + 6
-        tri(p, nx + nw, fy - wallH, nx + nw + d, fy - wallH - d, nx + nw + d / 2, fy - wallH - d / 2 - rise, Tex.PLASTER_W, 0.72f, null, nx, fy - wallH)
-        slope(p, nx - ov, yE, nw + 2 * ov, sx, sy, Tex.ROOF_BLUE)
-        solid(p, nx - ov, yE, nw + 2 * ov, 3, 40, 28, 20); solid(p, nx - ov + sx, yE - sy - 2, nw + 2 * ov, 5, 40, 40, 50)
-        line(p, nx + nw + ov, yE, nx + nw + ov + sx, yE - sy, 40, 40, 50, 3)
+        val yE = fy - wallH + 6
+        front(p, nx - ov, yE - rs, nw + 2 * ov, rs, Tex.ROOF_BLUE, 1f)
+        front(p, nx - ov, yE - rs - 24, nw + 2 * ov, 24, Tex.ROOF_BLUE, 0.74f)
+        solid(p, nx - ov, yE - rs - 27, nw + 2 * ov, 6, 40, 40, 50)
+        solid(p, nx - ov, yE, nw + 2 * ov, 3, 40, 28, 20)
+        solid(p, nx - ov, yE + 3, nw + 2 * ov, 4, 0, 0, 0, 0.3f)
         val doorX = nx + nw / 2
         front(p, doorX - 30, fy - 98, 60, 98, Tex.STONEBRICK, 1f)
         front(p, doorX - 22, fy - 86, 44, 86, Tex.VPLANKS, 1f)
@@ -717,7 +785,8 @@ object VoxelSprites {
         for (yy in intArrayOf(fy - 76, fy - 28)) solid(p, doorX - 22, yy, 44, 3, 40, 40, 48)
         box(p, doorX - 40, fy - 6, 80, 6, 10, Tex.STONEBRICK, bevel = false)
         box(p, doorX - 34, fy - 12, 68, 6, 6, Tex.STONEBRICK, bevel = false)
-        box(p, x0, fy - towerH, towerW, towerH - 10, 90, Tex.STONEBRICK, bevel = false)
+        box(p, x0, fy - towerH, towerW, towerH - 10, 0, Tex.STONEBRICK, bevel = false)
+        solid(p, x0 + towerW - 6, fy - towerH, 6, towerH - 10, 0, 0, 0, 0.14f)
         for (yy in intArrayOf(fy - towerH + 70, fy - towerH + 150)) solid(p, x0, yy, towerW, 4, 0, 0, 0, 0.18f)
         val ck = x0 + towerW / 2
         front(p, ck - 22, fy - towerH + 30, 44, 44, Tex.STONEBRICK, 1f)
@@ -727,9 +796,9 @@ object VoxelSprites {
         solid(p, ck - 6, fy - towerH + 116, 12, 14, 232, 190, 80)
         front(p, ck - 12, fy - 110, 24, 60, Tex.GLASS_B, 1f)
         val by = fy - towerH
-        val ax = x0 + towerW / 2 + 45; val ay = by - 45 - 112
-        tri(p, x0 - 8, by, x0 + towerW + 8, by, ax, ay, Tex.ROOF_BLUE, 1f, null, x0, by)
-        tri(p, x0 + towerW + 8, by, x0 + towerW + 98, by - 90, ax, ay, Tex.ROOF_BLUE, 0.7f, null, x0, by)
+        val ax = ck; val ay = by - 112
+        tri(p, x0 - 8, by, ax, by, ax, ay, Tex.ROOF_BLUE, 1f, null, x0, by)
+        tri(p, ax, by, x0 + towerW + 8, by, ax, ay, Tex.ROOF_BLUE, 0.7f, null, x0, by)
         line(p, x0 - 8, by, ax, ay, 40, 40, 50, 3); line(p, x0 + towerW + 8, by, ax, ay, 40, 40, 50, 3)
         solid(p, ax - 2, ay - 34, 5, 36, 232, 193, 78); solid(p, ax - 10, ay - 26, 21, 5, 232, 193, 78)
         potted(p, doorX - 62, fy); potted(p, doorX + 50, fy)
@@ -741,7 +810,7 @@ object VoxelSprites {
     fun tree(variant: Int): Spr {
         val p = Pix(240, 330)
         val cx = 120; val fy = 316
-        ellipseShadow(p, cx + 10, fy + 2, 62, 14, 0.30f)
+        ellipseShadow(p, cx, fy + 2, 62, 14, 0.30f)
         if (variant == 2 || variant == 3) {
             box(p, cx - 9, fy - 50, 18, 50, 12, Tex.BARK, bevel = false)
             val n = if (variant == 2) 6 else 8
@@ -771,72 +840,174 @@ object VoxelSprites {
     // ───────────────────────── PROPS DA PRAÇA ─────────────────────────
 
     fun fountain(): Spr {
-        val p = Pix(330, 300)
-        val cx = 150; val fy = 280
-        ellipseShadow(p, cx + 40, fy, 130, 20, 0.28f)
-        val bw = 200; val d = 100
-        box(p, cx - bw / 2, fy - 36, bw, 36, d, Tex.STONEBRICK, Tex.STONEBRICK, Tex.FLAG, bevel = false)
-        top(p, cx - bw / 2 + 10, cx + bw / 2 - 10, fy - 36, 12, d - 12, Tex.WATER, 1f)
-        box(p, cx - bw / 2 - 4, fy - 46, bw + 8, 10, 0, Tex.FLAG, bevel = false)
-        box(p, cx - 14, fy - 90, 28, 54, 20, Tex.STONEBRICK, bevel = false)
-        val y2 = fy - 90
-        box(p, cx - 54, y2 - 20, 108, 20, 44, Tex.STONEBRICK, Tex.STONEBRICK, Tex.FLAG, bevel = false)
-        top(p, cx - 46, cx + 46, y2 - 20, 8, 36, Tex.WATER, 1.05f)
-        box(p, cx - 8, y2 - 54, 16, 34, 10, Tex.STONEBRICK, bevel = false)
-        box(p, cx - 10, y2 - 72, 20, 18, 12, Tex.GOLD, bevel = false)
-        return toSpr(p, cx, 20, cx + 6, y2 - 72)
+        val p = Pix(340, 320)
+        val cx = 170; val fy = 296
+        ellipseShadow(p, cx, fy - 4, 150, 22, 0.28f)
+        val bw = 236; val d = 104
+        val yt = fy - 40
+        front(p, cx - bw / 2, yt, bw, 40, Tex.STONEBRICK, 1f)
+        solid(p, cx - bw / 2, yt + 34, bw, 6, 0, 0, 0, 0.2f)
+        solid(p, cx + bw / 2 - 8, yt, 8, 40, 0, 0, 0, 0.15f)
+        top(p, cx - bw / 2, cx + bw / 2, yt, 0, d, Tex.FLAG, 1.1f)
+        top(p, cx - bw / 2 + 14, cx + bw / 2 - 14, yt, 14, d - 14, Tex.WATER, 1f)
+        solid(p, cx - bw / 2 + 14, yt - d + 14, bw - 28, 6, 255, 255, 255, 0.10f)
+        val cy = yt - d / 2
+        box(p, cx - 34, cy - 8, 68, 20, 22, Tex.STONEBRICK, tt = Tex.FLAG, bevel = false)
+        box(p, cx - 14, cy - 60, 28, 52, 12, Tex.STONEBRICK, bevel = false)
+        val y2 = cy - 60
+        box(p, cx - 52, y2 - 18, 104, 18, 40, Tex.STONEBRICK, tt = Tex.FLAG, bevel = false)
+        top(p, cx - 42, cx + 42, y2 - 18, 8, 32, Tex.WATER, 1.05f)
+        box(p, cx - 8, y2 - 58, 16, 40, 8, Tex.STONEBRICK, bevel = false)
+        box(p, cx - 11, y2 - 74, 22, 16, 10, Tex.GOLD, bevel = false)
+        return toSpr(p, cx, 20, cx, y2 - 74)
     }
 
     fun well(): Spr {
         val p = Pix(190, 220)
-        val cx = 80; val fy = 204
-        ellipseShadow(p, cx + 20, fy, 60, 10, 0.28f)
-        box(p, cx - 34, fy - 36, 68, 36, 40, Tex.STONEBRICK, Tex.STONEBRICK, Tex.FLAG, bevel = false)
+        val cx = 95; val fy = 204
+        ellipseShadow(p, cx, fy, 58, 10, 0.28f)
+        box(p, cx - 34, fy - 36, 68, 36, 40, Tex.STONEBRICK, tt = Tex.FLAG, bevel = false)
         top(p, cx - 24, cx + 24, fy - 36, 8, 32, Tex.WATER, 0.95f)
-        box(p, cx - 34, fy - 106, 8, 70, 6, Tex.PLANKS_D, bevel = false)
-        box(p, cx + 26, fy - 106, 8, 70, 6, Tex.PLANKS_D, bevel = false)
-        box(p, cx - 46, fy - 124, 92, 18, 44, Tex.ROOF_RED, bevel = false)
-        box(p, cx - 30, fy - 142, 60, 18, 28, Tex.ROOF_RED, bevel = false)
+        box(p, cx - 34, fy - 106, 8, 70, 0, Tex.PLANKS_D, bevel = false)
+        box(p, cx + 26, fy - 106, 8, 70, 0, Tex.PLANKS_D, bevel = false)
+        box(p, cx - 46, fy - 124, 92, 18, 30, Tex.ROOF_RED, bevel = false)
+        box(p, cx - 30, fy - 142, 60, 18, 16, Tex.ROOF_RED, bevel = false)
         solid(p, cx - 1, fy - 104, 2, 40, 215, 201, 160)
-        box(p, cx - 6, fy - 66, 12, 12, 6, Tex.PLANKS_L, bevel = false)
+        box(p, cx - 6, fy - 66, 12, 12, 0, Tex.PLANKS_L, bevel = false)
         return toSpr(p, cx, 16)
     }
 
     fun stall(v: Int): Spr {
-        val p = Pix(220, 200)
-        val l = 30; val fy = 186
-        ellipseShadow(p, l + 80, fy, 90, 10, 0.28f)
-        box(p, l + 4, fy - 100, 8, 100, 6, Tex.PLANKS_D, bevel = false)
-        box(p, l + 116, fy - 100, 8, 100, 6, Tex.PLANKS_D, bevel = false)
-        box(p, l, fy - 36, 128, 36, 26, Tex.PLANKS_L, bevel = false)
-        val gc = arrayOf(intArrayOf(214, 69, 58), intArrayOf(111, 191, 74), intArrayOf(242, 193, 78), intArrayOf(229, 155, 60), intArrayOf(155, 89, 182))
-        for (k in 0..5) {
-            val g = gc[(v + k) % 5]
-            box(p, l + 8 + k * 20, fy - 50, 16, 14, 8, Tex.PLASTER_W, tint = tn(g[0] / 255f * 1.2f, g[1] / 255f * 1.2f, g[2] / 255f * 1.2f), bevel = false)
+        val p = Pix(240, 214)
+        val l = 56; val fy = 200
+        val cxm = l + 64
+        ellipseShadow(p, cxm, fy, 84, 10, 0.28f)
+        box(p, l + 4, fy - 104, 8, 104, 0, Tex.PLANKS_D, bevel = false)
+        box(p, l + 116, fy - 104, 8, 104, 0, Tex.PLANKS_D, bevel = false)
+        box(p, l, fy - 38, 128, 38, 24, Tex.PLANKS_L, bevel = false)
+        val by = fy - 46
+        when (v % 5) {
+            0 -> { val fc = arrayOf(intArrayOf(214, 69, 58), intArrayOf(242, 193, 78), intArrayOf(229, 125, 40), intArrayOf(111, 191, 74))
+                for (k in 0..6) { val c = fc[k % 4]; solid(p, l + 10 + k * 15, by - 12 - (k % 2) * 6, 13, 13, c[0], c[1], c[2]); solid(p, l + 12 + k * 15, by - 10 - (k % 2) * 6, 4, 4, 255, 255, 255, 0.35f) } }
+            1 -> { for (k in 0..4) { solid(p, l + 8 + k * 23, by - 14, 20, 10, 190, 130, 60); solid(p, l + 8 + k * 23, by - 14, 20, 4, 222, 168, 90); solid(p, l + 12 + k * 23, by - 12, 3, 5, 150, 95, 40) } }
+            2 -> { for (k in 0..8) { solid(p, l + 8 + k * 13, by - 22 - (k % 3) * 4, 6, 22 + (k % 3) * 4, 56 + (k % 2) * 30, 140 + (k % 3) * 20, 60); solid(p, l + 7 + k * 13, by - 22 - (k % 3) * 4, 8, 6, 120, 190, 90) } }
+            3 -> { val fc = arrayOf(intArrayOf(200, 60, 70), intArrayOf(70, 110, 200), intArrayOf(230, 200, 80), intArrayOf(120, 80, 160), intArrayOf(90, 170, 100))
+                for (k in 0..5) { val c = fc[k % 5]; solid(p, l + 8 + k * 20, by - 26, 15, 26, c[0], c[1], c[2]); solid(p, l + 8 + k * 20, by - 26, 15, 4, 255, 255, 255, 0.25f) } }
+            else -> { solid(p, l + 14, by - 30, 5, 28, 190, 190, 205); solid(p, l + 8, by - 12, 17, 4, 120, 80, 40)
+                solid(p, l + 40, by - 24, 22, 24, 130, 90, 50); solid(p, l + 44, by - 20, 14, 16, 200, 200, 215)
+                solid(p, l + 78, by - 28, 5, 28, 190, 190, 205); solid(p, l + 72, by - 12, 17, 4, 120, 80, 40)
+                solid(p, l + 100, by - 20, 20, 20, 150, 150, 165); solid(p, l + 104, by - 24, 12, 6, 150, 150, 165) }
         }
+        val a1 = when (v % 5) { 0 -> tn(0.85f, 0.25f, 0.2f); 1 -> tn(0.9f, 0.7f, 0.25f); 2 -> tn(0.3f, 0.65f, 0.3f); 3 -> tn(0.35f, 0.4f, 0.8f); else -> tn(0.5f, 0.5f, 0.55f) }
         for (k in 0..7) {
-            val red = k % 2 == 0
-            box(p, l - 6 + k * 17, fy - 128, 17, 26, 34, Tex.PLASTER_W, tint = if (red) tn(0.85f, 0.25f, 0.2f) else null, bevel = false)
+            box(p, l - 6 + k * 17, fy - 130, 17, 26, 20, Tex.PLASTER_W, tint = if (k % 2 == 0) a1 else null, bevel = false)
         }
-        return toSpr(p, l + 64, 14)
+        solid(p, l - 6, fy - 104, 136, 3, 0, 0, 0, 0.25f)
+        return toSpr(p, cxm, 14)
     }
 
     fun lamp(): Spr {
-        val p = Pix(90, 170)
-        val cx = 38; val fy = 160
-        ellipseShadow(p, cx + 6, fy, 20, 5, 0.3f)
-        box(p, cx - 10, fy - 10, 20, 10, 8, Tex.COBBLE, bevel = false)
-        box(p, cx - 3, fy - 80, 6, 70, 4, Tex.METAL, bevel = false)
-        box(p, cx - 11, fy - 108, 22, 28, 14, Tex.GLASS, bevel = false)
-        solid(p, cx - 11, fy - 108, 3, 28, 40, 40, 46); solid(p, cx + 8, fy - 108, 3, 28, 40, 40, 46)
-        box(p, cx - 14, fy - 118, 28, 10, 18, Tex.METAL, bevel = false)
-        return toSpr(p, cx, 10, cx + 4, fy - 94)
+        val p = Pix(90, 190)
+        val cx = 45; val fy = 180
+        ellipseShadow(p, cx, fy, 18, 5, 0.3f)
+        box(p, cx - 9, fy - 8, 18, 8, 6, Tex.COBBLE, bevel = false)
+        box(p, cx - 4, fy - 112, 8, 104, 3, Tex.PLANKS_D, bevel = false)
+        solid(p, cx - 5, fy - 40, 10, 3, 40, 40, 46)
+        box(p, cx - 20, fy - 120, 40, 6, 3, Tex.PLANKS_D, bevel = false)
+        solid(p, cx - 1, fy - 114, 2, 8, 40, 40, 46)
+        box(p, cx - 9, fy - 142, 18, 26, 8, Tex.GLASS, bevel = false)
+        solid(p, cx - 9, fy - 142, 18, 26, 255, 200, 90, 0.45f)
+        solid(p, cx - 10, fy - 142, 3, 26, 40, 40, 46); solid(p, cx + 7, fy - 142, 3, 26, 40, 40, 46)
+        box(p, cx - 12, fy - 150, 24, 8, 6, Tex.METAL, bevel = false)
+        return toSpr(p, cx, 10, cx, fy - 129)
+    }
+
+    fun noticeBoard(): Spr {
+        val p = Pix(170, 190)
+        val cx = 85; val fy = 176
+        ellipseShadow(p, cx, fy, 54, 8, 0.28f)
+        box(p, cx - 50, fy - 92, 8, 92, 0, Tex.PLANKS_D, bevel = false)
+        box(p, cx + 42, fy - 92, 8, 92, 0, Tex.PLANKS_D, bevel = false)
+        box(p, cx - 54, fy - 148, 108, 70, 6, Tex.PLANKS_L, bevel = false)
+        solid(p, cx - 54, fy - 148, 108, 3, 58, 38, 22); solid(p, cx - 54, fy - 81, 108, 3, 58, 38, 22)
+        box(p, cx - 62, fy - 156, 124, 10, 16, Tex.ROOF_BROWN, bevel = false)
+        val pc = arrayOf(intArrayOf(246, 241, 230), intArrayOf(242, 225, 160), intArrayOf(236, 200, 190), intArrayOf(246, 241, 230))
+        for (i in 0..3) {
+            val px = cx - 48 + i * 25; val py = fy - 142 + (i % 2) * 14
+            solid(p, px, py, 20, 26, pc[i][0], pc[i][1], pc[i][2])
+            for (ln in 0..2) solid(p, px + 3, py + 8 + ln * 5, 14, 1, 90, 70, 50)
+            solid(p, px + 9, py + 1, 3, 3, 200, 50, 50)
+        }
+        solid(p, cx - 12, fy - 118, 24, 28, 236, 214, 150); solid(p, cx - 8, fy - 112, 16, 3, 170, 40, 40)
+        return toSpr(p, cx, 12)
+    }
+
+    fun cart(): Spr {
+        val p = Pix(230, 160)
+        val cx = 115; val fy = 146
+        ellipseShadow(p, cx, fy, 80, 9, 0.28f)
+        box(p, cx - 58, fy - 66, 116, 30, 18, Tex.PLANKS, bevel = false)
+        solid(p, cx - 58, fy - 40, 116, 3, 58, 38, 22)
+        for (k in 0..5) { val c = if (k % 2 == 0) intArrayOf(214, 69, 58) else intArrayOf(242, 193, 78); solid(p, cx - 50 + k * 17, fy - 86, 15, 14, c[0], c[1], c[2]) }
+        for (wx in intArrayOf(cx - 44, cx + 44)) for (yy in fy - 50..fy) for (xx in wx - 24..wx + 24) {
+            val dx = (xx - wx).toFloat(); val dy = (yy - (fy - 25)).toFloat()
+            val r = sqrt(dx * dx + dy * dy)
+            if (r <= 25f && r >= 18f) p.put(xx, yy, 96f, 64f, 36f, 1f)
+            else if (r < 18f && (abs(dx) < 2f || abs(dy) < 2f)) p.put(xx, yy, 120f, 82f, 46f, 1f)
+        }
+        line(p, cx - 58, fy - 44, cx - 100, fy - 20, 96, 64, 36, 4)
+        return toSpr(p, cx, 8)
+    }
+
+    fun garden(v: Int): Spr {
+        val p = Pix(190, 140)
+        val cx = 95; val fy = 128
+        ellipseShadow(p, cx, fy, 80, 8, 0.28f)
+        box(p, cx - 60, fy - 16, 120, 16, 34, Tex.PLANKS_D, Tex.PLANKS_D, Tex.DIRT2, bevel = false)
+        for (r in 0..1) for (k in 0..6) {
+            val x = cx - 54 + k * 16
+            val y = fy - 22 - r * 14
+            if ((v + r) % 2 == 0) { solid(p, x, y - 12, 12, 12, 70, 150, 70); solid(p, x + 3, y - 10, 6, 6, 120, 190, 100) }
+            else { solid(p, x + 4, y - 14, 4, 14, 60, 140, 60); solid(p, x + 2, y - 4, 8, 6, 230, 120, 40) }
+        }
+        if (v % 3 == 0) {
+            solid(p, cx + 40, fy - 70, 4, 56, 90, 60, 36); solid(p, cx + 28, fy - 58, 28, 4, 90, 60, 36)
+            solid(p, cx + 36, fy - 82, 12, 12, 222, 190, 110); solid(p, cx + 30, fy - 70, 24, 14, 150, 90, 60)
+        }
+        return toSpr(p, cx, 10)
+    }
+
+    fun fence(n: Int): Spr {
+        val wpx = n * 64
+        val p = Pix(wpx + 40, 80)
+        val fy = 70
+        ellipseShadow(p, 20 + wpx / 2, fy, wpx / 2 + 6, 5, 0.25f)
+        box(p, 20, fy - 30, wpx, 5, 3, Tex.PLANKS_L, bevel = false)
+        box(p, 20, fy - 16, wpx, 5, 3, Tex.PLANKS_L, bevel = false)
+        var x = 20
+        while (x <= 20 + wpx - 4) { box(p, x, fy - 38, 6, 38, 3, Tex.PLANKS_D, bevel = false); x += 28 }
+        box(p, 20 + wpx - 6, fy - 38, 6, 38, 3, Tex.PLANKS_D, bevel = false)
+        return toSpr(p, 20 + wpx / 2, 6)
+    }
+
+    fun clothesline(n: Int): Spr {
+        val wpx = n * 64
+        val p = Pix(wpx + 40, 150)
+        val fy = 140
+        ellipseShadow(p, 20 + wpx / 2, fy, wpx / 2, 5, 0.25f)
+        box(p, 14, fy - 110, 6, 110, 0, Tex.PLANKS_D, bevel = false)
+        box(p, 20 + wpx - 2, fy - 110, 6, 110, 0, Tex.PLANKS_D, bevel = false)
+        solid(p, 18, fy - 104, wpx + 10, 2, 120, 100, 70)
+        val cc = arrayOf(intArrayOf(240, 240, 235), intArrayOf(200, 60, 70), intArrayOf(80, 120, 200), intArrayOf(240, 220, 120))
+        var k = 0; var x = 30
+        while (x < wpx - 10) { val c = cc[k % 4]; solid(p, x, fy - 102, 22, 30 + (k % 2) * 10, c[0], c[1], c[2]); solid(p, x, fy - 102, 22, 3, 0, 0, 0, 0.2f); x += 36; k++ }
+        return toSpr(p, 20 + wpx / 2, 6)
     }
 
     fun bench(): Spr {
         val p = Pix(190, 110)
-        val cx = 80; val fy = 100
-        ellipseShadow(p, cx + 20, fy, 70, 8, 0.28f)
+        val cx = 95; val fy = 100
+        ellipseShadow(p, cx, fy, 70, 8, 0.28f)
         box(p, cx - 50, fy - 62, 104, 22, 6, Tex.PLANKS_L, l0 = 0.92f, bevel = false)
         box(p, cx - 52, fy - 24, 8, 24, 8, Tex.PLANKS_D, bevel = false)
         box(p, cx + 44, fy - 24, 8, 24, 8, Tex.PLANKS_D, bevel = false)
@@ -846,8 +1017,8 @@ object VoxelSprites {
 
     fun flowerbed(v: Int): Spr {
         val p = Pix(190, 120)
-        val cx = 80; val fy = 110
-        ellipseShadow(p, cx + 24, fy, 80, 8, 0.28f)
+        val cx = 95; val fy = 110
+        ellipseShadow(p, cx, fy, 80, 8, 0.28f)
         box(p, cx - 60, fy - 16, 120, 16, 30, Tex.STONEBRICK, Tex.STONEBRICK, Tex.DIRT2, bevel = false)
         val fc = arrayOf(intArrayOf(229, 57, 53), intArrayOf(255, 213, 79), intArrayOf(255, 143, 177), intArrayOf(245, 245, 245), intArrayOf(100, 181, 246))
         for (k in 0..9) {
@@ -863,8 +1034,8 @@ object VoxelSprites {
 
     fun rock(v: Int): Spr {
         val p = Pix(140, 120)
-        val cx = 60; val fy = 108
-        ellipseShadow(p, cx + 14, fy, 48, 9, 0.3f)
+        val cx = 70; val fy = 108
+        ellipseShadow(p, cx, fy, 48, 9, 0.3f)
         val g = tn(0.85f, 0.88f, 0.95f)
         box(p, cx - 32, fy - 30, 66, 30, 28, Tex.COBBLE, tint = g, l1 = 0.66f, bevel = false)
         box(p, cx - 18, fy - 54, 36, 28, 20, Tex.COBBLE, tint = tn(1f, 1.02f, 1.1f), bevel = false)
@@ -874,9 +1045,9 @@ object VoxelSprites {
 
     fun pillar(v: Int): Spr {
         val p = Pix(150, 240)
-        val cx = 62; val fy = 228
+        val cx = 75; val fy = 228
         val ht = if (v % 2 == 0) 130 else 76
-        ellipseShadow(p, cx + 14, fy, 44, 8, 0.3f)
+        ellipseShadow(p, cx, fy, 44, 8, 0.3f)
         box(p, cx - 26, fy - 16, 52, 16, 22, Tex.STONEBRICK, bevel = false)
         box(p, cx - 18, fy - 16 - ht, 36, ht, 18, Tex.STONEBRICK, tint = tn(1.05f, 1.05f, 1.02f), bevel = false)
         if (ht > 100) box(p, cx - 24, fy - 28 - ht, 48, 12, 24, Tex.STONEBRICK, bevel = false)
