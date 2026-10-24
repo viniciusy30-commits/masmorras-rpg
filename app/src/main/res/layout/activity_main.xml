@@ -180,7 +180,41 @@
                 android:layout_height="1dp"
                 android:layout_weight="1"/>
 
-            <!-- Botão ataque -->
+            <!-- Botões de ação -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="bottom">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnJump"
+                    android:layout_width="62dp"
+                    android:layout_height="62dp"
+                    android:layout_marginEnd="10dp"
+                    android:text="PULAR"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:padding="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    app:cornerRadius="31dp"
+                    style="@style/Widget.MaterialComponents.Button"/>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRoll"
+                    android:layout_width="62dp"
+                    android:layout_height="62dp"
+                    android:layout_marginEnd="10dp"
+                    android:text="ROLAR"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:padding="0dp"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    app:cornerRadius="31dp"
+                    style="@style/Widget.MaterialComponents.Button"/>
+
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnAttack"
                 android:layout_width="80dp"
@@ -192,6 +226,7 @@
                 android:insetBottom="0dp"
                 app:cornerRadius="40dp"
                 style="@style/Widget.MaterialComponents.Button"/>
+            </LinearLayout>
         </LinearLayout>
 
         <!-- Overlay fim de jogo -->

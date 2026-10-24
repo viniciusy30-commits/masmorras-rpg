@@ -129,6 +129,12 @@ class MainActivity : AppCompatActivity() {
         findViewById<MaterialButton>(R.id.btnAttack).setOnClickListener {
             gameView.tryAttack()
         }
+        findViewById<MaterialButton>(R.id.btnJump).setOnClickListener {
+            gameView.jump()
+        }
+        findViewById<MaterialButton>(R.id.btnRoll).setOnClickListener {
+            gameView.roll()
+        }
 
         gameView.onGameOver = { vitoria ->
             runOnUiThread {

@@ -65,6 +65,11 @@ object Warrior3D {
     private var ox = 0f
     private var oy = 0f
 
+    // estado externo (preenchido pelo Player antes de desenhar)
+    var rollP = -1f
+    var inAir = false
+    var airVz = 0f
+
     // estado de animação
     private var yaw = 0f
     private var blend = 0f
@@ -257,7 +262,7 @@ object Warrior3D {
 
     // ───────────── partes do corpo ─────────────
 
-    private fun leg(side: Float, a: Float, hipY: Float) {
+    private fun leg(side: Float, a: Float, hipY: Float, tuck: Float) {
         push()
         translate(side * 3.3f, hipY, 0f)
         rotX(a)
@@ -265,7 +270,7 @@ object Warrior3D {
         cube(0f, -3.5f, 0f, 2.95f, 2.1f, 3.05f, STEEL_D)
         cube(0f, -0.9f, 0f, 3.0f, 0.5f, 3.1f, GOLD)
         translate(0f, -5.6f, 0f)
-        rotX(max(0f, a) * 1.0f + 0.08f)
+        rotX(max(0f, a) * 1.0f + 0.08f + tuck * 1.5f)
         cube(0f, -2.6f, 0f, 2.55f, 2.8f, 2.65f, STEEL)
         cube(0f, 0.1f, 2.0f, 2.1f, 1.5f, 0.9f, GOLD)
         translate(0f, -5.4f, 0f)
@@ -397,7 +402,10 @@ object Warrior3D {
         // fase do golpe: 0..1 (negativo = sem ataque)
         val t = if (attack > 0.001f) 1f - attack else -1f
         val attacking = t >= 0f
-        val mv = if (attacking) blend * 0.4f else blend
+        val rolling = rollP >= 0f
+        val air = inAir && !rolling
+        val tuck = if (rolling) 1f else if (air) (if (airVz > 0f) 0.55f else 0.25f) else 0f
+        val mv = if (rolling || air) 0f else if (attacking) blend * 0.4f else blend
         val walk = sin(phase)
 
         // poses da espada (braço direito)
@@ -449,7 +457,18 @@ object Warrior3D {
 
         val bob = abs(walk) * 1.4f * mv + sin(clock * 2.4f) * 0.35f * (1f - mv)
         val lean = 0.10f * mv + lunge * 0.04f
-        val shieldSh = (if (attacking) -0.45f else -0.25f) - walk * 0.15f * mv
+        if (rolling) {
+            sh = -1.2f
+            shZ = 0.2f
+            el = -1.9f
+            wrist = 0.3f
+        } else if (air && !attacking) {
+            sh = -2.0f
+            shZ = 0.5f
+            el = -0.6f
+        }
+        var shieldSh = (if (attacking) -0.45f else -0.25f) - walk * 0.15f * mv
+        if (rolling) shieldSh = -1.0f else if (air) shieldSh = -1.1f
 
         rs = s * PX
         ox = fx
@@ -459,10 +478,17 @@ object Warrior3D {
         identity()
         rotY(yaw)
         translate(0f, 0f, lunge)
+        if (rolling) {
+            val ang = ease(rollP) * TWO_PI
+            val lift = 7f * sin(rollP * PI.toFloat())
+            translate(0f, 11f + lift, 0f)
+            rotX(ang)
+            translate(0f, -11f, 0f)
+        }
 
         // pernas
-        leg(1f, walk * 0.8f * mv, 12.5f + bob)
-        leg(-1f, -walk * 0.8f * mv, 12.5f + bob)
+        leg(1f, walk * 0.8f * mv - 1.0f * tuck, 12.5f + bob, tuck)
+        leg(-1f, -walk * 0.8f * mv - 1.0f * tuck, 12.5f + bob, tuck)
 
         // tronco
         push()
@@ -541,5 +567,226 @@ object Warrior3D {
             p.style = Paint.Style.FILL
             p.strokeCap = Paint.Cap.BUTT
         }
+    }
+
+    // ───────────── ESQUELETO ─────────────
+
+    private val BONE = 0xFFE8E4D4.toInt()
+    private val BONE_D = 0xFFC2BCA6.toInt()
+    private val KING_BONE = 0xFFD9CDB2.toInt()
+    private val KING_BONE_D = 0xFFB3A688.toInt()
+    private val DARK = 0xFF16131C.toInt()
+    private val RUST = 0xFF93A0A8.toInt()
+    private val RUST_D = 0xFF6B5446.toInt()
+    private val PURPLE = 0xFF5B21B6.toInt()
+    private val PURPLE_D = 0xFF3B1478.toInt()
+    private val KING_BLADE = 0xFF7E57C2.toInt()
+
+    private fun skLeg(side: Float, a: Float, hipY: Float, bone: Int, boneD: Int) {
+        push()
+        translate(side * 2.6f, hipY, 0f)
+        rotX(a)
+        cube(0f, -2.8f, 0f, 1.35f, 2.8f, 1.35f, bone)
+        cube(0f, -5.6f, 0f, 1.7f, 0.8f, 1.7f, boneD)
+        translate(0f, -5.6f, 0f)
+        rotX(max(0f, a) * 1.1f + 0.06f)
+        cube(0f, -2.5f, 0f, 1.2f, 2.5f, 1.2f, bone)
+        translate(0f, -5.0f, 0f)
+        rotX(-max(0f, a) * 0.5f)
+        cube(0f, 0f, 1.0f, 1.8f, 0.9f, 2.7f, bone)
+        pop()
+    }
+
+    private fun skRib(y: Float, w: Float, bone: Int) {
+        cube(0f, y, 0.9f, w, 0.5f, 1.2f, bone)
+        cube(-w, y, 0.2f, 0.45f, 0.5f, 1.5f, bone)
+        cube(w, y, 0.2f, 0.45f, 0.5f, 1.5f, bone)
+    }
+
+    private fun skHead(tipo: Int, bone: Int, boneD: Int, turn: Float, tilt: Float) {
+        push()
+        translate(0f, 11.9f, 0f)
+        rotY(turn)
+        rotX(tilt)
+        cube(0f, 4.6f, 0f, 4.5f, 4.5f, 4.3f, bone)
+        cube(0f, 1.0f, 0.3f, 3.7f, 1.0f, 3.5f, boneD)
+        cube(-1.9f, 5.4f, 4.35f, 1.15f, 1.25f, 0.15f, DARK)
+        cube(1.9f, 5.4f, 4.35f, 1.15f, 1.25f, 0.15f, DARK)
+        val glow = if (tipo == 2) 0xFFD1A3FF.toInt() else 0xFFFF7043.toInt()
+        cube(-1.9f, 5.4f, 4.5f, 0.55f, 0.6f, 0.1f, glow, true)
+        cube(1.9f, 5.4f, 4.5f, 0.55f, 0.6f, 0.1f, glow, true)
+        cube(0f, 3.6f, 4.35f, 0.5f, 0.7f, 0.15f, DARK)
+        cube(-1.4f, 1.3f, 3.85f, 0.2f, 0.7f, 0.1f, DARK)
+        cube(0f, 1.3f, 3.85f, 0.2f, 0.7f, 0.1f, DARK)
+        cube(1.4f, 1.3f, 3.85f, 0.2f, 0.7f, 0.1f, DARK)
+        cube(2.9f, 7.4f, 4.35f, 0.7f, 0.8f, 0.12f, boneD)
+        if (tipo == 1) {
+            cube(0f, 8.6f, 0f, 4.9f, 1.8f, 4.7f, STEEL_D)
+            cube(0f, 7.0f, 4.7f, 4.9f, 0.4f, 0.3f, STEEL)
+            cube(0f, 5.2f, 4.65f, 0.45f, 2.2f, 0.3f, STEEL_D)
+            cube(0f, 10.6f, 0f, 0.7f, 0.8f, 4.0f, RUST_D)
+        } else if (tipo == 2) {
+            cube(0f, 9.6f, 0f, 4.8f, 0.9f, 4.6f, GOLD)
+            cube(-3.4f, 11.4f, 3.2f, 0.7f, 1.0f, 0.7f, GOLD)
+            cube(0f, 11.9f, 3.6f, 0.7f, 1.4f, 0.7f, GOLD)
+            cube(3.4f, 11.4f, 3.2f, 0.7f, 1.0f, 0.7f, GOLD)
+            cube(-3.4f, 11.4f, -3.2f, 0.7f, 1.0f, 0.7f, GOLD)
+            cube(3.4f, 11.4f, -3.2f, 0.7f, 1.0f, 0.7f, GOLD)
+            cube(0f, 9.7f, 4.7f, 0.7f, 0.7f, 0.2f, 0xFFB388FF.toInt(), true)
+        }
+        pop()
+    }
+
+    private fun skArm(
+        side: Float, sh: Float, shZ: Float, el: Float, bone: Int, boneD: Int,
+        sword: Boolean, bladeLen: Float, bladeCol: Int, wrist: Float, shield: Boolean
+    ) {
+        push()
+        translate(side * 5.6f, 10.6f, 0f)
+        cube(0f, 0.2f, 0f, 1.5f, 0.9f, 1.5f, boneD)
+        rotZ(shZ)
+        rotX(sh)
+        cube(0f, -2.5f, 0f, 1.15f, 2.6f, 1.15f, bone)
+        translate(0f, -5.0f, 0f)
+        rotX(el)
+        cube(0f, 0f, 0f, 1.5f, 0.7f, 1.5f, boneD)
+        cube(0f, -2.4f, 0f, 1.05f, 2.5f, 1.05f, bone)
+        cube(0f, -5.2f, 0f, 1.25f, 0.8f, 1.25f, bone)
+        if (sword) {
+            translate(0f, -5.2f, 0f)
+            rotX(1.9f + wrist)
+            cube(0f, 0.4f, 0f, 0.8f, 2.0f, 0.8f, LEATHER_D)
+            cube(0f, 3.0f, 0f, 3.2f, 0.6f, 1.1f, RUST_D)
+            cube(0f, 3.6f + bladeLen * 0.5f, 0f, 0.7f, bladeLen * 0.5f, 1.5f, bladeCol)
+            cube(0f, 3.6f + bladeLen * 0.55f, 1.55f, 0.35f, bladeLen * 0.4f, 0.15f, RUST_D)
+            cube(0f, 3.9f + bladeLen, 0.3f, 0.55f, 0.8f, 1.0f, bladeCol)
+        }
+        if (shield) {
+            translate(0f, -5.2f, 0f)
+            rotX(-(sh + el))
+            cube(0f, 0.5f, 0.6f, 4.2f, 4.8f, 0.7f, STEEL_D)
+            cube(0f, 0.5f, 1.2f, 3.5f, 4.1f, 0.5f, LEATHER_L)
+            cube(0f, 0.8f, 1.8f, 1.0f, 1.0f, 0.4f, STEEL)
+        }
+        pop()
+    }
+
+    /** Esqueleto em cubos 3D. tipo 0 = comum, 1 = de elmo e escudo, 2 = rei esqueleto. */
+    fun drawSkeleton(
+        c: Canvas, p: Paint, fx: Float, fy: Float, s: Float, phase: Float,
+        yawA: Float, tipo: Int, attack: Float
+    ) {
+        val king = tipo == 2
+        val bone = if (king) KING_BONE else BONE
+        val boneD = if (king) KING_BONE_D else BONE_D
+        val walk = sin(phase)
+        val clk = V.time
+        val t = if (attack > 0.001f) 1f - attack else -1f
+        val attacking = t >= 0f
+        val mv = if (attacking) 0.5f else 1f
+
+        var sh = -0.35f - walk * 0.45f
+        var shZ = -0.1f
+        var el = -0.55f
+        var tw = 0f
+        var lunge = 0f
+        var wrist = 0f
+        if (attacking) {
+            val wSh = -2.5f
+            val wZ = 0.5f
+            val wEl = -0.8f
+            val wTw = -0.5f
+            val eSh = -0.5f
+            val eZ = 0.3f
+            val eEl = -0.3f
+            val eTw = 0.5f
+            val iSh = -0.35f
+            val iZ = -0.1f
+            val iEl = -0.55f
+            if (t < 0.3f) {
+                val u = ease(t / 0.3f)
+                sh = lerp(iSh, wSh, u)
+                shZ = lerp(iZ, wZ, u)
+                el = lerp(iEl, wEl, u)
+                tw = lerp(0f, wTw, u)
+                wrist = lerp(0f, -0.3f, u)
+            } else if (t < 0.5f) {
+                var u = (t - 0.3f) / 0.2f
+                u = 1f - (1f - u) * (1f - u)
+                sh = lerp(wSh, eSh, u)
+                shZ = lerp(wZ, eZ, u)
+                el = lerp(wEl, eEl, u)
+                tw = lerp(wTw, eTw, u)
+                wrist = lerp(-0.3f, 0.35f, u)
+            } else {
+                val u = ease((t - 0.5f) / 0.5f)
+                sh = lerp(eSh, iSh, u)
+                shZ = lerp(eZ, iZ, u)
+                el = lerp(eEl, iEl, u)
+                tw = lerp(eTw, 0f, u)
+                wrist = lerp(0.35f, 0f, u)
+            }
+            if (t in 0.25f..0.7f) {
+                lunge = sin(((t - 0.25f) / 0.45f) * PI.toFloat()) * 2.5f
+            }
+        }
+        val bob = abs(walk) * 1.1f * mv + sin(clk * 2.2f) * 0.2f
+        val lean = 0.12f + lunge * 0.05f
+        val leftSh = -0.2f + walk * 0.45f * mv
+        val bladeLen = if (king) 17f else 13f
+        val bladeCol = if (king) KING_BLADE else RUST
+
+        rs = s * PX
+        ox = fx
+        oy = fy
+        n = 0
+        top = 0
+        identity()
+        rotY(yawA)
+        translate(0f, 0f, lunge)
+
+        skLeg(1f, walk * 0.7f * mv, 11.5f + bob, bone, boneD)
+        skLeg(-1f, -walk * 0.7f * mv, 11.5f + bob, bone, boneD)
+
+        push()
+        translate(0f, 11.5f + bob, 0f)
+        rotX(lean)
+        rotY(tw)
+        cube(0f, 0.9f, 0f, 3.5f, 0.9f, 2.1f, boneD)
+        cube(0f, 6.0f, -0.3f, 0.9f, 5.2f, 0.9f, bone)
+        cube(0f, 7.0f, -1.2f, 3.4f, 4.0f, 0.3f, DARK)
+        skRib(3.6f, 3.2f, bone)
+        skRib(5.4f, 3.5f, bone)
+        skRib(7.2f, 3.6f, bone)
+        skRib(9.0f, 3.4f, bone)
+        cube(0f, 6.8f, 2.0f, 0.5f, 3.2f, 0.35f, bone)
+        cube(0f, 11.2f, 0f, 5.0f, 0.7f, 1.3f, bone)
+        if (tipo == 0) {
+            cube(0f, -1.2f, 2.3f, 2.6f, 2.2f, 0.3f, 0xFF5D4B3A.toInt())
+            cube(0f, 1.2f, 2.3f, 3.6f, 0.4f, 0.4f, LEATHER_D)
+        } else if (tipo == 1) {
+            cube(0f, 8.2f, 2.3f, 4.0f, 3.0f, 0.4f, STEEL_D)
+            cube(0f, 8.2f, 2.65f, 3.2f, 2.3f, 0.2f, RUST)
+        } else {
+            cube(0f, -1.2f, 2.3f, 2.8f, 2.4f, 0.3f, PURPLE_D)
+            cube(0f, -3.4f, 2.3f, 2.8f, 0.3f, 0.35f, GOLD)
+            cube(-5.4f, 11.0f, 0f, 2.0f, 1.1f, 1.9f, GOLD)
+            cube(5.4f, 11.0f, 0f, 2.0f, 1.1f, 1.9f, GOLD)
+            push()
+            translate(0f, 11.2f, -2.4f)
+            rotX(0.12f + 0.12f * sin(clk * 3f + phase))
+            cube(0f, -5.5f, -0.4f, 4.9f, 5.5f, 0.4f, PURPLE)
+            translate(0f, -11f, 0f)
+            rotX(0.1f + 0.1f * sin(clk * 4f + phase))
+            cube(0f, -2.6f, -0.4f, 5.0f, 2.7f, 0.4f, PURPLE_D)
+            cube(0f, -5.2f, -0.4f, 5.0f, 0.3f, 0.5f, GOLD)
+            pop()
+        }
+        skHead(tipo, bone, boneD, -tw * 0.6f, -lean * 0.8f)
+        skArm(-1f, sh, shZ, el, bone, boneD, true, bladeLen, bladeCol, wrist, false)
+        skArm(1f, leftSh, 0.1f, -0.4f, bone, boneD, false, 0f, 0, 0f, tipo == 1)
+        pop()
+
+        flush(c, p)
     }
 }

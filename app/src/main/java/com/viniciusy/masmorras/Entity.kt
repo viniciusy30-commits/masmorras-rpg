@@ -3,7 +3,10 @@ package com.viniciusy.masmorras
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.hypot
+import kotlin.math.min
 import kotlin.math.sin
 
 abstract class Entity(
@@ -16,6 +19,8 @@ abstract class Entity(
     var alive = true
     var hitFlash = 0f
     var walkPhase = 0f
+    var alt = 0f     // altitude absoluta (px)
+    var ground = 0f  // altura do chão sob os pés (px)
 
     fun takeDamage(dmg: Float) {
         if (!alive) return
@@ -52,28 +57,100 @@ class Player(
     val classe: Classe
 ) : Entity(x, y, 24f, classe.maxHp, classe.maxHp) {
 
+    companion object {
+        const val ROLL_TIME = 0.42f
+    }
+
     var mp = classe.maxMp
     var vx = 0f
     var vy = 0f
+    var inX = 0f
+    var inY = 0f
     var facingX = 1f
     var facingY = 0f
     var lastAttack = 0L
     var attackAnim = 0f
 
-    fun canAttack(now: Long): Boolean = now - lastAttack >= classe.cooldownAtaque
+    // pulo e rolamento
+    var vz = 0f
+    var rollT = 0f
+    var rollDX = 0f
+    var rollDY = 1f
+    var lastRoll = 0L
+    var landed = 0f
+
+    val rolling: Boolean get() = rollT > 0f
+    val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
+
+    fun canAttack(now: Long): Boolean = !rolling && now - lastAttack >= classe.cooldownAtaque
 
     fun doAttack(now: Long) {
         lastAttack = now
         attackAnim = 1f
     }
 
+    fun jump(): Boolean {
+        if (!alive || rolling || !grounded) return false
+        vz = 340f
+        alt = ground + 0.7f
+        return true
+    }
+
+    fun startRoll(now: Long): Boolean {
+        if (!alive || rolling || !grounded || now - lastRoll < 700L) return false
+        var dx = inX
+        var dy = inY
+        if (hypot(dx, dy) < 0.1f) {
+            dx = facingX
+            dy = facingY
+        }
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        rollDX = dx / l
+        rollDY = dy / l
+        facingX = rollDX
+        facingY = rollDY
+        rollT = ROLL_TIME
+        lastRoll = now
+        attackAnim = 0f
+        return true
+    }
+
+    /** Gravidade e acompanhamento do relevo. */
+    fun updateVertical(dt: Float, groundPx: Float) {
+        ground = groundPx
+        if (alt > groundPx + 0.01f || vz > 0f) {
+            vz -= 1500f * dt
+            alt += vz * dt
+            if (alt <= groundPx) {
+                if (vz < -140f) landed = (-vz) / 400f
+                alt = groundPx
+                vz = 0f
+            }
+        } else {
+            alt += (groundPx - alt) * min(1f, dt * 30f)
+            if (abs(groundPx - alt) < 0.3f) alt = groundPx
+            vz = 0f
+        }
+    }
+
     override fun update(dt: Float) {
+        if (rollT > 0f) {
+            rollT -= dt
+            if (rollT < 0f) rollT = 0f
+            vx = rollDX * 330f
+            vy = rollDY * 330f
+        } else {
+            vx = inX * classe.velocidade * 60f
+            vy = inY * classe.velocidade * 60f
+        }
         x += vx * dt
         y += vy * dt
         val sp = hypot(vx, vy)
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
-        if (attackAnim > 0f) attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 3f else 4f)).coerceAtLeast(0f)
+        if (attackAnim > 0f) {
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 3f else 4f)).coerceAtLeast(0f)
+        }
         if (classe.maxMp > 0f && mp < classe.maxMp) {
             mp = (mp + 8f * dt).coerceAtMost(classe.maxMp)
         }
@@ -83,24 +160,30 @@ class Player(
         val sx = x - camX
         val sy = y - camY
         val s = radius / 24f
-        val feet = sy + radius * 0.55f
+        val gy = sy + radius * 0.55f - ground
+        val feet = sy + radius * 0.55f - alt
+        val up = (alt - ground).coerceAtLeast(0f)
+        val k = (1f - up / 90f).coerceIn(0.4f, 1f)
         val moving = hypot(vx, vy) > 1f
 
-        // Sombra
+        // Sombra no chão (encolhe quando pula)
         paint.style = Paint.Style.FILL
         paint.color = 0x33000000
-        canvas.drawOval(sx - radius * 1.05f, feet - radius * 0.32f, sx + radius * 1.05f, feet + radius * 0.38f, paint)
+        canvas.drawOval(sx - radius * 1.05f * k, gy - radius * 0.32f * k, sx + radius * 1.05f * k, gy + radius * 0.38f * k, paint)
         paint.color = 0x44000000
-        canvas.drawOval(sx - radius * 0.8f, feet - radius * 0.22f, sx + radius * 0.8f, feet + radius * 0.28f, paint)
+        canvas.drawOval(sx - radius * 0.8f * k, gy - radius * 0.22f * k, sx + radius * 0.8f * k, gy + radius * 0.28f * k, paint)
 
-        // Anel da classe no chão (ajuda a achar o herói)
+        // Anel da classe no chão
         paint.style = Paint.Style.STROKE
         paint.strokeWidth = 3f
         paint.color = (classe.cor and 0x00FFFFFF) or 0x99000000.toInt()
-        canvas.drawOval(sx - radius * 1.1f, feet - radius * 0.36f, sx + radius * 1.1f, feet + radius * 0.42f, paint)
+        canvas.drawOval(sx - radius * 1.1f * k, gy - radius * 0.36f * k, sx + radius * 1.1f * k, gy + radius * 0.42f * k, paint)
         paint.style = Paint.Style.FILL
 
         VoxelArt.flash = hitFlash
+        Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Warrior3D.inAir = up > 1f
+        Warrior3D.airVz = vz
         Sprites.drawHero(canvas, paint, classe, sx, feet, s, walkPhase, moving, facingX, facingY, attackAnim)
         VoxelArt.flash = 0f
 
@@ -124,15 +207,19 @@ class Enemy(
     var hitCooldown = 800L
     var faceX = 0f
     var faceY = 1f
+    var attackAnim = 0f
+    var yaw = 0f
+    private var yawInit = false
 
     fun palette(): Int = when (tipo) {
-        0 -> 0xFF6FA55A.toInt()
-        1 -> 0xFFE0E0D6.toInt()
-        else -> 0xFF6A1B9A.toInt()
+        0 -> 0xFFE8E4D4.toInt()
+        1 -> 0xFFB0BEC5.toInt()
+        else -> 0xFFB388FF.toInt()
     }
 
     fun update(dt: Float, player: Player) {
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
+        if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
         if (!alive || !player.alive) return
         val dx = player.x - x
         val dy = player.y - y
@@ -144,6 +231,22 @@ class Enemy(
             y += (dy / dist) * speed * dt * 60f
             walkPhase += speed * dt * 4.2f
         }
+        // giro suave
+        val target = atan2(faceX, faceY)
+        if (!yawInit) {
+            yaw = target
+            yawInit = true
+        } else {
+            val pi = Math.PI.toFloat()
+            var d = target - yaw
+            while (d > pi) d -= 2f * pi
+            while (d < -pi) d += 2f * pi
+            yaw += d * min(1f, dt * 10f)
+        }
+        val now = System.currentTimeMillis()
+        if (attackAnim <= 0f && dist < radius + player.radius + 22f && now - lastHit > hitCooldown - 250L) {
+            attackAnim = 1f
+        }
     }
 
     override fun update(dt: Float) {}
@@ -153,7 +256,7 @@ class Enemy(
         val sx = x - camX
         val sy = y - camY
         val s = if (tipo == 2) 1.55f else 1f
-        val feet = sy + radius * 0.55f
+        val feet = sy + radius * 0.55f - alt
 
         paint.style = Paint.Style.FILL
         paint.color = 0x33000000
@@ -162,11 +265,11 @@ class Enemy(
         canvas.drawOval(sx - radius * 0.8f, feet - radius * 0.2f, sx + radius * 0.8f, feet + radius * 0.26f, paint)
 
         VoxelArt.flash = hitFlash
-        Sprites.drawEnemy(canvas, paint, tipo, sx, feet, s, walkPhase, faceX, faceY)
+        Warrior3D.drawSkeleton(canvas, paint, sx, feet, s, walkPhase, yaw, tipo, attackAnim)
         VoxelArt.flash = 0f
 
         val barW = if (tipo == 2) radius * 2.4f else radius * 2f
-        drawBar(canvas, paint, sx, feet - 46f * s - 8f, barW, hp / maxHp, 0xFFE53935.toInt())
+        drawBar(canvas, paint, sx, feet - 50f * s - 8f, barW, hp / maxHp, 0xFFE53935.toInt())
     }
 }
 

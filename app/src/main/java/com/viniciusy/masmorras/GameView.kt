@@ -101,14 +101,40 @@ class GameView @JvmOverloads constructor(
         if (len > 0.1f) {
             val nx = dx / len
             val ny = dy / len
-            p.vx = nx * p.classe.velocidade * 60f
-            p.vy = ny * p.classe.velocidade * 60f
-            p.facingX = nx
-            p.facingY = ny
+            p.inX = nx
+            p.inY = ny
+            if (!p.rolling) {
+                p.facingX = nx
+                p.facingY = ny
+            }
         } else {
-            p.vx = 0f
-            p.vy = 0f
+            p.inX = 0f
+            p.inY = 0f
         }
+    }
+
+    fun jump() {
+        val p = player ?: return
+        if (gameOver) return
+        if (p.jump()) burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+    }
+
+    fun roll() {
+        val p = player ?: return
+        if (gameOver) return
+        if (p.startRoll(System.currentTimeMillis())) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+        }
+    }
+
+    private fun cellBlocked(x: Float, y: Float, lim: Float): Boolean =
+        map.isWall(x, y) || map.heightAt(x, y) > lim
+
+    private fun playerBlocked(p: Player, x: Float, y: Float): Boolean {
+        val r = p.radius * 0.6f
+        val lim = p.alt + TileMap.LEVEL_PX * 0.55f
+        return cellBlocked(x, y, lim) || cellBlocked(x + r, y, lim) || cellBlocked(x - r, y, lim) ||
+            cellBlocked(x, y + r, lim) || cellBlocked(x, y - r, lim)
     }
 
     fun tryAttack() {
@@ -175,7 +201,7 @@ class GameView @JvmOverloads constructor(
         val big = dmg >= 28f
         texts.add(
             DmgText(
-                e.x, e.y - e.radius - 30f, dmg.toInt().toString(), 0.8f,
+                e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
                 if (big) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt()
             )
         )
@@ -189,10 +215,10 @@ class GameView @JvmOverloads constructor(
             e.x = nx
             e.y = ny
         }
-        burst(e.x, e.y - 14f, 4, e.palette())
+        burst(e.x, e.y - 14f - e.alt, 4, e.palette())
         if (!e.alive) {
-            burst(e.x, e.y - 10f, 16, e.palette())
-            burst(e.x, e.y - 14f, 6, 0xFFFFD54F.toInt())
+            burst(e.x, e.y - 10f - e.alt, 16, e.palette())
+            burst(e.x, e.y - 14f - e.alt, 6, 0xFFFFD54F.toInt())
         }
     }
 
@@ -218,20 +244,29 @@ class GameView @JvmOverloads constructor(
             return
         }
 
-        // Movimento com colisão simples
+        // Movimento com colisão e relevo
         val oldX = p.x
         val oldY = p.y
         p.update(dt)
-        if (map.isWall(p.x, p.y) || map.isWall(p.x + p.radius * 0.6f, p.y) ||
-            map.isWall(p.x - p.radius * 0.6f, p.y) || map.isWall(p.x, p.y + p.radius * 0.6f) ||
-            map.isWall(p.x, p.y - p.radius * 0.6f)
-        ) {
-            p.x = oldX
-            p.y = oldY
-            p.x += p.vx * dt
-            if (map.isWall(p.x, p.y)) p.x = oldX
-            p.y += p.vy * dt
-            if (map.isWall(p.x, p.y)) p.y = oldY
+        val tx2 = p.x
+        val ty2 = p.y
+        p.x = oldX
+        p.y = oldY
+        if (!playerBlocked(p, tx2, ty2)) {
+            p.x = tx2
+            p.y = ty2
+        } else {
+            if (!playerBlocked(p, tx2, oldY)) p.x = tx2
+            if (!playerBlocked(p, p.x, ty2)) p.y = ty2
+            if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
+        }
+        p.updateVertical(dt, map.heightAt(p.x, p.y))
+        if (p.landed > 0f) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+            p.landed = 0f
+        }
+        if (p.rolling && Random.nextInt(3) == 0) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 1, 0xFFB8B0A8.toInt())
         }
 
         p.x = p.x.coerceIn(p.radius, map.worldWidth() - p.radius)
@@ -251,13 +286,15 @@ class GameView @JvmOverloads constructor(
                 e.x = if (!blockedAt(nx, oy, rr)) nx else ox
                 e.y = if (!blockedAt(e.x, ny, rr)) ny else oy
             }
+            e.ground = map.heightAt(e.x, e.y)
+            e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
-            if (dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+            if (!p.rolling && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage)
                 e.lastHit = now
                 shake = 0.3f
-                burst(p.x, p.y - 14f, 6, 0xFFD32F2F.toInt())
-                texts.add(DmgText(p.x, p.y - 56f, "-" + e.damage.toInt(), 0.8f, 0xFFFF5252.toInt()))
+                burst(p.x, p.y - 14f - p.alt, 6, 0xFFD32F2F.toInt())
+                texts.add(DmgText(p.x, p.y - 56f - p.alt, "-" + e.damage.toInt(), 0.8f, 0xFFFF5252.toInt()))
             }
         }
         // separação entre inimigos

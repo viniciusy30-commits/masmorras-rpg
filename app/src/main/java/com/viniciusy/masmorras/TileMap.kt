@@ -15,6 +15,13 @@ class TileMap(val width: Int = 40, val height: Int = 40, val tileSize: Float = 6
     private val edge = Array(height) { BooleanArray(width) }
     private val torch = Array(height) { BooleanArray(width) }
 
+    // relevo: altura de cada tile em "níveis" (0 = chão, 0.5 = degrau, 1 = plataforma, 2 = topo)
+    val lvl = Array(height) { FloatArray(width) }
+
+    companion object {
+        const val LEVEL_PX = 26f
+    }
+
     private class Room(val x: Int, val y: Int, val w: Int, val h: Int) {
         val cx get() = x + w / 2
         val cy get() = y + h / 2
@@ -79,6 +86,8 @@ class TileMap(val width: Int = 40, val height: Int = 40, val tileSize: Float = 6
             }
         }
 
+        addRelief()
+
         // garante que tudo que é andável está conectado ao spawn
         val sx = rooms[0].cx
         val sy = rooms[0].cy
@@ -119,6 +128,36 @@ class TileMap(val width: Int = 40, val height: Int = 40, val tileSize: Float = 6
             edge[y][x] = near
             if (y + 1 < height && tiles[y + 1][x] == 0 && variant[y][x] % 7 == 0) torch[y][x] = true
         }
+    }
+
+    /** Plataformas com degraus em algumas salas (nunca na sala inicial). */
+    private fun addRelief() {
+        for (i in 1 until rooms.size) {
+            val r = rooms[i]
+            if (r.w < 7 || r.h < 7) continue
+            if (Random.nextInt(100) < 20) continue
+            val px = r.x + 2
+            val py = r.y + 2
+            val pw = r.w - 4
+            val ph = r.h - 5
+            if (pw < 3 || ph < 2) continue
+            for (y in py..py + ph) for (x in px until px + pw) {
+                if (tiles[y][x] == 2 || tiles[y][x] == 6) tiles[y][x] = 0
+                lvl[y][x] = if (y == py + ph) 0.5f else 1f
+            }
+            if (pw >= 5 && ph >= 3) {
+                for (y in py until py + ph) for (x in px + 1 until px + pw - 1) {
+                    lvl[y][x] = if (y == py + ph - 1) 1.5f else 2f
+                }
+            }
+        }
+    }
+
+    fun heightAt(wx: Float, wy: Float): Float {
+        val tx = (wx / tileSize).toInt()
+        val ty = (wy / tileSize).toInt()
+        if (wx < 0f || wy < 0f || tx >= width || ty >= height) return 0f
+        return lvl[ty][tx] * LEVEL_PX
     }
 
     private fun wallNeighbors(x: Int, y: Int): Int {
@@ -333,7 +372,13 @@ class TileMap(val width: Int = 40, val height: Int = 40, val tileSize: Float = 6
             val t = tiles[ty][tx]
             val left = tx * ts - camX
             val top = ty * ts - camY
-            if (t == 1) drawWall(canvas, paint, tx, ty, left, top) else if (t == 6) drawProp(canvas, paint, tx, ty, left, top)
+            if (t == 1) {
+                drawWall(canvas, paint, tx, ty, left, top)
+            } else if (t == 6) {
+                drawProp(canvas, paint, tx, ty, left, top)
+            } else if (t == 0 && lvl[ty][tx] > 0f) {
+                drawRaised(canvas, paint, tx, ty, left, top)
+            }
         }
     }
 
@@ -382,6 +427,59 @@ class TileMap(val width: Int = 40, val height: Int = 40, val tileSize: Float = 6
             paint.color = 0x55000000
             canvas.drawRect(left, tb, right, tb + 3f, paint)
             if (torch[ty][tx]) drawTorch(canvas, paint, tx, ty, left + ts / 2f, tb + h * 0.5f)
+        }
+    }
+
+    /** Bloco de relevo: topo + face frontal de pedra. */
+    private fun drawRaised(canvas: Canvas, paint: Paint, tx: Int, ty: Int, left: Float, top: Float) {
+        val ts = tileSize
+        val l = lvl[ty][tx]
+        val h = l * LEVEL_PX
+        val right = left + ts
+        val tt = top - h
+        val tb = tt + ts
+        val v = variant[ty][tx]
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFF26232F.toInt()
+        canvas.drawRect(left, tt, right, tb, paint)
+        paint.color = if (l >= 2f) 0xFFA39DB8.toInt()
+        else if (l >= 1.5f) 0xFF958FAA.toInt()
+        else if (l >= 1f) 0xFF8A849D.toInt()
+        else 0xFF7A7489.toInt()
+        canvas.drawRect(left + 1.5f, tt + 1.5f, right - 1.5f, tb - 1.5f, paint)
+        paint.color = 0x22000000
+        canvas.drawRect(left + ts / 2f - 0.75f, tt + 1.5f, left + ts / 2f + 0.75f, tb - 1.5f, paint)
+        canvas.drawRect(left + 1.5f, tt + ts / 2f - 0.75f, right - 1.5f, tt + ts / 2f + 0.75f, paint)
+        paint.color = 0x40FFFFFF
+        canvas.drawRect(left + 1.5f, tt + 1.5f, right - 1.5f, tt + 4.5f, paint)
+        canvas.drawRect(left + 1.5f, tt + 1.5f, left + 4.5f, tb - 1.5f, paint)
+        if (v % 5 == 0) {
+            paint.color = 0x663F7D3A
+            canvas.drawRect(left + ts * 0.15f, tt + ts * 0.2f, left + ts * 0.45f, tt + ts * 0.4f, paint)
+        }
+        val sh = if (ty + 1 < height && tiles[ty + 1][tx] != 1) lvl[ty + 1][tx] * LEVEL_PX else h
+        if (h > sh + 0.5f) {
+            val fh = h - sh
+            paint.color = 0xFF3A3646.toInt()
+            canvas.drawRect(left, tb, right, tb + fh, paint)
+            val rows = (fh / 13f + 0.5f).toInt().coerceAtLeast(1)
+            val rh = fh / rows
+            val bw = ts / 2f
+            for (r in 0 until rows) {
+                val ry = tb + r * rh
+                var bx = left - (if ((r + v) % 2 == 0) 0f else bw / 2f)
+                while (bx < right) {
+                    val l2 = maxOf(bx, left)
+                    val r2 = minOf(bx + bw, right)
+                    paint.color = if (((bx / bw).toInt() + r + v) % 3 == 0) 0xFF585369.toInt() else 0xFF4C4859.toInt()
+                    canvas.drawRect(l2 + 1f, ry + 1f, r2 - 1f, ry + rh - 1f, paint)
+                    bx += bw
+                }
+            }
+            paint.color = 0x55000000
+            canvas.drawRect(left, tb, right, tb + 3f, paint)
+            paint.color = 0x33000000
+            canvas.drawRect(left, tb + fh - 4f, right, tb + fh, paint)
         }
     }
 
