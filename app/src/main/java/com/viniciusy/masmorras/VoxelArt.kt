@@ -49,7 +49,6 @@ object VoxelArt {
     fun tint(c: Int): Int =
         if (flash > 0.01f) mix(c, 0xFFFFFFFF.toInt(), (flash * 0.8f).coerceIn(0f, 1f)) else c
 
-    /** Caixa 3D: (x, y) = centro da base da face frontal. d = profundidade do topo. */
     fun box(
         canvas: Canvas, paint: Paint, x: Float, y: Float, w: Float, h: Float, d: Float,
         color: Int, topColor: Int = 0, sideColor: Int = 0
@@ -59,8 +58,9 @@ object VoxelArt {
         val r = x + w / 2f
         val t = y - h
         val dx = d * 0.6f
+
         paint.style = Paint.Style.FILL
-        // lado direito
+
         paint.color = if (sideColor != 0) tint(sideColor) else shade(c, 0.66f)
         path.reset()
         path.moveTo(r, y)
@@ -69,8 +69,8 @@ object VoxelArt {
         path.lineTo(r, t)
         path.close()
         canvas.drawPath(path, paint)
-        // topo
-        paint.color = if (topColor != 0) tint(topColor) else shade(c, 1.2f)
+
+        paint.color = if (topColor != 0) tint(topColor) else shade(c, 1.15f)
         path.reset()
         path.moveTo(l, t)
         path.lineTo(l + dx, t - dx)
@@ -78,16 +78,16 @@ object VoxelArt {
         path.lineTo(r, t)
         path.close()
         canvas.drawPath(path, paint)
-        // frente
-        paint.color = c
+
+        paint.color = shade(c, 0.9f)
         canvas.drawRect(l, t, r, y, paint)
+
         if (h > 6f) {
             paint.color = 0x22000000
-            canvas.drawRect(l, y - h * 0.25f, r, y, paint)
+            canvas.drawRect(l, y - h * 0.22f, r, y, paint)
         }
     }
 
-    /** Humanoide em blocos com animação de caminhada. (fx, fy) = pés. */
     fun humanoid(
         c: Canvas, p: Paint, fx: Float, fy: Float, s: Float, phase: Float, moving: Boolean,
         faceX: Float, back: Boolean,

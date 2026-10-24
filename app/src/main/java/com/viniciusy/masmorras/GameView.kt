@@ -54,11 +54,11 @@ class GameView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        val r = max(w, h) * 0.78f
+        val r = max(w, h) * 0.95f
         vignette = RadialGradient(
             w / 2f, h / 2f, r,
-            intArrayOf(0x00000000, 0x00000000, 0x33000000, 0x88000000.toInt()),
-            floatArrayOf(0f, 0.55f, 0.85f, 1f),
+            intArrayOf(0x00101010, 0x101A1B, 0x2A1B1A, 0xFF0A0D10.toInt()),
+            floatArrayOf(0f, 0.36f, 0.74f, 1f),
             Shader.TileMode.CLAMP
         )
     }
@@ -76,7 +76,6 @@ class GameView @JvmOverloads constructor(
         spawns.forEachIndexed { i, (ex, ey) ->
             enemies.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0))
         }
-        // chefe na última sala
         val (bx, by) = map.getBossSpawn()
         enemies.add(Enemy(bx, by, 2))
         for ((ox, oy) in listOf(-90f to 0f, 90f to 0f, 0f to 90f, 0f to -90f)) enemies.add(Enemy(bx + ox, by + oy, 1))
@@ -84,8 +83,10 @@ class GameView @JvmOverloads constructor(
         victory = false
         running = true
         shake = 0f
-        camX = (sx - width / 2f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        camY = (sy - height / 2f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        val desiredX = (sx - width * 0.48f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        val desiredY = (sy - height * 0.52f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        camX = desiredX
+        camY = desiredY
         lastTime = System.nanoTime()
         removeCallbacks(loop)
         postOnAnimation(loop)
@@ -161,7 +162,6 @@ class GameView @JvmOverloads constructor(
                 )
             )
         } else {
-            // Corpo a corpo
             p.doAttack(now)
             val reach = p.classe.alcance
             enemies.forEach { e ->
@@ -247,7 +247,6 @@ class GameView @JvmOverloads constructor(
             return
         }
 
-        // Movimento com colisão e relevo
         val oldX = p.x
         val oldY = p.y
         p.update(dt)
@@ -275,7 +274,6 @@ class GameView @JvmOverloads constructor(
         p.x = p.x.coerceIn(p.radius, map.worldWidth() - p.radius)
         p.y = p.y.coerceIn(p.radius, map.worldHeight() - p.radius)
 
-        // Inimigos
         val now = System.currentTimeMillis()
         enemies.forEach { e ->
             if (!e.alive) return@forEach
@@ -301,7 +299,7 @@ class GameView @JvmOverloads constructor(
                 texts.add(DmgText(p.x, p.y - 56f - p.alt, "-" + e.damage.toInt(), 0.8f, 0xFFFF5252.toInt()))
             }
         }
-        // separação entre inimigos
+
         for (i in 0 until enemies.size) {
             val a = enemies[i]
             for (j in i + 1 until enemies.size) {
@@ -326,7 +324,6 @@ class GameView @JvmOverloads constructor(
             }
         }
 
-        // Projéteis
         projectiles.forEach { pr ->
             if (!pr.alive) return@forEach
             pr.update(dt)
@@ -353,8 +350,10 @@ class GameView @JvmOverloads constructor(
             onGameOver?.invoke(true)
         }
 
-        camX = p.x - width / 2f
-        camY = p.y - height / 2f
+        val desiredX = (p.x - width * 0.48f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        val desiredY = (p.y - height * 0.52f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        camX += (desiredX - camX) * 0.16f
+        camY += (desiredY - camY) * 0.16f
         camX = camX.coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
         camY = camY.coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
     }
@@ -366,7 +365,7 @@ class GameView @JvmOverloads constructor(
         val w = width.toFloat()
         val h = height.toFloat()
         VoxelArt.flash = 0f
-        canvas.drawColor(0xFF1B2E1A.toInt())
+        canvas.drawColor(0xFF11181C.toInt())
 
         canvas.save()
         if (shake > 0f) {
@@ -375,7 +374,6 @@ class GameView @JvmOverloads constructor(
 
         map.drawFloor(canvas, paint, camX, camY, w, h)
 
-        // personagens e paredes ordenados por profundidade
         drawList.clear()
         for (e in enemies) {
             if (e.x + 140f > camX && e.x - 140f < camX + w && e.y + 140f > camY && e.y - 220f < camY + h) drawList.add(e)
@@ -397,7 +395,6 @@ class GameView @JvmOverloads constructor(
             i++
         }
 
-        // herói visível "através" da parede
         player?.let { p ->
             if (p.alive && map.isWall(p.x, p.y + map.tileSize * 0.9f)) {
                 val sx = p.x - camX
@@ -412,7 +409,6 @@ class GameView @JvmOverloads constructor(
         particles.forEach { it.draw(canvas, paint, camX, camY) }
         canvas.restore()
 
-        // vinheta de masmorra
         vignette?.let {
             paint.style = Paint.Style.FILL
             paint.shader = it
@@ -420,7 +416,6 @@ class GameView @JvmOverloads constructor(
             paint.shader = null
         }
 
-        // números de dano
         paint.typeface = Typeface.DEFAULT_BOLD
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = 30f
@@ -437,7 +432,6 @@ class GameView @JvmOverloads constructor(
             canvas.drawText(t.text, sx, sy, paint)
         }
 
-        // contador de inimigos
         val txt = "Inimigos: ${enemies.size}"
         paint.textSize = 28f
         paint.textAlign = Paint.Align.LEFT
