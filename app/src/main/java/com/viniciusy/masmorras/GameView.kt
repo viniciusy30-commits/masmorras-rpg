@@ -3,51 +3,48 @@ package com.viniciusy.masmorras
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.RadialGradient
+import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
 import android.view.View
+import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
+import kotlin.math.sin
+import kotlin.random.Random
 
 class GameView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
-    // Paints reutilizados (evita alocação por frame = menos lag)
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        isFilterBitmap = false
-        isDither = false
-    }
-    private val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFFFFFFFF.toInt()
-        textSize = 26f
-        typeface = Typeface.DEFAULT_BOLD
-        textAlign = Paint.Align.LEFT
-    }
-
+    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
     private var map = TileMap()
     private var player: Player? = null
     private val enemies = mutableListOf<Enemy>()
     private val projectiles = mutableListOf<Projectile>()
+    private val particles = mutableListOf<Particle>()
+    private val texts = mutableListOf<DmgText>()
+    private val drawList = ArrayList<Entity>()
+    private var vignette: Shader? = null
 
     private var camX = 0f
     private var camY = 0f
+    private var time = 0f
+    private var shake = 0f
     private var lastTime = System.nanoTime()
     private var running = false
     private var gameOver = false
     private var victory = false
 
-    // Cache de tamanho para não chamar width/height toda hora
-    private var viewW = 0f
-    private var viewH = 0f
-
-    var onGameOver: ((Boolean) -> Unit)? = null
+    var onGameOver: ((Boolean) -> Unit)? = null // true = vitória
 
     private val loop = object : Runnable {
         override fun run() {
             if (!running) return
             val now = System.nanoTime()
-            val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0.001f, 0.033f) // cap 30ms
+            val dt = ((now - lastTime) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
             lastTime = now
             update(dt)
             invalidate()
@@ -57,8 +54,13 @@ class GameView @JvmOverloads constructor(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        viewW = w.toFloat()
-        viewH = h.toFloat()
+        val r = max(w, h) * 0.78f
+        vignette = RadialGradient(
+            w / 2f, h / 2f, r,
+            intArrayOf(0x00000000, 0x00000000, 0x88000000.toInt(), 0xDD000000.toInt()),
+            floatArrayOf(0f, 0.45f, 0.8f, 1f),
+            Shader.TileMode.CLAMP
+        )
     }
 
     fun startGame(classe: Classe) {
@@ -67,21 +69,21 @@ class GameView @JvmOverloads constructor(
         player = Player(sx, sy, classe)
         enemies.clear()
         projectiles.clear()
-
-        // Mais inimigos espalhados no mundo aberto, mas não no vilarejo
-        val spawns = map.getEnemySpawns(18)
+        particles.clear()
+        texts.clear()
+        val spawns = map.getEnemySpawns(16)
         spawns.forEachIndexed { i, (ex, ey) ->
-            val tipo = when {
-                i % 7 == 0 -> 2 // mais forte
-                i % 3 == 0 -> 1
-                else -> 0
-            }
-            enemies.add(Enemy(ex, ey, tipo))
+            enemies.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0))
         }
-
+        // chefe na última sala
+        val (bx, by) = map.getBossSpawn()
+        enemies.add(Enemy(bx, by, 2))
         gameOver = false
         victory = false
         running = true
+        shake = 0f
+        camX = (sx - width / 2f).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        camY = (sy - height / 2f).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
         lastTime = System.nanoTime()
         removeCallbacks(loop)
         postOnAnimation(loop)
@@ -99,14 +101,40 @@ class GameView @JvmOverloads constructor(
         if (len > 0.1f) {
             val nx = dx / len
             val ny = dy / len
-            p.vx = nx * p.classe.velocidade * 60f
-            p.vy = ny * p.classe.velocidade * 60f
-            p.facingX = nx
-            p.facingY = ny
+            p.inX = nx
+            p.inY = ny
+            if (!p.rolling) {
+                p.facingX = nx
+                p.facingY = ny
+            }
         } else {
-            p.vx = 0f
-            p.vy = 0f
+            p.inX = 0f
+            p.inY = 0f
         }
+    }
+
+    fun jump() {
+        val p = player ?: return
+        if (gameOver) return
+        if (p.jump()) burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+    }
+
+    fun roll() {
+        val p = player ?: return
+        if (gameOver) return
+        if (p.startRoll(System.currentTimeMillis())) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+        }
+    }
+
+    private fun cellBlocked(x: Float, y: Float, lim: Float): Boolean =
+        map.isWall(x, y) || map.heightAt(x, y) > lim
+
+    private fun playerBlocked(p: Player, x: Float, y: Float): Boolean {
+        val r = p.radius * 0.6f
+        val lim = p.alt + TileMap.LEVEL_PX * 0.55f
+        return cellBlocked(x, y, lim) || cellBlocked(x + r, y, lim) || cellBlocked(x - r, y, lim) ||
+            cellBlocked(x, y + r, lim) || cellBlocked(x, y - r, lim)
     }
 
     fun tryAttack() {
@@ -119,31 +147,93 @@ class GameView @JvmOverloads constructor(
             if (p.classe == Classe.MAGO && p.mp < 12f) return
             if (p.classe == Classe.MAGO) p.mp -= 12f
             p.doAttack(now)
-            val speed = 300f
-            val color = if (p.classe == Classe.MAGO) 0xFF42A5F5.toInt() else 0xFF8D6E63.toInt()
+            val speed = 280f
+            val vx = p.facingX * speed
+            val vy = p.facingY * speed
+            val isMage = p.classe == Classe.MAGO
+            val color = if (isMage) 0xFF42A5F5.toInt() else 0xFF8D6E63.toInt()
             projectiles.add(
-                Projectile(p.x, p.y, p.facingX * speed, p.facingY * speed, p.classe.danoBase, color)
+                Projectile(
+                    p.x + p.facingX * 18f, p.y + p.facingY * 18f, vx, vy,
+                    p.classe.danoBase, color, true, if (isMage) 0 else 1
+                )
             )
         } else {
+            // Corpo a corpo
             p.doAttack(now)
             val reach = p.classe.alcance
-            // só testa inimigos próximos (otimização)
-            for (e in enemies) {
-                if (!e.alive) continue
+            enemies.forEach { e ->
+                if (!e.alive) return@forEach
                 val dist = hypot(e.x - p.x, e.y - p.y)
                 if (dist < reach + e.radius) {
                     val dx = e.x - p.x
                     val dy = e.y - p.y
                     val dot = dx * p.facingX + dy * p.facingY
-                    if (dot > 0f || dist < 45f) {
-                        e.takeDamage(p.classe.danoBase)
+                    if (dot > 0 || dist < 40f) {
+                        damageEnemy(e, p.classe.danoBase, p.x, p.y)
                     }
                 }
             }
         }
     }
 
+    private fun blockedAt(x: Float, y: Float, r: Float): Boolean =
+        map.isWall(x, y) || map.isWall(x + r, y) || map.isWall(x - r, y) ||
+            map.isWall(x, y + r) || map.isWall(x, y - r)
+
+    private fun burst(x: Float, y: Float, n: Int, color: Int) {
+        repeat(n) {
+            val a = Random.nextFloat() * 6.2832f
+            val sp = 60f + Random.nextFloat() * 160f
+            val f = 0.8f + Random.nextFloat() * 0.4f
+            particles.add(
+                Particle(
+                    x, y, cos(a) * sp, sin(a) * sp - 70f,
+                    0.45f + Random.nextFloat() * 0.4f, VoxelArt.shade(color, f),
+                    4f + Random.nextFloat() * 5f
+                )
+            )
+        }
+    }
+
+    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float) {
+        e.takeDamage(dmg)
+        val big = dmg >= 28f
+        texts.add(
+            DmgText(
+                e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
+                if (big) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt()
+            )
+        )
+        val dx = e.x - fromX
+        val dy = e.y - fromY
+        val d = hypot(dx, dy).coerceAtLeast(1f)
+        val kb = if (e.tipo == 2) 6f else 16f
+        val nx = e.x + dx / d * kb
+        val ny = e.y + dy / d * kb
+        if (!blockedAt(nx, ny, e.radius * 0.55f)) {
+            e.x = nx
+            e.y = ny
+        }
+        burst(e.x, e.y - 14f - e.alt, 4, e.palette())
+        if (!e.alive) {
+            burst(e.x, e.y - 10f - e.alt, 16, e.palette())
+            burst(e.x, e.y - 14f - e.alt, 6, 0xFFFFD54F.toInt())
+        }
+    }
+
     private fun update(dt: Float) {
+        time += dt
+        VoxelArt.time = time
+        if (shake > 0f) shake = (shake - dt).coerceAtLeast(0f)
+        particles.forEach { it.update(dt) }
+        particles.removeAll { it.life <= 0f }
+        texts.forEach {
+            it.y -= 40f * dt
+            it.life -= dt
+        }
+        texts.removeAll { it.life <= 0f }
+
         val p = player ?: return
         if (!p.alive) {
             if (!gameOver) {
@@ -154,73 +244,103 @@ class GameView @JvmOverloads constructor(
             return
         }
 
+        // Movimento com colisão e relevo
         val oldX = p.x
         val oldY = p.y
         p.update(dt)
-
-        // Colisão com paredes (amostragem leve)
-        if (map.isWall(p.x, p.y) ||
-            map.isWall(p.x + 12f, p.y) || map.isWall(p.x - 12f, p.y) ||
-            map.isWall(p.x, p.y + 12f) || map.isWall(p.x, p.y - 12f)
-        ) {
-            p.x = oldX
-            p.y = oldY
-            p.x += p.vx * dt
-            if (map.isWall(p.x, p.y)) p.x = oldX
-            p.y += p.vy * dt
-            if (map.isWall(p.x, p.y)) p.y = oldY
+        val tx2 = p.x
+        val ty2 = p.y
+        p.x = oldX
+        p.y = oldY
+        if (!playerBlocked(p, tx2, ty2)) {
+            p.x = tx2
+            p.y = ty2
+        } else {
+            if (!playerBlocked(p, tx2, oldY)) p.x = tx2
+            if (!playerBlocked(p, p.x, ty2)) p.y = ty2
+            if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
+        }
+        p.updateVertical(dt, map.heightAt(p.x, p.y))
+        if (p.landed > 0f) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+            p.landed = 0f
+        }
+        if (p.rolling && Random.nextInt(3) == 0) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 1, 0xFFB8B0A8.toInt())
         }
 
-        p.x = p.x.coerceIn(20f, map.worldWidth() - 20f)
-        p.y = p.y.coerceIn(20f, map.worldHeight() - 20f)
+        p.x = p.x.coerceIn(p.radius, map.worldWidth() - p.radius)
+        p.y = p.y.coerceIn(p.radius, map.worldHeight() - p.radius)
 
+        // Inimigos
         val now = System.currentTimeMillis()
-        // Inimigos: só atualiza os que estão relativamente perto da câmera (economia)
-        val margin = 200f
-        for (e in enemies) {
-            if (!e.alive) continue
-            val onScreen = e.x > camX - margin && e.x < camX + viewW + margin &&
-                    e.y > camY - margin && e.y < camY + viewH + margin
-            if (onScreen) {
-                e.update(dt, p)
-                if (map.isWall(e.x, e.y)) {
-                    e.x += (p.x - e.x) * 0.04f
-                    e.y += (p.y - e.y) * 0.04f
-                }
-                val dist = hypot(e.x - p.x, e.y - p.y)
-                if (dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
-                    p.takeDamage(e.damage)
-                    e.lastHit = now
-                }
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            val ox = e.x
+            val oy = e.y
+            e.update(dt, p)
+            val rr = e.radius * 0.55f
+            if (blockedAt(e.x, e.y, rr)) {
+                val nx = e.x
+                val ny = e.y
+                e.x = if (!blockedAt(nx, oy, rr)) nx else ox
+                e.y = if (!blockedAt(e.x, ny, rr)) ny else oy
+            }
+            e.ground = map.heightAt(e.x, e.y)
+            e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (!p.rolling && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+                p.takeDamage(e.damage)
+                e.lastHit = now
+                shake = 0.3f
+                burst(p.x, p.y - 14f - p.alt, 6, 0xFFD32F2F.toInt())
+                texts.add(DmgText(p.x, p.y - 56f - p.alt, "-" + e.damage.toInt(), 0.8f, 0xFFFF5252.toInt()))
             }
         }
-
-        // Projéteis
-        val it = projectiles.iterator()
-        while (it.hasNext()) {
-            val pr = it.next()
-            if (!pr.alive) {
-                it.remove()
-                continue
-            }
-            pr.update(dt)
-            if (map.isWall(pr.x, pr.y) || pr.life <= 0f) {
-                pr.alive = false
-                it.remove()
-                continue
-            }
-            if (pr.fromPlayer) {
-                for (e in enemies) {
-                    if (e.alive && hypot(e.x - pr.x, e.y - pr.y) < e.radius + pr.radius) {
-                        e.takeDamage(pr.damage)
-                        pr.alive = false
-                        break
+        // separação entre inimigos
+        for (i in 0 until enemies.size) {
+            val a = enemies[i]
+            for (j in i + 1 until enemies.size) {
+                val b = enemies[j]
+                val dx = b.x - a.x
+                val dy = b.y - a.y
+                val d = hypot(dx, dy)
+                val min = (a.radius + b.radius) * 0.9f
+                if (d > 0.01f && d < min) {
+                    val push = (min - d) * 0.25f
+                    val ux = dx / d * push
+                    val uy = dy / d * push
+                    if (!blockedAt(b.x + ux, b.y + uy, b.radius * 0.55f)) {
+                        b.x += ux
+                        b.y += uy
+                    }
+                    if (!blockedAt(a.x - ux, a.y - uy, a.radius * 0.55f)) {
+                        a.x -= ux
+                        a.y -= uy
                     }
                 }
             }
         }
 
-        // Remove mortos periodicamente (evita lista suja)
+        // Projéteis
+        projectiles.forEach { pr ->
+            if (!pr.alive) return@forEach
+            pr.update(dt)
+            if (map.isWall(pr.x, pr.y)) {
+                pr.alive = false
+                burst(pr.x, pr.y - 10f, 4, 0xFFB0BEC5.toInt())
+                return@forEach
+            }
+            if (pr.fromPlayer) {
+                enemies.forEach { e ->
+                    if (pr.alive && e.alive && hypot(e.x - pr.x, e.y - pr.y) < e.radius + pr.radius) {
+                        damageEnemy(e, pr.damage, pr.x - pr.vx * 0.05f, pr.y - pr.vy * 0.05f)
+                        pr.alive = false
+                    }
+                }
+            }
+        }
+        projectiles.removeAll { !it.alive }
         enemies.removeAll { !it.alive }
 
         if (enemies.isEmpty() && !gameOver) {
@@ -229,40 +349,98 @@ class GameView @JvmOverloads constructor(
             onGameOver?.invoke(true)
         }
 
-        // Câmera suave centrada no player
-        val targetCamX = p.x - viewW * 0.5f
-        val targetCamY = p.y - viewH * 0.5f
-        camX = targetCamX.coerceIn(0f, (map.worldWidth() - viewW).coerceAtLeast(0f))
-        camY = targetCamY.coerceIn(0f, (map.worldHeight() - viewH).coerceAtLeast(0f))
+        camX = p.x - width / 2f
+        camY = p.y - height / 2f
+        camX = camX.coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
+        camY = camY.coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
     }
 
+    private fun feetRow(e: Entity): Int = ((e.y + e.radius * 0.6f) / map.tileSize).toInt()
+
     override fun onDraw(canvas: Canvas) {
-        // fundo escuro rápido
-        canvas.drawColor(0xFF1A2F1A.toInt())
+        super.onDraw(canvas)
+        val w = width.toFloat()
+        val h = height.toFloat()
+        VoxelArt.flash = 0f
+        canvas.drawColor(0xFF0A090D.toInt())
 
-        if (viewW <= 0f) return
-
-        map.draw(canvas, paint, camX, camY, viewW, viewH)
-
-        // Só desenha o que está na tela
-        for (pr in projectiles) {
-            if (pr.alive) pr.draw(canvas, paint, camX, camY)
+        canvas.save()
+        if (shake > 0f) {
+            canvas.translate((Random.nextFloat() - 0.5f) * shake * 24f, (Random.nextFloat() - 0.5f) * shake * 24f)
         }
-        for (e in enemies) {
-            if (e.alive) {
-                // culling simples
-                if (e.x > camX - 50 && e.x < camX + viewW + 50 &&
-                    e.y > camY - 50 && e.y < camY + viewH + 50
-                ) {
-                    e.draw(canvas, paint, camX, camY)
-                }
+
+        map.drawFloor(canvas, paint, camX, camY, w, h)
+
+        // personagens e paredes ordenados por profundidade
+        drawList.clear()
+        drawList.addAll(enemies)
+        player?.let { drawList.add(it) }
+        drawList.sortBy { it.y }
+        var i = 0
+        val startRow = (camY / map.tileSize).toInt().coerceAtLeast(0)
+        val endRow = (((camY + h) / map.tileSize).toInt() + 1).coerceAtMost(map.height - 1)
+        for (ty in startRow..endRow) {
+            map.drawRow(canvas, paint, ty, camX, camY, w)
+            while (i < drawList.size && feetRow(drawList[i]) <= ty) {
+                drawList[i].draw(canvas, paint, camX, camY)
+                i++
             }
         }
-        player?.draw(canvas, paint, camX, camY)
+        while (i < drawList.size) {
+            drawList[i].draw(canvas, paint, camX, camY)
+            i++
+        }
 
-        // HUD texto (inimigos restantes)
-        textPaint.color = 0xFFFFFFFF.toInt()
-        canvas.drawText("Inimigos: ${enemies.size}", 16f, viewH - 36f, textPaint)
+        // herói visível "através" da parede
+        player?.let { p ->
+            if (p.alive && map.isWall(p.x, p.y + map.tileSize * 0.9f)) {
+                val sx = p.x - camX
+                val sy = p.y - camY
+                val layer = canvas.saveLayerAlpha(sx - 70f, sy - 100f, sx + 70f, sy + 60f, 110)
+                p.draw(canvas, paint, camX, camY)
+                canvas.restoreToCount(layer)
+            }
+        }
+
+        projectiles.forEach { it.draw(canvas, paint, camX, camY) }
+        particles.forEach { it.draw(canvas, paint, camX, camY) }
+        canvas.restore()
+
+        // vinheta de masmorra
+        vignette?.let {
+            paint.style = Paint.Style.FILL
+            paint.shader = it
+            canvas.drawRect(0f, 0f, w, h, paint)
+            paint.shader = null
+        }
+
+        // números de dano
+        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.textAlign = Paint.Align.CENTER
+        paint.textSize = 30f
+        texts.forEach { t ->
+            val a = (t.life / 0.8f).coerceIn(0f, 1f)
+            val sx = t.x - camX
+            val sy = t.y - camY
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 6f
+            paint.color = VoxelArt.alpha(0xFF000000.toInt(), a)
+            canvas.drawText(t.text, sx, sy, paint)
+            paint.style = Paint.Style.FILL
+            paint.color = VoxelArt.alpha(t.color, a)
+            canvas.drawText(t.text, sx, sy, paint)
+        }
+
+        // contador de inimigos
+        val txt = "Inimigos: ${enemies.size}"
+        paint.textSize = 28f
+        paint.textAlign = Paint.Align.LEFT
+        val tw = paint.measureText(txt)
+        paint.style = Paint.Style.FILL
+        paint.color = 0x88000000.toInt()
+        canvas.drawRoundRect(10f, h - 82f, 10f + tw + 40f, h - 22f, 16f, 16f, paint)
+        paint.color = 0xFFFFFFFF.toInt()
+        canvas.drawText(txt, 30f, h - 40f, paint)
     }
 
     fun getPlayer(): Player? = player

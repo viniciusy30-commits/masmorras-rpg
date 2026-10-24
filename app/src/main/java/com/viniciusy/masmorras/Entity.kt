@@ -3,6 +3,11 @@ package com.viniciusy.masmorras
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.RectF
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.hypot
+import kotlin.math.min
+import kotlin.math.sin
 
 abstract class Entity(
     var x: Float,
@@ -12,10 +17,15 @@ abstract class Entity(
     var maxHp: Float
 ) {
     var alive = true
+    var hitFlash = 0f
+    var walkPhase = 0f
+    var alt = 0f     // altitude absoluta (px)
+    var ground = 0f  // altura do chão sob os pés (px)
 
     fun takeDamage(dmg: Float) {
         if (!alive) return
         hp -= dmg
+        hitFlash = 1f
         if (hp <= 0f) {
             hp = 0f
             alive = false
@@ -26,94 +36,162 @@ abstract class Entity(
     abstract fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float)
 
     fun getBounds(): RectF = RectF(x - radius, y - radius, x + radius, y + radius)
+
+    protected fun drawBar(canvas: Canvas, paint: Paint, cx: Float, top: Float, w: Float, pct: Float, color: Int) {
+        val h = 6f
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFF111111.toInt()
+        canvas.drawRoundRect(cx - w / 2f - 1.5f, top - 1.5f, cx + w / 2f + 1.5f, top + h + 1.5f, 3f, 3f, paint)
+        paint.color = 0xFF3A3A3A.toInt()
+        canvas.drawRect(cx - w / 2f, top, cx + w / 2f, top + h, paint)
+        paint.color = color
+        canvas.drawRect(cx - w / 2f, top, cx - w / 2f + w * pct.coerceIn(0f, 1f), top + h, paint)
+        paint.color = 0x44FFFFFF
+        canvas.drawRect(cx - w / 2f, top, cx - w / 2f + w * pct.coerceIn(0f, 1f), top + h * 0.4f, paint)
+    }
 }
 
 class Player(
     x: Float,
     y: Float,
     val classe: Classe
-) : Entity(x, y, 20f, classe.maxHp, classe.maxHp) {
+) : Entity(x, y, 24f, classe.maxHp, classe.maxHp) {
+
+    companion object {
+        const val ROLL_TIME = 0.42f
+    }
 
     var mp = classe.maxMp
     var vx = 0f
     var vy = 0f
+    var inX = 0f
+    var inY = 0f
     var facingX = 1f
     var facingY = 0f
     var lastAttack = 0L
     var attackAnim = 0f
 
-    fun canAttack(now: Long): Boolean = now - lastAttack >= classe.cooldownAtaque
+    // pulo e rolamento
+    var vz = 0f
+    var rollT = 0f
+    var rollDX = 0f
+    var rollDY = 1f
+    var lastRoll = 0L
+    var landed = 0f
+
+    val rolling: Boolean get() = rollT > 0f
+    val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
+
+    fun canAttack(now: Long): Boolean = !rolling && now - lastAttack >= classe.cooldownAtaque
 
     fun doAttack(now: Long) {
         lastAttack = now
         attackAnim = 1f
     }
 
+    fun jump(): Boolean {
+        if (!alive || rolling || !grounded) return false
+        vz = 340f
+        alt = ground + 0.7f
+        return true
+    }
+
+    fun startRoll(now: Long): Boolean {
+        if (!alive || rolling || !grounded || now - lastRoll < 700L) return false
+        var dx = inX
+        var dy = inY
+        if (hypot(dx, dy) < 0.1f) {
+            dx = facingX
+            dy = facingY
+        }
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        rollDX = dx / l
+        rollDY = dy / l
+        facingX = rollDX
+        facingY = rollDY
+        rollT = ROLL_TIME
+        lastRoll = now
+        attackAnim = 0f
+        return true
+    }
+
+    /** Gravidade e acompanhamento do relevo. */
+    fun updateVertical(dt: Float, groundPx: Float) {
+        ground = groundPx
+        if (alt > groundPx + 0.01f || vz > 0f) {
+            vz -= 1500f * dt
+            alt += vz * dt
+            if (alt <= groundPx) {
+                if (vz < -140f) landed = (-vz) / 400f
+                alt = groundPx
+                vz = 0f
+            }
+        } else {
+            alt += (groundPx - alt) * min(1f, dt * 30f)
+            if (abs(groundPx - alt) < 0.3f) alt = groundPx
+            vz = 0f
+        }
+    }
+
     override fun update(dt: Float) {
+        if (rollT > 0f) {
+            rollT -= dt
+            if (rollT < 0f) rollT = 0f
+            vx = rollDX * 330f
+            vy = rollDY * 330f
+        } else {
+            vx = inX * classe.velocidade * 60f
+            vy = inY * classe.velocidade * 60f
+        }
         x += vx * dt
         y += vy * dt
-        if (attackAnim > 0f) attackAnim = (attackAnim - dt * 5f).coerceAtLeast(0f)
+        val sp = hypot(vx, vy)
+        if (sp > 1f) walkPhase += sp * dt * 0.05f
+        hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
+        if (attackAnim > 0f) {
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 3f else 4f)).coerceAtLeast(0f)
+        }
         if (classe.maxMp > 0f && mp < classe.maxMp) {
-            mp = (mp + 10f * dt).coerceAtMost(classe.maxMp)
+            mp = (mp + 8f * dt).coerceAtMost(classe.maxMp)
         }
     }
 
     override fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float) {
         val sx = x - camX
         val sy = y - camY
+        val s = radius / 24f
+        val gy = sy + radius * 0.55f - ground
+        val feet = sy + radius * 0.55f - alt
+        val up = (alt - ground).coerceAtLeast(0f)
+        val k = (1f - up / 90f).coerceIn(0.4f, 1f)
+        val moving = hypot(vx, vy) > 1f
 
-        // Sombra
-        paint.color = 0x55000000
+        // Sombra no chão (encolhe quando pula)
         paint.style = Paint.Style.FILL
-        canvas.drawOval(sx - radius * 0.9f, sy + radius * 0.55f, sx + radius * 0.9f, sy + radius * 1.05f, paint)
+        paint.color = 0x33000000
+        canvas.drawOval(sx - radius * 1.05f * k, gy - radius * 0.32f * k, sx + radius * 1.05f * k, gy + radius * 0.38f * k, paint)
+        paint.color = 0x44000000
+        canvas.drawOval(sx - radius * 0.8f * k, gy - radius * 0.22f * k, sx + radius * 0.8f * k, gy + radius * 0.28f * k, paint)
 
-        // Corpo (bloco estilo Minecraft Dungeons)
-        paint.color = classe.cor
-        val body = RectF(sx - radius * 0.8f, sy - radius * 0.85f, sx + radius * 0.8f, sy + radius * 0.85f)
-        canvas.drawRoundRect(body, 5f, 5f, paint)
+        // Anel da classe no chão
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        paint.color = (classe.cor and 0x00FFFFFF) or 0x99000000.toInt()
+        canvas.drawOval(sx - radius * 1.1f * k, gy - radius * 0.36f * k, sx + radius * 1.1f * k, gy + radius * 0.42f * k, paint)
+        paint.style = Paint.Style.FILL
 
-        // Destaque de luz no corpo
-        paint.color = 0x33FFFFFF
-        canvas.drawRoundRect(
-            RectF(sx - radius * 0.7f, sy - radius * 0.8f, sx + radius * 0.15f, sy - radius * 0.1f),
-            4f, 4f, paint
-        )
+        VoxelArt.flash = hitFlash
+        Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Warrior3D.inAir = up > 1f
+        Warrior3D.airVz = vz
+        Sprites.drawHero(canvas, paint, classe, sx, feet, s, walkPhase, moving, facingX, facingY, attackAnim)
+        VoxelArt.flash = 0f
 
-        // Cabeça
-        paint.color = 0xFFFFCC80.toInt()
-        canvas.drawCircle(sx, sy - radius * 0.5f, radius * 0.42f, paint)
-
-        // Olhos
-        paint.color = 0xFF1A1A1A.toInt()
-        canvas.drawCircle(sx - 5.5f, sy - radius * 0.55f, 2.8f, paint)
-        canvas.drawCircle(sx + 5.5f, sy - radius * 0.55f, 2.8f, paint)
-        // brilho nos olhos
-        paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(sx - 4.5f, sy - radius * 0.58f, 1.1f, paint)
-        canvas.drawCircle(sx + 6.5f, sy - radius * 0.58f, 1.1f, paint)
-
-        // Arma / efeito de ataque
-        if (attackAnim > 0f) {
-            paint.color = 0xCCFFFFFF.toInt()
-            paint.strokeWidth = 5f
-            paint.style = Paint.Style.STROKE
-            val reach = radius + 18f + attackAnim * 28f
-            canvas.drawLine(sx, sy, sx + facingX * reach, sy + facingY * reach, paint)
-            paint.style = Paint.Style.FILL
-            // faísca no final
-            paint.color = 0xAAFFEB3B.toInt()
-            canvas.drawCircle(sx + facingX * reach, sy + facingY * reach, 5f + attackAnim * 4f, paint)
+        if (!classe.isRanged) {
+            Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        // Barra de vida
-        val barW = radius * 2.1f
-        val barH = 4.5f
-        val barY = sy - radius - 11f
-        paint.color = 0xFF222222.toInt()
-        canvas.drawRect(sx - barW / 2, barY, sx + barW / 2, barY + barH, paint)
-        paint.color = 0xFF4CAF50.toInt()
-        val hpPct = (hp / maxHp).coerceIn(0f, 1f)
-        canvas.drawRect(sx - barW / 2, barY, sx - barW / 2 + barW * hpPct, barY + barH, paint)
+        drawBar(canvas, paint, sx, feet - 68f * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
     }
 }
 
@@ -121,21 +199,53 @@ class Enemy(
     x: Float,
     y: Float,
     val tipo: Int = 0
-) : Entity(x, y, 16f, 45f + tipo * 30f, 45f + tipo * 30f) {
+) : Entity(x, y, if (tipo == 2) 30f else 20f, 50f + tipo * 25f, 50f + tipo * 25f) {
 
-    var speed = 1.5f + tipo * 0.35f
-    var damage = 7f + tipo * 5f
+    var speed = 1.6f + tipo * 0.3f
+    var damage = 8f + tipo * 4f
     var lastHit = 0L
-    var hitCooldown = 850L
+    var hitCooldown = 800L
+    var faceX = 0f
+    var faceY = 1f
+    var attackAnim = 0f
+    var yaw = 0f
+    private var yawInit = false
+
+    fun palette(): Int = when (tipo) {
+        0 -> 0xFFE8E4D4.toInt()
+        1 -> 0xFFB0BEC5.toInt()
+        else -> 0xFFB388FF.toInt()
+    }
 
     fun update(dt: Float, player: Player) {
+        hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
+        if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
         if (!alive || !player.alive) return
         val dx = player.x - x
         val dy = player.y - y
-        val dist = hypot(dx, dy)
-        if (dist > 8f) {
-            x += (dx / dist) * speed * dt * 55f
-            y += (dy / dist) * speed * dt * 55f
+        val dist = kotlin.math.sqrt(dx * dx + dy * dy)
+        if (dist > 1f) {
+            faceX = dx / dist
+            faceY = dy / dist
+            x += (dx / dist) * speed * dt * 60f
+            y += (dy / dist) * speed * dt * 60f
+            walkPhase += speed * dt * 4.2f
+        }
+        // giro suave
+        val target = atan2(faceX, faceY)
+        if (!yawInit) {
+            yaw = target
+            yawInit = true
+        } else {
+            val pi = Math.PI.toFloat()
+            var d = target - yaw
+            while (d > pi) d -= 2f * pi
+            while (d < -pi) d += 2f * pi
+            yaw += d * min(1f, dt * 10f)
+        }
+        val now = System.currentTimeMillis()
+        if (attackAnim <= 0f && dist < radius + player.radius + 22f && now - lastHit > hitCooldown - 250L) {
+            attackAnim = 1f
         }
     }
 
@@ -145,50 +255,22 @@ class Enemy(
         if (!alive) return
         val sx = x - camX
         val sy = y - camY
+        val s = if (tipo == 2) 1.55f else 1f
+        val feet = sy + radius * 0.55f - alt
 
-        // Sombra
-        paint.color = 0x44000000
         paint.style = Paint.Style.FILL
-        canvas.drawOval(sx - radius, sy + radius * 0.45f, sx + radius, sy + radius * 0.95f, paint)
+        paint.color = 0x33000000
+        canvas.drawOval(sx - radius * 1.1f, feet - radius * 0.3f, sx + radius * 1.1f, feet + radius * 0.36f, paint)
+        paint.color = 0x44000000
+        canvas.drawOval(sx - radius * 0.8f, feet - radius * 0.2f, sx + radius * 0.8f, feet + radius * 0.26f, paint)
 
-        val cor = when (tipo) {
-            0 -> 0xFF689F38.toInt() // slime / zumbi fraco
-            1 -> 0xFF8D6E63.toInt() // esqueleto
-            else -> 0xFF6A1B9A.toInt() // elite
-        }
-        paint.color = cor
-        canvas.drawRoundRect(
-            RectF(sx - radius, sy - radius, sx + radius, sy + radius),
-            4f, 4f, paint
-        )
+        VoxelArt.flash = hitFlash
+        Warrior3D.drawSkeleton(canvas, paint, sx, feet, s, walkPhase, yaw, tipo, attackAnim)
+        VoxelArt.flash = 0f
 
-        // destaque
-        paint.color = 0x33FFFFFF
-        canvas.drawRoundRect(
-            RectF(sx - radius * 0.7f, sy - radius * 0.85f, sx, sy - radius * 0.1f),
-            3f, 3f, paint
-        )
-
-        // Olhos
-        paint.color = 0xFFFF1744.toInt()
-        canvas.drawCircle(sx - 5f, sy - 3f, 3.2f, paint)
-        canvas.drawCircle(sx + 5f, sy - 3f, 3.2f, paint)
-        paint.color = 0xFFFFFFFF.toInt()
-        canvas.drawCircle(sx - 4f, sy - 4f, 1.2f, paint)
-        canvas.drawCircle(sx + 6f, sy - 4f, 1.2f, paint)
-
-        // HP bar
-        val barW = radius * 2.1f
-        val barH = 3.5f
-        val barY = sy - radius - 9f
-        paint.color = 0xFF222222.toInt()
-        canvas.drawRect(sx - barW / 2, barY, sx + barW / 2, barY + barH, paint)
-        paint.color = 0xFFF44336.toInt()
-        val pct = (hp / maxHp).coerceIn(0f, 1f)
-        canvas.drawRect(sx - barW / 2, barY, sx - barW / 2 + barW * pct, barY + barH, paint)
+        val barW = if (tipo == 2) radius * 2.4f else radius * 2f
+        drawBar(canvas, paint, sx, feet - 50f * s - 8f, barW, hp / maxHp, 0xFFE53935.toInt())
     }
-
-    private fun hypot(a: Float, b: Float) = kotlin.math.sqrt(a * a + b * b)
 }
 
 class Projectile(
@@ -198,11 +280,12 @@ class Projectile(
     val vy: Float,
     val damage: Float,
     val color: Int,
-    val fromPlayer: Boolean = true
+    val fromPlayer: Boolean = true,
+    val kind: Int = 0 // 0 = orbe mágico, 1 = flecha
 ) {
     var alive = true
-    val radius = 7f
-    var life = 2.2f
+    val radius = 8f
+    var life = 2.5f
 
     fun update(dt: Float) {
         x += vx * dt
@@ -214,11 +297,58 @@ class Projectile(
     fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float) {
         if (!alive) return
         val sx = x - camX
-        val sy = y - camY
+        val sy = y - camY - 14f
         paint.style = Paint.Style.FILL
-        paint.color = color
-        canvas.drawCircle(sx, sy, radius, paint)
-        paint.color = 0xAAFFFFFF.toInt()
-        canvas.drawCircle(sx - 1.5f, sy - 1.5f, radius * 0.4f, paint)
+        // sombra no chão
+        paint.color = 0x33000000
+        canvas.drawOval(sx - 8f, y - camY + 8f, sx + 8f, y - camY + 14f, paint)
+
+        if (kind == 1) {
+            val ang = kotlin.math.atan2(vy, vx) * 57.29578f
+            canvas.save()
+            canvas.translate(sx, sy)
+            canvas.rotate(ang)
+            paint.color = 0xFF8D6E63.toInt()
+            canvas.drawRect(-14f, -1.5f, 8f, 1.5f, paint)
+            paint.color = 0xFFECEFF1.toInt()
+            canvas.drawRect(-14f, -3.5f, -9f, 3.5f, paint)
+            paint.color = 0xFFB0BEC5.toInt()
+            canvas.drawRect(8f, -3f, 15f, 3f, paint)
+            paint.color = 0xFFFFFFFF.toInt()
+            canvas.drawRect(11f, -1.5f, 17f, 1.5f, paint)
+            canvas.restore()
+        } else {
+            val pulse = 1f + 0.12f * sin(VoxelArt.time * 18f)
+            paint.color = VoxelArt.alpha(color, 0.18f)
+            canvas.drawCircle(sx, sy, radius * 2.4f * pulse, paint)
+            paint.color = VoxelArt.alpha(color, 0.45f)
+            canvas.drawCircle(sx, sy, radius * 1.5f * pulse, paint)
+            paint.color = color
+            canvas.drawCircle(sx, sy, radius, paint)
+            paint.color = 0xFFFFFFFF.toInt()
+            canvas.drawCircle(sx, sy, radius * 0.45f, paint)
+        }
     }
 }
+
+class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Float, val color: Int, val size: Float) {
+    val maxLife = life
+
+    fun update(dt: Float) {
+        x += vx * dt
+        y += vy * dt
+        vy += 520f * dt
+        vx *= 0.98f
+        life -= dt
+    }
+
+    fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float) {
+        paint.style = Paint.Style.FILL
+        paint.color = VoxelArt.alpha(color, life / maxLife)
+        val sx = x - camX
+        val sy = y - camY
+        canvas.drawRect(sx - size / 2f, sy - size / 2f, sx + size / 2f, sy + size / 2f, paint)
+    }
+}
+
+class DmgText(var x: Float, var y: Float, val text: String, var life: Float, val color: Int)

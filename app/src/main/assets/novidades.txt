@@ -1,15 +1,15 @@
+#id 2026-10-24-c
+#titulo Vilarejo e mundo aberto
+- Mapa agora começa em um vilarejo (zona segura) e abre para o campo
+- Casas, praça e caminhos no vilarejo
+- Ruínas e pontos de interesse espalhados pelo mapa (estilo Diablo)
+- Lagos e terreno mais aberto
+- Mantém pulo, altura, combate e todo o visual avançado
+
 #id 2026-10-24-b
 #titulo Mundo aberto + vilarejo
-- Mapa agora é mundo aberto estilo Diablo (não mais dungeon fechada)
-- Vilarejo inicial com casas, caminhos, poço e cercas
-- Texturas bem mais detalhadas (grama, terra, madeira, telhado, água, árvores, flores)
-- Grande melhoria de desempenho (menos lag)
-- Inimigos espalhados pelo campo (zona segura no vilarejo)
+- Tentativa anterior (corrigida)
 
 #id 2026-10-24-a
 #titulo Lançamento inicial
-- Mapa pequeno com inimigos e combate
-- 4 classes: Guerreiro, Mago, Arqueiro e Bárbaro
-- Controles de toque (joystick + ataque)
-- Sistema de atualização automática pelo próprio app
-- Estilo visual inspirado em Minecraft Dungeons
+- 4 classes, combate, atualização automática

@@ -69,7 +69,6 @@ object Warrior3D {
     var rollP = -1f
     var inAir = false
     var airVz = 0f
-    var crouch = 0f
 
     // estado de animação
     private var yaw = 0f
@@ -405,10 +404,7 @@ object Warrior3D {
         val attacking = t >= 0f
         val rolling = rollP >= 0f
         val air = inAir && !rolling
-        // subida: corpo esticado; topo: joelhos dobrados; descida: pernas abertas para amortecer
-        val tuck = if (rolling) 1f
-        else if (air) (if (airVz > 120f) 0.18f else if (airVz > -120f) 0.7f else 0.32f)
-        else crouch * 0.45f
+        val tuck = if (rolling) 1f else if (air) (if (airVz > 0f) 0.55f else 0.25f) else 0f
         val mv = if (rolling || air) 0f else if (attacking) blend * 0.4f else blend
         val walk = sin(phase)
 
@@ -459,21 +455,17 @@ object Warrior3D {
             }
         }
 
-        val bob = abs(walk) * 1.4f * mv + sin(clock * 2.4f) * 0.35f * (1f - mv) - 2.8f * crouch
-        val lean = 0.10f * mv + lunge * 0.04f + 0.28f * crouch + (if (air && airVz > 120f) -0.12f else 0f) + (if (air && airVz < -120f) 0.1f else 0f)
+        val bob = abs(walk) * 1.4f * mv + sin(clock * 2.4f) * 0.35f * (1f - mv)
+        val lean = 0.10f * mv + lunge * 0.04f
         if (rolling) {
             sh = -1.2f
             shZ = 0.2f
             el = -1.9f
             wrist = 0.3f
         } else if (air && !attacking) {
-            if (airVz > 120f) {
-                sh = -2.9f; shZ = 0.3f; el = -0.3f
-            } else if (airVz > -120f) {
-                sh = -2.0f; shZ = 0.5f; el = -0.6f
-            } else {
-                sh = -1.3f; shZ = 0.8f; el = -0.4f
-            }
+            sh = -2.0f
+            shZ = 0.5f
+            el = -0.6f
         }
         var shieldSh = (if (attacking) -0.45f else -0.25f) - walk * 0.15f * mv
         if (rolling) shieldSh = -1.0f else if (air) shieldSh = -1.1f
