@@ -1,15 +1,6 @@
 #id 2026-10-24-d
-#titulo Vila completa
-- Vila grande de verdade: casas de madeira com telhado, ruas de terra, praça de pedra e poço
-- Grade de ruas, várias casas, barracas/caixotes
-- Zona segura sem inimigos dentro da vila
-- Campo ao redor com grama, lagos e ruínas para combate
-- Visual Minecraft top-down / Diablo (madeira, grama, terra, pedra)
-
-#id 2026-10-24-c
-#titulo Vilarejo e mundo aberto
-- Tentativa anterior
-
-#id 2026-10-24-a
-#titulo Lançamento inicial
-- 4 classes, combate, atualização automática
+#titulo Relevo, pulo, rolamento e esqueletos 3D
+- Novo botão PULAR: o Guerreiro salta (dá pra desviar de inimigos no ar) e cai com poeira
+- Novo botão ROLAR: cambalhota rápida para frente, invulnerável enquanto rola
+- Mapa com relevo: plataformas de pedra com degraus em algumas salas. Suba pelos degraus ou pule em cima dos blocos
+- Inimigos agora são Esqueletos 3D em cubos (comum, de elmo e escudo, e o Rei Esqueleto com coroa e capa roxa) com animação de andar e golpe
