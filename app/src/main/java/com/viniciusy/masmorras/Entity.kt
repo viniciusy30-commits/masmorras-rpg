@@ -73,7 +73,7 @@ class Player(
         val sp = hypot(vx, vy)
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
-        if (attackAnim > 0f) attackAnim = (attackAnim - dt * 4f).coerceAtLeast(0f)
+        if (attackAnim > 0f) attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 3f else 4f)).coerceAtLeast(0f)
         if (classe.maxMp > 0f && mp < classe.maxMp) {
             mp = (mp + 8f * dt).coerceAtMost(classe.maxMp)
         }

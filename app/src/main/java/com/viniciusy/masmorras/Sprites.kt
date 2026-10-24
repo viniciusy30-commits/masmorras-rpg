@@ -43,7 +43,7 @@ object Sprites {
     ) {
         val back = faceY < -0.55f && abs(faceX) < 0.8f
         when (classe) {
-            Classe.GUERREIRO -> warrior(c, p, fx, fy, s, phase, moving, faceX, back, attack)
+            Classe.GUERREIRO -> Warrior3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.MAGO -> mage(c, p, fx, fy, s, phase, moving, faceX, back, attack)
             Classe.ARQUEIRO -> archer(c, p, fx, fy, s, phase, moving, faceX, faceY, back, attack)
             Classe.BARBARO -> barbarian(c, p, fx, fy, s, phase, moving, faceX, back, attack)
