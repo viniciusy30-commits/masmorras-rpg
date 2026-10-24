@@ -1,14 +1,14 @@
+#id 2026-10-24-d
+#titulo Vila completa
+- Vila grande de verdade: casas de madeira com telhado, ruas de terra, praça de pedra e poço
+- Grade de ruas, várias casas, barracas/caixotes
+- Zona segura sem inimigos dentro da vila
+- Campo ao redor com grama, lagos e ruínas para combate
+- Visual Minecraft top-down / Diablo (madeira, grama, terra, pedra)
+
 #id 2026-10-24-c
 #titulo Vilarejo e mundo aberto
-- Mapa agora começa em um vilarejo (zona segura) e abre para o campo
-- Casas, praça e caminhos no vilarejo
-- Ruínas e pontos de interesse espalhados pelo mapa (estilo Diablo)
-- Lagos e terreno mais aberto
-- Mantém pulo, altura, combate e todo o visual avançado
-
-#id 2026-10-24-b
-#titulo Mundo aberto + vilarejo
-- Tentativa anterior (corrigida)
+- Tentativa anterior
 
 #id 2026-10-24-a
 #titulo Lançamento inicial
