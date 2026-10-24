@@ -1,7 +1,6 @@
-#id 2026-10-24-a
-#titulo Lançamento inicial
-- Mapa pequeno com inimigos e combate
-- 4 classes: Guerreiro, Mago, Arqueiro e Bárbaro
-- Controles de toque (joystick + ataque)
-- Sistema de atualização automática pelo próprio app
-- Estilo visual inspirado em Minecraft Dungeons
+#id 2026-10-24-b
+#titulo Visual estilo Minecraft Dungeons
+- Mapa novo: salas ligadas por corredores, paredes 3D de tijolos, tochas com luz, caixotes, barris, poças d'água e ossos
+- Heróis em blocos 3D com animação de andar: Guerreiro (armadura, escudo e espada), Mago (chapéu e cajado brilhante), Arqueiro (capuz, arco e aljava) e Bárbaro (elmo com chifres e machado)
+- Inimigos novos: Zumbi, Esqueleto com arco e um Chefe blindado na última sala
+- Efeitos: golpes em arco, flechas, orbes mágicos, partículas, números de dano, tremor de tela e vinheta escura
