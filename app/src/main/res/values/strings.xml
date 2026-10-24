@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Masmorras</string>
+    <string name="jogar">Jogar</string>
+    <string name="configuracoes">Configurações</string>
+    <string name="escolher_classe">Escolha sua classe</string>
+    <string name="guerreiro">Guerreiro</string>
+    <string name="mago">Mago</string>
+    <string name="arqueiro">Arqueiro</string>
+    <string name="barbaro">Bárbaro</string>
+    <string name="voltar">Voltar</string>
+    <string name="verificar_atualizacao">Verificar atualização</string>
+    <string name="sobre">Sobre o jogo</string>
+    <string name="nova_versao">Nova versão disponível</string>
+    <string name="atualizar">Atualizar</string>
+    <string name="depois">Depois</string>
+    <string name="ja_atualizado">Você já está na versão mais recente!</string>
+    <string name="sem_internet">Sem conexão com a internet</string>
+    <string name="procurando">Procurando atualizações…</string>
+    <string name="baixar">Baixando atualização…</string>
+    <string name="instalar_desconhecidos">Para instalar atualizações, permita “Instalar apps desconhecidos” para o Masmorras.</string>
+    <string name="abrir_config">Abrir configurações</string>
+    <string name="vitoria">Vitória!</string>
+    <string name="derrota">Você morreu…</string>
+    <string name="tentar_novamente">Tentar novamente</string>
+    <string name="menu">Menu</string>
+    <string name="novidades">O que mudou</string>
+</resources>
