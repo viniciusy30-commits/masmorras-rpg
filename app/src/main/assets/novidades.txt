@@ -1,7 +1,8 @@
-#id 2026-10-24-e
-#titulo Mundo aberto: Vilarejo inicial
-- Fim das masmorras fechadas: agora o mapa é um mundo aberto com floresta, rio com ponte, lagoa e ruínas
-- Você começa no vilarejo (casas, taverna, ferraria, celeiro, poço, barracas e postes de luz). Inimigos não entram na zona segura
-- Inimigos agora ficam em grupos pelo mapa e só perseguem quando você chega perto. O chefe e seus guardas ficam nas ruínas a noroeste
-- Texturas novas: grama com flores, terra, pedra da praça, areia, tábuas e água com espuma
-- Menos lag: o chão é desenhado uma vez e reaproveitado, e o que está fora da tela não é desenhado
+#id 2026-10-24-f
+#titulo Vilarejo em cubos (estilo Minecraft/Hytale)
+- Visual todo em cubos: casas, árvores, pedras, poço, barracas e postes montados com blocos 3D
+- Vilarejo novo e maior: igreja com torre, taverna de 2 andares, ferraria com forja, celeiro e casas de estilos diferentes (reboco, pedra, madeira e mansão)
+- Praça bonita: fonte com jatos de água, canteiros de flores, bancos, barracas de feira e piso de pedra em xadrez com anel azul
+- Texturas em pixels 8x8 estilo Minecraft: grama com flores e cogumelos, terra, areia, pedra, tábuas e água com espuma
+- Árvores variadas: carvalho, pinheiro, bétula, cerejeira rosa e outono
+- Mais leve: tudo é desenhado uma vez e reaproveitado

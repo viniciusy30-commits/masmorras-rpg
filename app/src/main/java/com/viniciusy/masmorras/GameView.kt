@@ -384,7 +384,7 @@ class GameView @JvmOverloads constructor(
         drawList.sortBy { it.y }
         var i = 0
         val startRow = (camY / map.tileSize).toInt().coerceAtLeast(0)
-        val endRow = (((camY + h) / map.tileSize).toInt() + 5).coerceAtMost(map.height - 1)
+        val endRow = (((camY + h) / map.tileSize).toInt() + 9).coerceAtMost(map.height - 1)
         for (ty in startRow..endRow) {
             map.drawRow(canvas, paint, ty, camX, camY, w)
             while (i < drawList.size && feetRow(drawList[i]) <= ty) {

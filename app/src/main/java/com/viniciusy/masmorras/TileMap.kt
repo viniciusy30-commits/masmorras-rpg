@@ -30,9 +30,12 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         private const val MAX_CHUNKS = 64
     }
 
-    private class Obj(val kind: Int, val tx: Int, val ty: Int, val w: Int, val h: Int, val v: Int)
+    private class Obj(val kind: Int, val tx: Int, val ty: Int, val w: Int, val h: Int, val v: Int) {
+        var spr: VoxelSprites.Spr? = null
+    }
 
-    // kinds: 0 árvore, 1 pedra, 2 casa, 3 poço, 4 barraca, 5 poste, 6 pilar, 8 taverna, 9 celeiro, 10 ferraria
+    // kinds: 0 árvore, 1 pedra, 2 casa, 3 poço, 4 barraca, 5 poste, 6 pilar, 8 taverna, 9 celeiro, 10 ferraria,
+    // 11 igreja, 12 fonte, 13 banco, 14 canteiro
     private val objs = ArrayList<Obj>()
     private val rowObjs = Array(height) { ArrayList<Obj>() }
 
@@ -193,39 +196,52 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
     }
 
     private fun buildVillage() {
-        // casas (x, y, w, h, kind)
+        // (x, y, w, h, tipo) - portas viradas para o sul
         val houses = listOf(
-            intArrayOf(34, 28, 4, 3, 2), intArrayOf(39, 22, 4, 3, 2), intArrayOf(53, 24, 4, 3, 10),
-            intArrayOf(58, 29, 4, 3, 2), intArrayOf(64, 28, 4, 3, 2), intArrayOf(27, 29, 5, 4, 9),
-            intArrayOf(57, 38, 6, 4, 8), intArrayOf(64, 40, 4, 3, 2),
-            intArrayOf(35, 44, 4, 3, 2), intArrayOf(41, 44, 4, 3, 2), intArrayOf(52, 44, 4, 3, 2),
-            intArrayOf(64, 44, 4, 3, 2)
+            intArrayOf(39, 19, 5, 4, 11),   // igreja
+            intArrayOf(33, 27, 5, 4, 2),
+            intArrayOf(24, 29, 5, 4, 9),    // celeiro
+            intArrayOf(54, 22, 5, 4, 10),   // ferraria
+            intArrayOf(60, 28, 5, 4, 2),
+            intArrayOf(66, 28, 5, 4, 2),
+            intArrayOf(58, 38, 7, 5, 8),    // taverna
+            intArrayOf(34, 43, 5, 4, 2),
+            intArrayOf(40, 43, 5, 4, 2),
+            intArrayOf(53, 43, 5, 4, 2),
+            intArrayOf(65, 43, 5, 4, 2)
         )
         for (h in houses) {
             if (!canPlace(h[0], h[1], h[2], h[3], 0)) continue
             addObj(h[4], h[0], h[1], h[2], h[3])
             doorPath(h[0] + h[2] / 2, h[1] + h[3])
         }
-        // poço, barracas, postes
-        addObj(3, 48, 36)
-        for (s in listOf(intArrayOf(43, 32), intArrayOf(53, 32), intArrayOf(43, 40), intArrayOf(53, 40))) {
-            addObj(4, s[0], s[1], 2, 1)
+        // praça: fonte central, poço, barracas, bancos, canteiros, postes
+        addObj(12, 47, 35, 3, 3)
+        addObj(3, 37, 32)
+        for (st in listOf(intArrayOf(43, 32), intArrayOf(53, 32), intArrayOf(43, 40), intArrayOf(53, 40))) {
+            addObj(4, st[0], st[1], 2, 1)
+        }
+        for (bn in listOf(intArrayOf(45, 33), intArrayOf(51, 33), intArrayOf(45, 39), intArrayOf(51, 39))) {
+            addObj(13, bn[0], bn[1], 2, 1)
+        }
+        for (fb in listOf(intArrayOf(44, 30), intArrayOf(52, 30), intArrayOf(44, 42), intArrayOf(52, 42))) {
+            if (tiles[fb[1]][fb[0]] == 0) addObj(14, fb[0], fb[1], 2, 1)
         }
         for (l in listOf(
             intArrayOf(46, 34), intArrayOf(50, 34), intArrayOf(46, 38), intArrayOf(50, 38),
-            intArrayOf(38, 34), intArrayOf(58, 34), intArrayOf(40, 49), intArrayOf(46, 49),
+            intArrayOf(39, 34), intArrayOf(57, 34), intArrayOf(40, 49), intArrayOf(46, 49),
             intArrayOf(52, 49), intArrayOf(58, 49)
         )) {
             if (tiles[l[1]][l[0]] == 0) addObj(5, l[0], l[1])
         }
-        // caixotes e barris perto das casas
+        // caixotes e barris perto das construções
         for (o in objs.toList()) {
             if (o.kind != 2 && o.kind != 8 && o.kind != 9 && o.kind != 10) continue
-            val fy = o.ty + o.h - 1
+            val by = o.ty + o.h - 1
             for (px in intArrayOf(o.tx - 1, o.tx + o.w)) {
-                if (inB(px, fy) && tiles[fy][px] == 0 && ground[fy][px] != 1 && ground[fy][px] != 2 &&
-                    hash(px, fy, 9) % 100 < 60
-                ) tiles[fy][px] = 6
+                if (inB(px, by) && tiles[by][px] == 0 && ground[by][px] != 1 && ground[by][px] != 2 &&
+                    hash(px, by, 9) % 100 < 60
+                ) tiles[by][px] = 6
             }
         }
     }
@@ -336,6 +352,10 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         for (cy in ccy - 2..ccy + 2) for (cx in ccx - 2..ccx + 2) {
             if (cx in 0 until cw && cy in 0 until chh) getChunk(cx, cy, true)
         }
+        for (k in 0..6) treeSprite(k)
+        for (o in objs) {
+            if (abs((o.tx + o.w / 2f) * tileSize - wx) < 1500f && abs((o.ty + o.h) * tileSize - wy) < 1800f) sprite(o)
+        }
     }
 
     private fun getChunk(cx: Int, cy: Int, bake: Boolean): Bitmap? {
@@ -374,7 +394,7 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         val c1x = ((camX + viewW) / cpx).toInt().coerceAtMost(cw - 1)
         val c0y = (camY / cpx).toInt().coerceAtLeast(0)
         val c1y = ((camY + viewH) / cpx).toInt().coerceAtMost(chh - 1)
-        var budget = 2
+        var budget = 1
         for (cy in c0y..c1y) for (cx in c0x..c1x) {
             val had = chunks[cy * cw + cx] != null
             val b = getChunk(cx, cy, budget > 0)
@@ -420,237 +440,183 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
     }
 
-    // ───────────────────────── BAKE DE TEXTURAS ─────────────────────────
+    // ───────────── TEXTURAS EM TEXELS 8x8 (estilo Minecraft) ─────────────
 
-    private fun groundBase(g: Int): Int = when (g) {
-        0 -> col(0xFF4F9444)
-        1 -> col(0xFF8A6A44)
-        2 -> col(0xFF8E8A86)
-        3 -> col(0xFFD8C489)
-        4 -> col(0xFF35703A)
-        else -> col(0xFF8A5A2B)
-    }
+    private val GRASS = intArrayOf(
+        col(0xFF5AA547), col(0xFF5AA547), col(0xFF519B41), col(0xFF519B41), col(0xFF4A9239), col(0xFF67B24F), col(0xFF58A245)
+    )
+    private val DGRASS = intArrayOf(col(0xFF3F8040), col(0xFF3F8040), col(0xFF387438), col(0xFF438944), col(0xFF336B35))
+    private val DIRT = intArrayOf(
+        col(0xFF9A7B4F), col(0xFF9A7B4F), col(0xFF8F7048), col(0xFF8F7048), col(0xFFA6875A), col(0xFF7E6340), col(0xFF6E5638)
+    )
+    private val SAND = intArrayOf(col(0xFFE0CC8E), col(0xFFE0CC8E), col(0xFFD8C384), col(0xFFE8D69C), col(0xFFCFB979))
+    private val FOREST = intArrayOf(col(0xFF14281A), col(0xFF1A3322), col(0xFF0F2014))
+    private val WATER_S = intArrayOf(col(0xFF3C95B5), col(0xFF3A90B0), col(0xFF4AA3C2), col(0xFF3C95B5))
+    private val WATER_D = intArrayOf(col(0xFF1E6A93), col(0xFF1B6490), col(0xFF24739C))
+    private val DIRS = arrayOf(intArrayOf(-1, 0), intArrayOf(1, 0), intArrayOf(0, -1), intArrayOf(0, 1))
 
-    private fun groundColor(g: Int, tx: Int, ty: Int): Int {
-        val f = 0.93f + 0.07f * noise(tx.toFloat(), ty.toFloat()) + (hash(tx, ty, 1) % 100) / 100f * 0.08f
-        return VoxelArt.shade(groundBase(g), f)
+    private fun soft(g: Int) = g == 0 || g == 1 || g == 3 || g == 4
+
+    private fun palFor(g: Int): IntArray = when (g) {
+        1 -> DIRT
+        3 -> SAND
+        4 -> DGRASS
+        else -> GRASS
     }
 
     private fun bakeTile(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float) {
-        val ts = tileSize
         val t = tiles[ty][tx]
         bp.style = Paint.Style.FILL
-        if (t == 1) {
-            bp.color = col(0xFF14281A)
-            c.drawRect(lx, ly, lx + ts, ly + ts, bp)
-            for (k in 0..3) {
-                val r1 = rnd(tx, ty, 10 + k) * 54f
-                val r2 = rnd(tx, ty, 20 + k) * 54f
-                bp.color = if (k % 2 == 0) col(0xFF1C3A24) else col(0xFF0E1C12)
-                c.drawRect(lx + r1, ly + r2, lx + r1 + 9f, ly + r2 + 7f, bp)
-            }
-            return
-        }
-        if (t == 2 || t == 8) {
-            bakeWater(c, bp, tx, ty, lx, ly, t)
-            return
-        }
         val g = ground[ty][tx]
-        val base = groundColor(g, tx, ty)
-        bp.color = base
-        c.drawRect(lx, ly, lx + ts, ly + ts, bp)
-        when (g) {
-            0, 4 -> bakeGrass(c, bp, tx, ty, lx, ly, base, g == 4)
-            1 -> bakeDirt(c, bp, tx, ty, lx, ly, base)
-            2 -> bakeCobble(c, bp, tx, ty, lx, ly)
-            3 -> bakeSand(c, bp, tx, ty, lx, ly, base)
-            else -> bakePlanks(c, bp, tx, ty, lx, ly)
-        }
-        bakeEdges(c, bp, tx, ty, lx, ly, g)
-    }
-
-    private fun bakeGrass(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, base: Int, dark: Boolean) {
-        if (hash(tx, ty, 2) % 5 == 0) {
-            bp.color = 0x16000000
-            c.drawOval(lx + rnd(tx, ty, 3) * 20f, ly + rnd(tx, ty, 4) * 20f, lx + 44f, ly + 40f, bp)
-        }
-        for (k in 0 until 7) {
-            val x = lx + rnd(tx, ty, 30 + k) * (tileSize - 6f)
-            val y = ly + rnd(tx, ty, 40 + k) * (tileSize - 10f)
-            bp.color = VoxelArt.shade(base, if (k % 2 == 0) 1.22f else 0.76f)
-            c.drawRect(x, y, x + 2.2f, y + 5f + rnd(tx, ty, 50 + k) * 4f, bp)
-            if (k % 3 == 0) c.drawRect(x + 3f, y + 2f, x + 5.2f, y + 8f, bp)
-        }
-        if (!dark && hash(tx, ty, 3) % 9 == 0) {
-            val cols = intArrayOf(col(0xFFF5F5F5), col(0xFFFFE066), col(0xFFFF8FB1), col(0xFF9FC5FF))
-            val fc = cols[hash(tx, ty, 4) % 4]
-            val fx = lx + 10f + rnd(tx, ty, 6) * 36f
-            val fy = ly + 10f + rnd(tx, ty, 7) * 36f
-            for (k in 0..2) {
-                val ox = fx + (k - 1) * 7f
-                val oy = fy + (k % 2) * 6f
-                bp.color = fc
-                c.drawRect(ox, oy, ox + 3.5f, oy + 3.5f, bp)
-                bp.color = col(0xFFFFD54F)
-                c.drawRect(ox + 1f, oy + 1f, ox + 2.5f, oy + 2.5f, bp)
-            }
-        } else if (dark && hash(tx, ty, 8) % 23 == 0) {
-            val mx = lx + 16f + rnd(tx, ty, 9) * 28f
-            val my = ly + 20f
-            bp.color = col(0xFFE9E0D0)
-            c.drawRect(mx, my + 3f, mx + 3f, my + 9f, bp)
-            bp.color = col(0xFFD6453A)
-            c.drawRect(mx - 3f, my - 1f, mx + 6f, my + 4f, bp)
-        }
-    }
-
-    private fun bakeDirt(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, base: Int) {
-        if (hash(tx, ty, 2) % 3 == 0) {
-            bp.color = 0x1E000000
-            c.drawOval(lx + 4f, ly + 8f + rnd(tx, ty, 3) * 20f, lx + 60f, ly + 24f + rnd(tx, ty, 3) * 20f, bp)
-        }
-        for (k in 0 until 6) {
-            val x = lx + rnd(tx, ty, 30 + k) * 56f
-            val y = ly + rnd(tx, ty, 40 + k) * 56f
-            val s = 2.5f + rnd(tx, ty, 50 + k) * 3f
-            bp.color = VoxelArt.shade(base, if (k % 2 == 0) 1.25f else 0.72f)
-            c.drawRect(x, y, x + s, y + s * 0.8f, bp)
-        }
-    }
-
-    private fun bakeSand(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, base: Int) {
-        bp.color = 0x30FFFFFF
-        for (k in 0..1) {
-            val y = ly + 12f + k * 26f + rnd(tx, ty, 60 + k) * 8f
-            c.drawRect(lx + 6f, y, lx + 30f + rnd(tx, ty, 62 + k) * 24f, y + 2f, bp)
-        }
+        val water = t == 2 || t == 8
+        val nbG = IntArray(4) { -1 }
+        val forest = BooleanArray(4)
+        val wat = BooleanArray(4)
         for (k in 0..3) {
-            val x = lx + rnd(tx, ty, 30 + k) * 58f
-            val y = ly + rnd(tx, ty, 40 + k) * 58f
-            bp.color = VoxelArt.shade(base, 0.8f)
-            c.drawRect(x, y, x + 2f, y + 2f, bp)
-        }
-    }
-
-    private fun bakeCobble(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float) {
-        bp.color = col(0xFF55514E)
-        c.drawRect(lx, ly, lx + tileSize, ly + tileSize, bp)
-        for (r in 0..1) {
-            val off = if (r == 0) 0f else 16f
-            for (k in 0..2) {
-                val sx = k * 32f - off
-                val l = maxOf(sx, 0f) + 1.5f
-                val rgt = minOf(sx + 32f, tileSize) - 1.5f
-                if (rgt - l < 4f) continue
-                val f = 0.88f + (hash(tx * 3 + k, ty * 2 + r, 70) % 100) / 100f * 0.26f
-                bp.color = VoxelArt.shade(col(0xFF98938E), f)
-                c.drawRect(lx + l, ly + r * 32f + 1.5f, lx + rgt, ly + r * 32f + 30.5f, bp)
-                bp.color = 0x30FFFFFF
-                c.drawRect(lx + l, ly + r * 32f + 1.5f, lx + rgt, ly + r * 32f + 4f, bp)
-                bp.color = 0x28000000
-                c.drawRect(lx + l, ly + r * 32f + 27f, lx + rgt, ly + r * 32f + 30.5f, bp)
-            }
-        }
-        if (hash(tx, ty, 71) % 14 == 0) {
-            bp.color = 0x553F7D3A
-            c.drawRect(lx + 12f, ly + 30f, lx + 30f, ly + 34f, bp)
-        }
-    }
-
-    private fun bakePlanks(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float) {
-        for (k in 0..3) {
-            val f = 0.85f + (hash(tx * 4 + k, ty, 80) % 100) / 100f * 0.3f
-            bp.color = VoxelArt.shade(col(0xFF8A5A2B), f)
-            c.drawRect(lx + k * 16f, ly, lx + k * 16f + 14.5f, ly + tileSize, bp)
-            bp.color = 0x33000000
-            c.drawRect(lx + k * 16f + 14.5f, ly, lx + k * 16f + 16f, ly + tileSize, bp)
-            bp.color = col(0xFF3B2412)
-            c.drawRect(lx + k * 16f + 6f, ly + 6f, lx + k * 16f + 8.5f, ly + 8.5f, bp)
-            c.drawRect(lx + k * 16f + 6f, ly + 55f, lx + k * 16f + 8.5f, ly + 57.5f, bp)
-        }
-        // corrimões nas bordas norte/sul da ponte
-        if (ty > 0 && ground[ty - 1][tx] != 5) {
-            bp.color = col(0xFF4A2F18)
-            c.drawRect(lx, ly, lx + tileSize, ly + 7f, bp)
-            bp.color = col(0xFF6D4524)
-            c.drawRect(lx, ly, lx + tileSize, ly + 3f, bp)
-        }
-        if (ty + 1 < height && ground[ty + 1][tx] != 5) {
-            bp.color = col(0xFF4A2F18)
-            c.drawRect(lx, ly + tileSize - 8f, lx + tileSize, ly + tileSize, bp)
-            bp.color = col(0xFF6D4524)
-            c.drawRect(lx, ly + tileSize - 8f, lx + tileSize, ly + tileSize - 5f, bp)
-        }
-    }
-
-    private fun bakeWater(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, t: Int) {
-        val ts = tileSize
-        bp.color = if (t == 2) col(0xFF3C95B5) else col(0xFF1E6A93)
-        c.drawRect(lx, ly, lx + ts, ly + ts, bp)
-        val f = 0.94f + (hash(tx, ty, 1) % 100) / 100f * 0.1f
-        bp.color = if (t == 2) VoxelArt.alpha(VoxelArt.shade(col(0xFF3C95B5), f), 0.5f) else 0x22000000
-        c.drawRect(lx + 6f, ly + 10f, lx + 40f, ly + 30f, bp)
-        // espuma / transição onde encosta em terra
-        val dirs = arrayOf(intArrayOf(-1, 0), intArrayOf(1, 0), intArrayOf(0, -1), intArrayOf(0, 1))
-        for (d in dirs) {
-            val nx = tx + d[0]
-            val ny = ty + d[1]
+            val nx = tx + DIRS[k][0]
+            val ny = ty + DIRS[k][1]
             if (!inB(nx, ny)) continue
             val nt = tiles[ny][nx]
-            if (nt == 2 || nt == 8) {
-                if (t == 2 && nt == 8) {
-                    bp.color = 0x331E6A93
-                    strip(c, bp, lx, ly, d[0], d[1], 14f)
-                }
-                continue
-            }
-            bp.color = 0x99FFFFFF.toInt()
-            strip(c, bp, lx, ly, d[0], d[1], 3.5f)
-            bp.color = 0x44FFFFFF
-            strip(c, bp, lx, ly, d[0], d[1], 8f)
-        }
-    }
-
-    private fun strip(c: Canvas, bp: Paint, lx: Float, ly: Float, dx: Int, dy: Int, w: Float) {
-        val ts = tileSize
-        when {
-            dx < 0 -> c.drawRect(lx, ly, lx + w, ly + ts, bp)
-            dx > 0 -> c.drawRect(lx + ts - w, ly, lx + ts, ly + ts, bp)
-            dy < 0 -> c.drawRect(lx, ly, lx + ts, ly + w, bp)
-            else -> c.drawRect(lx, ly + ts - w, lx + ts, ly + ts, bp)
-        }
-    }
-
-    /** Mistura suave entre tipos de chão vizinhos + sombra de árvores da floresta. */
-    private fun bakeEdges(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, g: Int) {
-        val dirs = arrayOf(intArrayOf(-1, 0), intArrayOf(1, 0), intArrayOf(0, -1), intArrayOf(0, 1))
-        val soft = g == 0 || g == 1 || g == 3 || g == 4
-        for (d in dirs) {
-            val nx = tx + d[0]
-            val ny = ty + d[1]
-            if (!inB(nx, ny)) continue
-            val nt = tiles[ny][nx]
-            if (nt == 1 && (g == 0 || g == 4)) {
-                bp.color = 0x30000000
-                strip(c, bp, lx, ly, d[0], d[1], 18f)
-                bp.color = 0x28000000
-                strip(c, bp, lx, ly, d[0], d[1], 9f)
-                continue
-            }
-            if (!soft || nt == 2 || nt == 8) continue
+            forest[k] = nt == 1
+            wat[k] = nt == 2 || nt == 8
             val ng = ground[ny][nx]
-            if (ng == g || ng == 2 || ng == 5) continue
-            val nc = groundColor(ng, nx, ny) and 0x00FFFFFF
-            bp.color = nc or 0x28000000
-            strip(c, bp, lx, ly, d[0], d[1], 14f)
-            bp.color = nc or 0x40000000
-            strip(c, bp, lx, ly, d[0], d[1], 8f)
-            bp.color = nc or 0x60000000
-            strip(c, bp, lx, ly, d[0], d[1], 3f)
+            if (!water && soft(g) && nt != 1 && nt != 2 && nt != 8 && soft(ng) && ng != g) nbG[k] = ng
+        }
+        val plaza = hypot(tx + 0.5f - vcx, ty + 0.5f - vcy)
+        val tf = 0.96f + 0.06f * noise(tx.toFloat(), ty.toFloat())
+        for (j in 0..7) for (i in 0..7) {
+            val hv = hash(tx * 8 + i, ty * 8 + j, 90)
+            val k = (hv shr 9) % 100
+            var color: Int
+            if (t == 1) {
+                color = FOREST[hv % FOREST.size]
+            } else if (water) {
+                val foam = (i == 0 && !wat[0]) || (i == 7 && !wat[1]) || (j == 0 && !wat[2]) || (j == 7 && !wat[3])
+                val pal = if (t == 2) WATER_S else WATER_D
+                color = if (foam && hv % 100 < 78) col(0xFFDDF2F7) else pal[hv % pal.size]
+            } else {
+                var gt = g
+                if (i == 0 && nbG[0] >= 0 && k < 45) gt = nbG[0]
+                else if (i == 7 && nbG[1] >= 0 && k < 45) gt = nbG[1]
+                else if (j == 0 && nbG[2] >= 0 && k < 45) gt = nbG[2]
+                else if (j == 7 && nbG[3] >= 0 && k < 45) gt = nbG[3]
+                color = when (gt) {
+                    2 -> cobbleTexel(tx, ty, i, j, hv, plaza)
+                    5 -> plankTexel(tx, ty, i, j, hv)
+                    else -> { val pl = palFor(gt); VoxelArt.shade(pl[hv % pl.size], tf) }
+                }
+                if (soft(g)) {
+                    var f = 1f
+                    if (forest[0]) f = minOf(f, if (i == 0) 0.74f else if (i == 1) 0.87f else 1f)
+                    if (forest[1]) f = minOf(f, if (i == 7) 0.74f else if (i == 6) 0.87f else 1f)
+                    if (forest[2]) f = minOf(f, if (j == 0) 0.74f else if (j == 1) 0.87f else 1f)
+                    if (forest[3]) f = minOf(f, if (j == 7) 0.74f else if (j == 6) 0.87f else 1f)
+                    if (f < 1f) color = VoxelArt.shade(color, f)
+                }
+            }
+            bp.color = color
+            c.drawRect(lx + i * 8f, ly + j * 8f, lx + i * 8f + 8f, ly + j * 8f + 8f, bp)
+        }
+        if (!water && t != 1 && (g == 0 || g == 4)) grassDecor(c, bp, tx, ty, lx, ly, g == 4)
+    }
+
+    private fun cobbleTexel(tx: Int, ty: Int, i: Int, j: Int, hv: Int, d: Float): Int {
+        val row = j / 4
+        val off = if (row % 2 == 0) 0 else 2
+        if (j % 4 == 0 || (i + off) % 4 == 0) return col(0xFF5A5652)
+        val sid = (i + off) / 4
+        val sf = 0.88f + (hash(tx * 3 + sid, ty * 5 + row, 77) % 100) / 100f * 0.26f
+        var base = col(0xFF93908B)
+        if (d < 4.4f) base = if ((tx + ty) % 2 == 0) col(0xFFBBA77F) else col(0xFF9A9690)
+        else if (d < 5.1f) base = col(0xFF5F7185)
+        val nf = 0.94f + (hv % 100) / 100f * 0.1f
+        return VoxelArt.shade(base, sf * nf)
+    }
+
+    private fun plankTexel(tx: Int, ty: Int, i: Int, j: Int, hv: Int): Int {
+        if (ty > 0 && ground[ty - 1][tx] != 5 && j <= 1) return if (j == 0) col(0xFF6D4524) else col(0xFF4A2F18)
+        if (ty + 1 < height && ground[ty + 1][tx] != 5 && j >= 6) return if (j == 6) col(0xFF6D4524) else col(0xFF4A2F18)
+        if (i % 4 == 3) return col(0xFF4A2F18)
+        if (i % 4 == 1 && (j == 2 || j == 5)) return col(0xFF2E1D0E)
+        val f = 0.88f + (hv % 100) / 100f * 0.24f
+        return VoxelArt.shade(col(0xFF8A5A2B), f)
+    }
+
+    private fun grassDecor(c: Canvas, bp: Paint, tx: Int, ty: Int, lx: Float, ly: Float, dark: Boolean) {
+        val h = hash(tx, ty, 3)
+        if (h % 4 == 0) {
+            val ti = 1 + hash(tx, ty, 4) % 5
+            val tj = 2 + hash(tx, ty, 5) % 4
+            bp.color = if (dark) col(0xFF2A6A2E) else col(0xFF3C8A34)
+            c.drawRect(lx + ti * 8f, ly + tj * 8f, lx + ti * 8f + 8f, ly + tj * 8f + 8f, bp)
+            bp.color = if (dark) col(0xFF4E9A4C) else col(0xFF7BCB62)
+            c.drawRect(lx + ti * 8f + 2f, ly + (tj - 1) * 8f, lx + ti * 8f + 6f, ly + tj * 8f, bp)
+        }
+        if (!dark && h % 7 == 1) {
+            val ti = 1 + hash(tx, ty, 6) % 5
+            val tj = 1 + hash(tx, ty, 7) % 5
+            val fc = intArrayOf(col(0xFFF5F5F5), col(0xFFFFE066), col(0xFFFF8FB1), col(0xFF9FC5FF), col(0xFFE53935))
+            bp.color = col(0xFF2F7A2F)
+            c.drawRect(lx + ti * 8f + 3f, ly + (tj + 1) * 8f, lx + ti * 8f + 5f, ly + (tj + 2) * 8f, bp)
+            bp.color = fc[hash(tx, ty, 8) % 5]
+            c.drawRect(lx + ti * 8f + 1f, ly + tj * 8f + 1f, lx + ti * 8f + 7f, ly + tj * 8f + 7f, bp)
+            bp.color = col(0xFFFFD54F)
+            c.drawRect(lx + ti * 8f + 3f, ly + tj * 8f + 3f, lx + ti * 8f + 5f, ly + tj * 8f + 5f, bp)
+        } else if (dark && h % 19 == 1) {
+            val ti = 1 + hash(tx, ty, 6) % 5
+            val tj = 2 + hash(tx, ty, 7) % 4
+            bp.color = col(0xFFE9E0D0)
+            c.drawRect(lx + ti * 8f + 2f, ly + tj * 8f + 3f, lx + ti * 8f + 6f, ly + tj * 8f + 8f, bp)
+            bp.color = col(0xFFD6453A)
+            c.drawRect(lx + ti * 8f - 1f, ly + tj * 8f - 2f, lx + ti * 8f + 9f, ly + tj * 8f + 3f, bp)
+            bp.color = col(0xFFFFFFFF)
+            c.drawRect(lx + ti * 8f + 1f, ly + tj * 8f - 1f, lx + ti * 8f + 3f, ly + tj * 8f + 1f, bp)
         }
     }
 
-    // ───────────────────────── OBJETOS (ordenados por linha) ─────────────────────────
+    // ───────────── OBJETOS (sprites em cubos, ordenados por linha) ─────────────
+
+    private val treeSprites = arrayOfNulls<VoxelSprites.Spr>(7)
+    private val miscSprites = HashMap<Int, VoxelSprites.Spr>()
+
+    private fun treeSprite(v: Int): VoxelSprites.Spr =
+        treeSprites[v] ?: VoxelSprites.tree(v).also { treeSprites[v] = it }
+
+    private fun treeVariant(v: Int, g: Int): Int {
+        val r = v % 100
+        return if (g == 4) {
+            if (r < 55) 2 else if (r < 70) 3 else if (r < 82) 0 else if (r < 92) 4 else 6
+        } else {
+            if (r < 35) 0 else if (r < 50) 1 else if (r < 62) 4 else if (r < 72) 5 else if (r < 86) 2 else if (r < 92) 6 else 3
+        }
+    }
+
+    private fun misc(key: Int, make: () -> VoxelSprites.Spr): VoxelSprites.Spr =
+        miscSprites[key] ?: make().also { miscSprites[key] = it }
+
+    private fun sprite(o: Obj): VoxelSprites.Spr {
+        o.spr?.let { return it }
+        val s = when (o.kind) {
+            0 -> treeSprite(treeVariant(o.v, ground[o.ty][o.tx]))
+            1 -> misc(100 + o.v % 4) { VoxelSprites.rock(o.v % 4) }
+            3 -> misc(300) { VoxelSprites.well() }
+            4 -> misc(400 + o.v % 3) { VoxelSprites.stall(o.v % 3) }
+            5 -> misc(500) { VoxelSprites.lamp() }
+            6 -> misc(600 + o.v % 2) { VoxelSprites.pillar(o.v % 2) }
+            12 -> misc(1200) { VoxelSprites.fountain() }
+            13 -> misc(1300) { VoxelSprites.bench() }
+            14 -> misc(1400 + o.v % 3) { VoxelSprites.flowerbed(o.v % 3) }
+            else -> VoxelSprites.house(o.kind, o.v % 4, o.w, o.h, o.v)
+        }
+        o.spr = s
+        return s
+    }
+
+    private fun blit(canvas: Canvas, s: VoxelSprites.Spr, cx: Float, baseY: Float) {
+        canvas.drawBitmap(
+            s.bmp, Math.round(cx - s.padL).toFloat(), Math.round(baseY - (s.bmp.height - s.padB)).toFloat(), bmpPaint
+        )
+    }
 
     fun drawRow(canvas: Canvas, paint: Paint, ty: Int, camX: Float, camY: Float, viewW: Float) {
         if (ty < 0 || ty >= height) return
@@ -662,9 +628,10 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
             if (t == 1) {
                 if (treeEdge[ty][tx]) {
                     val v = hash(tx, ty, 12)
-                    val s = 0.95f + (v % 30) / 100f
+                    if (v % 3 == 0) continue
                     val off = ((v shr 5) % 20 - 10).toFloat()
-                    drawTree(canvas, paint, tx * ts - camX + ts / 2f + off, (ty + 1) * ts - camY - 4f, s, v)
+                    val variant = if (v % 10 < 6) 2 + (v / 16) % 2 else if (v % 10 < 8) 0 else if (v % 10 < 9) 4 else 6
+                    blit(canvas, treeSprite(variant), tx * ts - camX + ts / 2f + off, (ty + 1) * ts - camY - 4f)
                 }
             } else if (t == 6) {
                 drawProp(canvas, paint, tx, ty, tx * ts - camX, ty * ts - camY)
@@ -673,357 +640,57 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         val list = rowObjs[ty]
         for (i in 0 until list.size) {
             val o = list[i]
-            val l = o.tx * ts - camX - ts * 1.5f
-            val r = (o.tx + o.w) * ts - camX + ts * 1.5f
-            if (r < 0f || l > viewW) continue
-            when (o.kind) {
-                0 -> drawTree(canvas, paint, (o.tx + 0.5f) * ts - camX, (o.ty + 1) * ts - camY - 4f, 0.9f + (o.v % 25) / 100f, o.v)
-                1 -> drawRock(canvas, paint, o, camX, camY)
-                3 -> drawWell(canvas, paint, o, camX, camY)
-                4 -> drawStall(canvas, paint, o, camX, camY)
-                5 -> drawLamp(canvas, paint, o, camX, camY)
-                6 -> drawPillar(canvas, paint, o, camX, camY)
-                else -> drawHouse(canvas, paint, o, camX, camY)
+            val cx = (o.tx + o.w / 2f) * ts - camX
+            val m = o.w * ts + 240f
+            if (cx + m < 0f || cx - m > viewW) continue
+            val s = sprite(o)
+            val baseY = (o.ty + o.h) * ts - camY - 4f
+            blit(canvas, s, cx, baseY)
+            effects(canvas, paint, o, s, Math.round(cx - s.padL).toFloat(), Math.round(baseY - (s.bmp.height - s.padB)).toFloat())
+        }
+    }
+
+    /** Animações por cima do sprite: fumaça, brilho da forja, halo dos postes, jatos da fonte. */
+    private fun effects(c: Canvas, p: Paint, o: Obj, s: VoxelSprites.Spr, dx: Float, dy: Float) {
+        val t = VoxelArt.time
+        p.style = Paint.Style.FILL
+        when (o.kind) {
+            2, 8, 10 -> {
+                if (s.fx <= 0f) return
+                val x = dx + s.fx
+                val y = dy + s.fy
+                if (o.kind == 10) {
+                    val g = 0.7f + 0.3f * sin(t * 9f)
+                    p.color = VoxelArt.alpha(col(0xFFFF8A2B), 0.3f * g)
+                    c.drawCircle(x, y, 24f, p)
+                }
+                for (i in 0..2) {
+                    val tt = (t * 0.5f + i * 0.33f) % 1f
+                    p.color = VoxelArt.alpha(col(0xFFE6E6E6), 0.5f * (1f - tt))
+                    c.drawRect(x - 4f + tt * 16f + sin(tt * 6f + i) * 3f, y - tt * 50f, x + 4f + tt * 16f + sin(tt * 6f + i) * 3f + tt * 8f, y - tt * 50f + 8f + tt * 8f, p)
+                }
             }
-        }
-    }
-
-    private fun drawTree(c: Canvas, p: Paint, cx: Float, base: Float, s: Float, v: Int) {
-        p.style = Paint.Style.FILL
-        p.color = 0x40000000
-        c.drawOval(cx - 26f * s, base - 9f * s, cx + 30f * s, base + 9f * s, p)
-        val sway = sin(VoxelArt.time * 1.6f + (v % 97)) * 1.6f * s
-        p.color = col(0xFF5B3A1E)
-        c.drawRect(cx - 6f * s, base - 30f * s, cx + 6f * s, base, p)
-        p.color = col(0xFF7A5230)
-        c.drawRect(cx - 6f * s, base - 30f * s, cx - 1f * s, base, p)
-        p.color = col(0xFF3D2612)
-        c.drawRect(cx + 3f * s, base - 30f * s, cx + 6f * s, base, p)
-        if (v % 3 == 0) {
-            // pinheiro em camadas
-            val tones = intArrayOf(col(0xFF1B5230), col(0xFF256A3C), col(0xFF328048))
-            val ws = floatArrayOf(52f, 40f, 27f)
-            for (i in 0..2) {
-                val bot = base - 22f * s - i * 17f * s
-                val w = ws[i] * s / 2f
-                val ox = sway * (i * 0.6f)
-                p.color = tones[i]
-                c.drawRoundRect(cx - w + ox, bot - 22f * s, cx + w + ox, bot, 4f, 4f, p)
-                p.color = 0x30FFFFFF
-                c.drawRect(cx - w + ox + 2f, bot - 22f * s, cx + w + ox - 2f, bot - 18f * s, p)
-                p.color = 0x30000000
-                c.drawRect(cx + w * 0.45f + ox, bot - 20f * s, cx + w + ox, bot, p)
+            5 -> {
+                val fl = 1f + 0.05f * sin(t * 7f + o.tx)
+                p.color = 0x14FFD27A
+                c.drawCircle(dx + s.fx, dy + s.fy, 58f * fl, p)
+                p.color = 0x22FFD27A
+                c.drawCircle(dx + s.fx, dy + s.fy, 32f * fl, p)
             }
-            p.color = col(0xFF3C9A55)
-            c.drawRect(cx - 5f * s + sway * 1.6f, base - 96f * s, cx + 5f * s + sway * 1.6f, base - 82f * s, p)
-        } else {
-            val autumn = v % 11 == 0
-            val tones = if (autumn) intArrayOf(col(0xFFB5651D), col(0xFFD9822B), col(0xFFEDA23F))
-            else if (v % 2 == 0) intArrayOf(col(0xFF2C7A38), col(0xFF38913F), col(0xFF4DAA4B))
-            else intArrayOf(col(0xFF3B7A2E), col(0xFF4A9238), col(0xFF63AB46))
-            val boxes = arrayOf(
-                floatArrayOf(-31f, -66f, 31f, -24f),
-                floatArrayOf(-23f, -88f, 23f, -56f),
-                floatArrayOf(-15f, -104f, 15f, -80f)
-            )
-            for (i in 0..2) {
-                val b = boxes[i]
-                val ox = sway * (i + 1) * 0.5f
-                p.color = tones[0]
-                c.drawRoundRect(cx + b[0] * s + ox, base + b[1] * s, cx + b[2] * s + ox, base + b[3] * s, 9f * s, 9f * s, p)
-                p.color = tones[1]
-                c.drawRoundRect(cx + b[0] * s + ox, base + b[1] * s, cx + b[2] * s * 0.8f + ox, base + b[3] * s * 0.85f + b[1] * s * 0.15f, 9f * s, 9f * s, p)
-                p.color = tones[2]
-                c.drawRect(cx + b[0] * s * 0.7f + ox, base + b[1] * s + 4f, cx + b[0] * s * 0.7f + 12f * s + ox, base + b[1] * s + 9f, p)
+            12 -> {
+                val x = dx + s.fx
+                val y = dy + s.fy
+                for (i in 0..7) {
+                    val tt = (t * 0.8f + i / 8f) % 1f
+                    val a = i * 0.785f
+                    val px = x + cos(a) * tt * 34f
+                    val py = y - (1f - (2f * tt - 1f) * (2f * tt - 1f)) * 30f + tt * tt * 26f
+                    p.color = VoxelArt.alpha(col(0xFFBFE6F5), 0.85f * (1f - tt * 0.5f))
+                    c.drawRect(px - 2.5f, py - 2.5f, px + 2.5f, py + 2.5f, p)
+                }
+                p.color = VoxelArt.alpha(col(0xFFDFF4FB), 0.8f)
+                c.drawRect(x - 2.5f, y - 22f - 4f * sin(t * 6f), x + 2.5f, y + 4f, p)
             }
-        }
-    }
-
-    private fun drawRock(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val cx = (o.tx + 0.5f) * ts - camX
-        val base = (o.ty + 1) * ts - camY - 6f
-        p.style = Paint.Style.FILL
-        p.color = 0x44000000
-        c.drawOval(cx - 28f, base - 8f, cx + 28f, base + 8f, p)
-        p.color = col(0xFF7E7E86)
-        c.drawRoundRect(cx - 24f, base - 24f, cx + 22f, base, 9f, 9f, p)
-        p.color = col(0xFF9A9AA3)
-        c.drawRoundRect(cx - 12f, base - 38f, cx + 14f, base - 12f, 8f, 8f, p)
-        p.color = 0x30FFFFFF
-        c.drawRect(cx - 9f, base - 36f, cx + 9f, base - 31f, p)
-        p.color = 0x30000000
-        c.drawRect(cx + 10f, base - 30f, cx + 22f, base, p)
-        if (o.v % 3 == 0) {
-            p.color = 0xAA3F7D3A.toInt()
-            c.drawRect(cx - 22f, base - 26f, cx - 6f, base - 20f, p)
-        }
-    }
-
-    private fun drawPillar(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val cx = (o.tx + 0.5f) * ts - camX
-        val base = (o.ty + 1) * ts - camY - 4f
-        val tall = if (o.v % 2 == 0) 112f else 70f
-        p.style = Paint.Style.FILL
-        p.color = 0x44000000
-        c.drawOval(cx - 26f, base - 8f, cx + 30f, base + 8f, p)
-        p.color = col(0xFF8D877C)
-        c.drawRect(cx - 22f, base - 14f, cx + 22f, base, p)
-        p.color = col(0xFFB8B2A6)
-        c.drawRect(cx - 15f, base - tall, cx + 15f, base - 14f, p)
-        p.color = 0x30FFFFFF
-        c.drawRect(cx - 15f, base - tall, cx - 8f, base - 14f, p)
-        p.color = 0x35000000
-        c.drawRect(cx + 7f, base - tall, cx + 15f, base - 14f, p)
-        if (tall > 100f) {
-            p.color = col(0xFF9E988C)
-            c.drawRect(cx - 20f, base - tall - 10f, cx + 20f, base - tall, p)
-        } else {
-            p.color = col(0xFFB8B2A6)
-            c.drawRect(cx - 15f, base - tall - 6f, cx - 2f, base - tall, p)
-        }
-        p.color = 0x663F7D3A
-        c.drawRect(cx - 15f, base - 40f, cx - 4f, base - 24f, p)
-    }
-
-    private fun drawWell(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val cx = (o.tx + 0.5f) * ts - camX
-        val base = (o.ty + 1) * ts - camY - 6f
-        p.style = Paint.Style.FILL
-        p.color = 0x44000000
-        c.drawOval(cx - 36f, base - 10f, cx + 40f, base + 10f, p)
-        p.color = col(0xFF8A8580)
-        c.drawRect(cx - 27f, base - 26f, cx + 27f, base, p)
-        p.color = col(0xFF6F6A66)
-        for (k in 0..2) c.drawRect(cx - 27f + k * 18f, base - 26f, cx - 25.5f + k * 18f, base, p)
-        c.drawRect(cx - 27f, base - 13f, cx + 27f, base - 11.5f, p)
-        p.color = col(0xFFA5A09A)
-        c.drawRect(cx - 29f, base - 33f, cx + 29f, base - 24f, p)
-        p.color = col(0xFF1E5F86)
-        c.drawRect(cx - 21f, base - 31f, cx + 21f, base - 26f, p)
-        p.color = col(0xFF5B3A1E)
-        c.drawRect(cx - 25f, base - 66f, cx - 19f, base - 28f, p)
-        c.drawRect(cx + 19f, base - 66f, cx + 25f, base - 28f, p)
-        p.color = col(0xFF8E3B2A)
-        c.drawRect(cx - 34f, base - 78f, cx + 34f, base - 62f, p)
-        p.color = col(0xFFB04E39)
-        c.drawRect(cx - 22f, base - 88f, cx + 22f, base - 78f, p)
-        p.color = 0x30FFFFFF
-        c.drawRect(cx - 34f, base - 78f, cx + 34f, base - 75f, p)
-        p.color = col(0xFFD7C9A0)
-        c.drawRect(cx - 1f, base - 62f, cx + 1f, base - 40f, p)
-        p.color = col(0xFF6D4524)
-        c.drawRect(cx - 5f, base - 42f, cx + 5f, base - 34f, p)
-    }
-
-    private fun drawStall(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val left = o.tx * ts - camX
-        val right = (o.tx + o.w) * ts - camX
-        val base = (o.ty + 1) * ts - camY - 4f
-        p.style = Paint.Style.FILL
-        p.color = 0x40000000
-        c.drawRect(left + 6f, base - 6f, right + 8f, base + 8f, p)
-        p.color = col(0xFF5B3A1E)
-        c.drawRect(left + 4f, base - 88f, left + 10f, base, p)
-        c.drawRect(right - 10f, base - 88f, right - 4f, base, p)
-        p.color = col(0xFF8A5A2B)
-        c.drawRect(left + 6f, base - 30f, right - 6f, base, p)
-        p.color = col(0xFFA8743C)
-        c.drawRect(left + 6f, base - 34f, right - 6f, base - 28f, p)
-        // mercadorias
-        val gc = intArrayOf(col(0xFFD6453A), col(0xFF6FBF4A), col(0xFFF2C14E), col(0xFFE59B3C))
-        var x = left + 12f
-        var k = 0
-        while (x < right - 18f) {
-            p.color = gc[(o.v + k) % 4]
-            c.drawRect(x, base - 46f, x + 12f, base - 34f, p)
-            p.color = 0x30FFFFFF
-            c.drawRect(x, base - 46f, x + 12f, base - 43f, p)
-            x += 16f
-            k++
-        }
-        // toldo listrado
-        var sx = left
-        var i = 0
-        while (sx < right) {
-            p.color = if (i % 2 == 0) col(0xFFC63D32) else col(0xFFF1E9D8)
-            c.drawRect(sx, base - 100f, minOf(sx + 16f, right), base - 76f, p)
-            sx += 16f
-            i++
-        }
-        p.color = 0x30000000
-        c.drawRect(left, base - 80f, right, base - 76f, p)
-    }
-
-    private fun drawLamp(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val cx = (o.tx + 0.5f) * ts - camX
-        val base = (o.ty + 1) * ts - camY - 8f
-        p.style = Paint.Style.FILL
-        p.color = 0x40000000
-        c.drawOval(cx - 12f, base - 4f, cx + 14f, base + 5f, p)
-        p.color = col(0xFF2E2A26)
-        c.drawRect(cx - 3f, base - 70f, cx + 3f, base, p)
-        c.drawRect(cx - 7f, base - 6f, cx + 7f, base, p)
-        val fl = 1f + 0.05f * sin(VoxelArt.time * 7f + o.tx)
-        p.color = 0x14FFD27A
-        c.drawCircle(cx, base - 76f, 52f * fl, p)
-        p.color = 0x22FFD27A
-        c.drawCircle(cx, base - 76f, 30f * fl, p)
-        p.color = col(0xFF2E2A26)
-        c.drawRect(cx - 8f, base - 88f, cx + 8f, base - 68f, p)
-        p.color = col(0xFFFFD27A)
-        c.drawRect(cx - 5f, base - 85f, cx + 5f, base - 71f, p)
-        p.color = col(0xFFFFF1C2)
-        c.drawRect(cx - 2f, base - 82f, cx + 2f, base - 75f, p)
-    }
-
-    private fun drawHouse(c: Canvas, p: Paint, o: Obj, camX: Float, camY: Float) {
-        val ts = tileSize
-        val left = o.tx * ts - camX
-        val right = (o.tx + o.w) * ts - camX
-        val fy = (o.ty + o.h) * ts - camY - 2f
-        val w = right - left
-        val wallH = ts * 1.25f
-        val roofH = o.h * ts * 0.62f + 14f
-        val style = o.v % 3
-        val wallC = when {
-            o.kind == 9 -> col(0xFF9C6B3A)
-            o.kind == 10 -> col(0xFFBDB5A6)
-            style == 0 -> col(0xFFE8DCC0)
-            style == 1 -> col(0xFFD9C7A0)
-            else -> col(0xFFC9C0AE)
-        }
-        val roofC = when {
-            o.kind == 9 -> col(0xFF8E3B2A)
-            o.kind == 8 -> col(0xFF7A3B26)
-            o.kind == 10 -> col(0xFF4D5560)
-            style == 0 -> col(0xFFA8452F)
-            style == 1 -> col(0xFF4F6D8C)
-            else -> col(0xFFB8963F)
-        }
-        p.style = Paint.Style.FILL
-        // sombra no chão
-        p.color = 0x33000000
-        c.drawRect(left + 10f, fy - 4f, right + 24f, fy + 14f, p)
-        // parede
-        p.color = wallC
-        c.drawRect(left, fy - wallH, right, fy, p)
-        if (o.kind == 9) {
-            p.color = col(0xFF845A30)
-            var x = left + 10f
-            while (x < right) { c.drawRect(x, fy - wallH, x + 2f, fy, p); x += 14f }
-        }
-        // base de pedra
-        p.color = col(0xFF77706A)
-        c.drawRect(left, fy - 14f, right, fy, p)
-        p.color = 0x40000000
-        var jx = left + 16f
-        while (jx < right) { c.drawRect(jx, fy - 14f, jx + 1.5f, fy, p); jx += 16f }
-        // vigas
-        p.color = col(0xFF5A3A22)
-        c.drawRect(left, fy - wallH, left + 7f, fy, p)
-        c.drawRect(right - 7f, fy - wallH, right, fy, p)
-        c.drawRect(left, fy - wallH, right, fy - wallH + 7f, p)
-        c.drawRect(left, fy - 16f, right, fy - 12f, p)
-        p.color = 0x40000000
-        c.drawRect(left + 7f, fy - wallH + 7f, right - 7f, fy - wallH + 20f, p)
-        // porta
-        val dx = left + w / 2f
-        if (o.kind == 9) {
-            p.color = col(0xFF3B2412)
-            c.drawRect(dx - 30f, fy - 62f, dx + 30f, fy, p)
-            p.color = col(0xFF6B4423)
-            c.drawRect(dx - 27f, fy - 59f, dx - 1.5f, fy, p)
-            c.drawRect(dx + 1.5f, fy - 59f, dx + 27f, fy, p)
-            p.color = col(0xFF3B2412)
-            c.drawRect(dx - 27f, fy - 34f, dx + 27f, fy - 31f, p)
-        } else {
-            p.color = col(0xFF3B2412)
-            c.drawRect(dx - 17f, fy - 54f, dx + 17f, fy, p)
-            p.color = col(0xFF6B4423)
-            c.drawRect(dx - 14f, fy - 51f, dx + 14f, fy, p)
-            p.color = col(0xFF55351B)
-            c.drawRect(dx - 1f, fy - 51f, dx + 1f, fy, p)
-            p.color = col(0xFFE0B85C)
-            c.drawRect(dx + 6f, fy - 26f, dx + 10f, fy - 22f, p)
-            p.color = col(0xFFA39D95)
-            c.drawRect(dx - 22f, fy - 5f, dx + 22f, fy, p)
-        }
-        // janelas
-        if (o.kind != 9) {
-            val fr = if (w > ts * 5f) floatArrayOf(0.14f, 0.3f, 0.7f, 0.86f) else floatArrayOf(0.2f, 0.8f)
-            for (f in fr) {
-                val wx = left + w * f
-                val wy = fy - wallH * 0.62f
-                p.color = col(0xFF3B2412)
-                c.drawRect(wx - 15f, wy - 14f, wx + 15f, wy + 14f, p)
-                p.color = col(0xFFFFD27A)
-                c.drawRect(wx - 12f, wy - 11f, wx + 12f, wy + 11f, p)
-                p.color = 0x30FFFFFF
-                c.drawRect(wx - 12f, wy - 11f, wx + 12f, wy - 6f, p)
-                p.color = col(0xFF3B2412)
-                c.drawRect(wx - 1.2f, wy - 11f, wx + 1.2f, wy + 11f, p)
-                c.drawRect(wx - 12f, wy - 1.2f, wx + 12f, wy + 1.2f, p)
-                c.drawRect(wx - 18f, wy + 14f, wx + 18f, wy + 18f, p)
-            }
-        }
-        // telhado
-        val eave = fy - wallH + 6f
-        val top = eave - roofH
-        p.color = roofC
-        c.drawRect(left - 12f, top, right + 12f, eave, p)
-        val rows = (roofH / 14f).toInt().coerceAtLeast(2)
-        val rh = roofH / rows
-        for (r in 0 until rows) {
-            if (r % 2 == 1) {
-                p.color = 0x18000000
-                c.drawRect(left - 12f, top + r * rh, right + 12f, top + (r + 1) * rh, p)
-            }
-            p.color = 0x30000000
-            c.drawRect(left - 12f, top + (r + 1) * rh - 2f, right + 12f, top + (r + 1) * rh, p)
-        }
-        p.color = VoxelArt.shade(roofC, 1.3f)
-        c.drawRect(left - 12f, top, right + 12f, top + 8f, p)
-        p.color = 0x28000000
-        c.drawRect(right + 4f, top, right + 12f, eave, p)
-        // beiral
-        p.color = col(0xFF4A2F18)
-        c.drawRect(left - 12f, eave - 2f, right + 12f, eave + 5f, p)
-        // chaminé + fumaça
-        val chx = right - ts * 0.75f
-        p.color = col(0xFF6E625A)
-        c.drawRect(chx, top - 20f, chx + 20f, top + roofH * 0.45f, p)
-        p.color = col(0xFF8A7D73)
-        c.drawRect(chx - 3f, top - 26f, chx + 23f, top - 18f, p)
-        if (o.kind == 10) {
-            val g = 0.7f + 0.3f * sin(VoxelArt.time * 9f)
-            p.color = VoxelArt.alpha(col(0xFFFF8A2B), 0.35f * g)
-            c.drawCircle(chx + 10f, top - 30f, 22f, p)
-        }
-        for (i in 0..2) {
-            val tt = (VoxelArt.time * 0.5f + i * 0.33f) % 1f
-            p.color = VoxelArt.alpha(col(0xFFDDDDDD), 0.45f * (1f - tt))
-            c.drawCircle(chx + 10f + tt * 14f + sin(tt * 6f + i) * 3f, top - 30f - tt * 46f, 6f + tt * 8f, p)
-        }
-        // detalhes por tipo
-        if (o.kind == 8) {
-            // placa pendurada
-            p.color = col(0xFF3B2412)
-            c.drawRect(right - 10f, fy - wallH + 22f, right + 22f, fy - wallH + 26f, p)
-            p.color = col(0xFF8A5A2B)
-            c.drawRect(right + 4f, fy - wallH + 26f, right + 24f, fy - wallH + 48f, p)
-            p.color = col(0xFFF2C14E)
-            c.drawRect(right + 9f, fy - wallH + 32f, right + 19f, fy - wallH + 43f, p)
-        }
-        if (o.kind == 10) {
-            // bigorna
-            p.color = col(0xFF2B2F36)
-            c.drawRect(left - 26f, fy - 18f, left - 6f, fy - 10f, p)
-            c.drawRect(left - 21f, fy - 10f, left - 11f, fy, p)
         }
     }
 
