@@ -59,6 +59,8 @@ class Player(
 
     companion object {
         const val ROLL_TIME = 0.42f
+        const val LAND_TIME = 0.22f
+        const val GRAVITY = 1500f
     }
 
     var mp = classe.maxMp
@@ -78,6 +80,12 @@ class Player(
     var rollDY = 1f
     var lastRoll = 0L
     var landed = 0f
+    var landT = 0f          // tempo de "amortecimento" depois da queda
+    var hopX = 0f           // impulso para frente do pulo de escalada
+    var hopY = 0f
+    var airT = 0f           // tempo no ar
+    var lavaT = 0f
+    val trail = ArrayList<FloatArray>() // rastro do rolamento: x, y, alt, vida
 
     val rolling: Boolean get() = rollT > 0f
     val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
@@ -89,10 +97,14 @@ class Player(
         attackAnim = 1f
     }
 
-    fun jump(): Boolean {
+    fun jump(power: Float = 390f, hx: Float = 0f, hy: Float = 0f): Boolean {
         if (!alive || rolling || !grounded) return false
-        vz = 340f
+        vz = power
         alt = ground + 0.7f
+        hopX = hx
+        hopY = hy
+        airT = 0f
+        landT = 0f
         return true
     }
 
@@ -119,12 +131,18 @@ class Player(
     fun updateVertical(dt: Float, groundPx: Float) {
         ground = groundPx
         if (alt > groundPx + 0.01f || vz > 0f) {
-            vz -= 1500f * dt
+            vz -= GRAVITY * dt
             alt += vz * dt
+            airT += dt
             if (alt <= groundPx) {
-                if (vz < -140f) landed = (-vz) / 400f
+                if (vz < -140f) {
+                    landed = (-vz) / 400f
+                    landT = LAND_TIME
+                }
                 alt = groundPx
                 vz = 0f
+                hopX = 0f
+                hopY = 0f
             }
         } else {
             alt += (groundPx - alt) * min(1f, dt * 30f)
@@ -142,6 +160,24 @@ class Player(
         } else {
             vx = inX * classe.velocidade * 60f
             vy = inY * classe.velocidade * 60f
+            if (!grounded) {
+                // controle no ar: um pouco mais rápido + impulso de escalada
+                vx = vx * 1.12f + hopX
+                vy = vy * 1.12f + hopY
+                val k = (1f - dt * 1.6f).coerceAtLeast(0f)
+                hopX *= k
+                hopY *= k
+            }
+        }
+        if (landT > 0f) landT = (landT - dt).coerceAtLeast(0f)
+        if (lavaT > 0f) lavaT = (lavaT - dt).coerceAtLeast(0f)
+        // rastro do rolamento
+        if (rollT > 0f) trail.add(floatArrayOf(x, y, alt, 0.28f))
+        val it2 = trail.iterator()
+        while (it2.hasNext()) {
+            val g = it2.next()
+            g[3] -= dt
+            if (g[3] <= 0f) it2.remove()
         }
         x += vx * dt
         y += vy * dt
@@ -180,11 +216,47 @@ class Player(
         canvas.drawOval(sx - radius * 1.1f * k, gy - radius * 0.36f * k, sx + radius * 1.1f * k, gy + radius * 0.42f * k, paint)
         paint.style = Paint.Style.FILL
 
+        // rastro do rolamento (imagens residuais)
+        for (g in trail) {
+            val a = (g[3] / 0.28f).coerceIn(0f, 1f)
+            val gx = g[0] - camX
+            val gf = g[1] - camY + radius * 0.55f - g[2]
+            paint.style = Paint.Style.FILL
+            paint.color = VoxelArt.alpha(classe.cor, a * 0.30f)
+            canvas.drawCircle(gx, gf - 15f * s, radius * 0.72f * a + 4f, paint)
+            paint.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), a * 0.16f)
+            canvas.drawCircle(gx, gf - 15f * s, radius * 0.4f * a + 2f, paint)
+        }
+
         VoxelArt.flash = hitFlash
         Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Warrior3D.inAir = up > 1f
         Warrior3D.airVz = vz
+        Warrior3D.crouch = if (landT > 0f) landT / LAND_TIME else 0f
+
+        // Classes 2D: pulo com esticar/amassar e cambalhota girando o corpo todo
+        val twoD = classe != Classe.GUERREIRO
+        canvas.save()
+        if (twoD) {
+            val pivotY = feet - 20f * s
+            if (rollT > 0f) {
+                val u = 1f - rollT / ROLL_TIME
+                val e = u * u * (3f - 2f * u)
+                val dir = if (facingX >= 0f) 1f else -1f
+                canvas.translate(sx, pivotY - 6f * kotlin.math.sin(u * 3.1416f))
+                canvas.rotate(e * 360f * dir)
+                canvas.scale(1.08f, 0.82f)
+                canvas.translate(-sx, -pivotY)
+            } else if (up > 1f) {
+                val st = (vz / 450f).coerceIn(-1f, 1f)
+                canvas.scale(1f - 0.09f * st, 1f + 0.14f * st, sx, feet)
+            } else if (landT > 0f) {
+                val q = landT / LAND_TIME
+                canvas.scale(1f + 0.2f * q, 1f - 0.22f * q, sx, feet)
+            }
+        }
         Sprites.drawHero(canvas, paint, classe, sx, feet, s, walkPhase, moving, facingX, facingY, attackAnim)
+        canvas.restore()
         VoxelArt.flash = 0f
 
         if (!classe.isRanged) {
@@ -352,3 +424,42 @@ class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, var lif
 }
 
 class DmgText(var x: Float, var y: Float, val text: String, var life: Float, val color: Int)
+
+
+/** Poção de cura: fica em cima de torres, ilhas de lava e altares. Só dá pra pegar pulando até lá. */
+class Potion(x: Float, y: Float, val h: Float) : Entity(x, y, 12f, 1f, 1f) {
+    init {
+        alt = h
+        ground = h
+    }
+
+    override fun update(dt: Float) {}
+
+    override fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float) {
+        if (!alive) return
+        val sx = x - camX
+        val feet = y - camY + 8f - alt
+        val t = VoxelArt.time
+        val bob = sin(t * 3.2f + x * 0.05f) * 4f
+        paint.style = Paint.Style.FILL
+        paint.color = 0x33000000
+        canvas.drawOval(sx - 11f, feet - 3f, sx + 11f, feet + 5f, paint)
+        // brilho
+        paint.color = 0x22FF5252
+        canvas.drawCircle(sx, feet - 20f + bob, 26f + sin(t * 5f) * 3f, paint)
+        paint.color = 0x33FF8A80
+        canvas.drawCircle(sx, feet - 20f + bob, 17f, paint)
+        // frasco
+        val by = feet - 14f + bob
+        paint.color = 0xFFECEFF1.toInt()
+        canvas.drawRect(sx - 3f, by - 17f, sx + 3f, by - 9f, paint)
+        paint.color = 0xFF8D6E63.toInt()
+        canvas.drawRect(sx - 4f, by - 20f, sx + 4f, by - 16f, paint)
+        paint.color = 0xFFCFD8DC.toInt()
+        canvas.drawCircle(sx, by, 11f, paint)
+        paint.color = 0xFFE53935.toInt()
+        canvas.drawCircle(sx, by + 1.5f, 9f, paint)
+        paint.color = 0xFFFF8A80.toInt()
+        canvas.drawCircle(sx - 3f, by - 2f, 3f, paint)
+    }
+}

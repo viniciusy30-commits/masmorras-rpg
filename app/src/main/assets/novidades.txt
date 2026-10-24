@@ -1,6 +1,9 @@
-#id 2026-10-24-d
-#titulo Relevo, pulo, rolamento e esqueletos 3D
-- Novo botão PULAR: o Guerreiro salta (dá pra desviar de inimigos no ar) e cai com poeira
-- Novo botão ROLAR: cambalhota rápida para frente, invulnerável enquanto rola
-- Mapa com relevo: plataformas de pedra com degraus em algumas salas. Suba pelos degraus ou pule em cima dos blocos
-- Inimigos agora são Esqueletos 3D em cubos (comum, de elmo e escudo, e o Rei Esqueleto com coroa e capa roxa) com animação de andar e golpe
+#id 2026-10-24-e
+#titulo Masmorras novas, escalada e poções
+- Mapa muito maior e variado: salas de pilares, pântano, cripta com tapete, salas de lava, torres de blocos e a sala do chefe com trono, braseiros e lava
+- Atalhos entre salas: o caminho deixou de ser uma linha reta
+- Minimapa no canto superior direito: revela conforme você explora
+- PULAR agora serve para ESCALAR: aperte perto de um bloco e o herói calcula a força e se impulsiona para subir (até 3 níveis de altura)
+- Lava queima quem pisa nela, mas dá pra pular por cima. Ilhas no meio da lava escondem poções
+- Poções de cura em cima de torres, altares e ilhas (só pega se estiver ferido)
+- Pulo e rolamento redesenhados: agachar antes de cair, esticar na subida, amortecer na aterrissagem, rastro e poeira no rolamento. Todas as classes giram na cambalhota

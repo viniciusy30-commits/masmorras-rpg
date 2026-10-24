@@ -11,6 +11,7 @@ import android.view.View
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.sqrt
 import kotlin.math.sin
 import kotlin.random.Random
 
@@ -25,6 +26,7 @@ class GameView @JvmOverloads constructor(
     private val enemies = mutableListOf<Enemy>()
     private val projectiles = mutableListOf<Projectile>()
     private val particles = mutableListOf<Particle>()
+    private val potions = mutableListOf<Potion>()
     private val texts = mutableListOf<DmgText>()
     private val drawList = ArrayList<Entity>()
     private var vignette: Shader? = null
@@ -71,7 +73,10 @@ class GameView @JvmOverloads constructor(
         projectiles.clear()
         particles.clear()
         texts.clear()
-        val spawns = map.getEnemySpawns(16)
+        potions.clear()
+        map.potionSpots.forEach { (px, py) -> potions.add(Potion(px, py, map.heightAt(px, py))) }
+        map.reveal(sx, sy)
+        val spawns = map.getEnemySpawns(24)
         spawns.forEachIndexed { i, (ex, ey) ->
             enemies.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0))
         }
@@ -116,7 +121,42 @@ class GameView @JvmOverloads constructor(
     fun jump() {
         val p = player ?: return
         if (gameOver) return
-        if (p.jump()) burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+        var dx = if (hypot(p.inX, p.inY) > 0.1f) p.inX else p.facingX
+        var dy = if (hypot(p.inX, p.inY) > 0.1f) p.inY else p.facingY
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l
+        dy /= l
+
+        // Escalada: procura um degrau/bloco mais alto logo à frente e ajusta força e impulso
+        var need = 0f
+        var dist = 0f
+        var d = 28f
+        while (d <= 150f) {
+            val fx = p.x + dx * d
+            val fy = p.y + dy * d
+            if (!map.isWall(fx, fy)) {
+                val h = map.heightAt(fx, fy)
+                if (h > p.ground + 8f) {
+                    need = h - p.ground
+                    dist = d
+                    break
+                }
+            }
+            d += 14f
+        }
+        var power = 390f
+        var hx = 0f
+        var hy = 0f
+        if (need > 0f && need <= TileMap.LEVEL_PX * 3.2f) {
+            power = sqrt(2f * Player.GRAVITY * (need + 20f)).coerceIn(390f, 560f)
+            val speed = p.classe.velocidade * 60f
+            val extra = ((dist + 22f) / 0.40f - speed).coerceIn(0f, 240f)
+            hx = dx * extra
+            hy = dy * extra
+        }
+        if (p.jump(power, hx, hy)) {
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 7, 0xFFB8B0A8.toInt())
+        }
     }
 
     fun roll() {
@@ -262,9 +302,33 @@ class GameView @JvmOverloads constructor(
         }
         p.updateVertical(dt, map.heightAt(p.x, p.y))
         if (p.landed > 0f) {
-            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 6 + (p.landed * 6f).toInt().coerceAtMost(8), 0xFFB8B0A8.toInt())
+            if (p.landed > 1.1f) shake = 0.12f
             p.landed = 0f
         }
+
+        // Lava queima quem pisa nela (pulando por cima não machuca)
+        if (p.alt - p.ground < 6f && map.tileAt(p.x, p.y) == 3 && p.lavaT <= 0f) {
+            p.lavaT = 0.45f
+            p.takeDamage(7f)
+            shake = 0.2f
+            burst(p.x, p.y + p.radius * 0.55f - p.alt, 8, 0xFFFF7A1F.toInt())
+            texts.add(DmgText(p.x, p.y - 56f - p.alt, "-7", 0.8f, 0xFFFF8A3D.toInt()))
+        }
+
+        // Poções
+        potions.forEach { pt ->
+            if (pt.alive && p.hp < p.maxHp - 1f && hypot(pt.x - p.x, pt.y - p.y) < 34f && kotlin.math.abs(p.alt - pt.alt) < 34f) {
+                pt.alive = false
+                val heal = 45f.coerceAtMost(p.maxHp - p.hp)
+                p.hp += heal
+                burst(pt.x, pt.y - pt.alt - 10f, 12, 0xFFE53935.toInt())
+                burst(pt.x, pt.y - pt.alt - 14f, 8, 0xFFFFFFFF.toInt())
+                texts.add(DmgText(p.x, p.y - 56f - p.alt, "+" + heal.toInt(), 0.9f, 0xFF69F0AE.toInt()))
+            }
+        }
+        potions.removeAll { !it.alive }
+        map.reveal(p.x, p.y)
         if (p.rolling && Random.nextInt(3) == 0) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 1, 0xFFB8B0A8.toInt())
         }
@@ -374,6 +438,7 @@ class GameView @JvmOverloads constructor(
         // personagens e paredes ordenados por profundidade
         drawList.clear()
         drawList.addAll(enemies)
+        drawList.addAll(potions)
         player?.let { drawList.add(it) }
         drawList.sortBy { it.y }
         var i = 0
@@ -430,6 +495,9 @@ class GameView @JvmOverloads constructor(
             paint.color = VoxelArt.alpha(t.color, a)
             canvas.drawText(t.text, sx, sy, paint)
         }
+
+        // minimapa
+        player?.let { map.drawMinimap(canvas, paint, w - 176f, 22f, 150f, it.x, it.y) }
 
         // contador de inimigos
         val txt = "Inimigos: ${enemies.size}"
