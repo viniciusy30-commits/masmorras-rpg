@@ -737,20 +737,28 @@ object Warrior3D {
     private val ikO = FloatArray(3)
 
     // chaves: mão de trás (x,y,z), mão da frente (x,y,z), giro do peito, agachar, inclinar, quadril, deslize da haste
-    private val SK_I = floatArrayOf(-1.3f, 9.5f, 2.5f, 1.3f, 12f, 7.5f, 0f, 0f, 0f, 0f, 0f)
-    private val SK_TUCK = floatArrayOf(-1.5f, 8f, 3f, 1.2f, 9.5f, 6.5f, 0f, 0.3f, 0f, 0f, -2f)
-    private val SK_DIP = floatArrayOf(-1.5f, 5f, 2f, 1f, 6f, 6f, 0f, 0.5f, 0f, 0f, -4f)
+    private val SK_I = floatArrayOf(-2.911f, 9.65f, 5.415f, 3.053f, 12.516f, 10.349f, -0.537f, 0.1f, 0f, 0.317f, 0f)
+    // agachado/mergulho: mesmas poses de antes, deslocadas junto com a nova guarda
+    private val SK_TUCK = floatArrayOf(-3.111f, 8.15f, 5.915f, 3.153f, 10.016f, 9.349f, 0f, 0.3f, 0f, 0f, -2f)
+    private val SK_DIP = floatArrayOf(-3.111f, 5.15f, 4.915f, 2.953f, 6.516f, 8.849f, 0f, 0.5f, 0f, 0f, -4f)
+    // preparação (W), meio do golpe (M) e fim do golpe (E): a mão da frente aponta a lança para a frente
     private val SK_W = arrayOf(
-        floatArrayOf(-1.5f, 9f, 0.5f, 1f, 11f, 5f, -0.3f, 0.25f, -0.1f, 0.3f, -7f),
-        floatArrayOf(-2f, 9f, 2f, 1.5f, 9.5f, 6.5f, -1.1f, 0.4f, -0.1f, 0.6f, -2f),
-        floatArrayOf(-1.5f, 11f, 0f, 1f, 12.5f, 5f, -0.4f, 0.6f, -0.2f, 0.4f, -8f),
-        floatArrayOf(-1.5f, 12.5f, -0.5f, 1f, 13.5f, 4.5f, -0.6f, 0.35f, -0.25f, 0.5f, -10f)
+        floatArrayOf(-3.342f, 8.454f, 5.713f, 5.087f, 9.947f, 9.633f, -0.947f, 0.35f, -0.1f, 0.139f, -8f),
+        floatArrayOf(-4.157f, 11.603f, 1.395f, -2.233f, 13.172f, -5.68f, 1.245f, 0.45f, 0f, 0.273f, -2f),
+        floatArrayOf(-3.015f, 10.123f, 5.436f, 4.557f, 10.567f, 9.449f, -1.038f, 0.55f, -0.15f, 0.443f, -10f),
+        floatArrayOf(-3.129f, 16.649f, -3.831f, 0.929f, 22.058f, -4.939f, 1.157f, 0.3f, -0.35f, 0.22f, -6f)
+    )
+    private val SK_M = arrayOf(
+        floatArrayOf(0.736f, 12.475f, 5.624f, 8.097f, 13.94f, 10.115f, -0.96f, 0.55f, 0.2f, 0.511f, 4f),
+        floatArrayOf(1.593f, 12.655f, 5.181f, 6.379f, 13.781f, 10.172f, -0.699f, 0.5f, 0.2f, 0.079f, 2f),
+        floatArrayOf(0.788f, 12.9f, 5.48f, 6.724f, 14.671f, 10.182f, -0.858f, 0.8f, 0.25f, -0.641f, 6f),
+        floatArrayOf(1.573f, 17.569f, 4.481f, 6.598f, 22.838f, 6.092f, -1.143f, 0.5f, 0.1f, 0.238f, 2f)
     )
     private val SK_E = arrayOf(
-        floatArrayOf(-1f, 9.5f, 3.5f, 1f, 10.5f, 8f, 0.35f, 0.5f, 0.3f, -0.35f, 9f),
-        floatArrayOf(-2f, 9f, 2f, 1.5f, 9.5f, 6.5f, 1.1f, 0.5f, 0.2f, -0.6f, 2f),
-        floatArrayOf(-1f, 8.5f, 3.5f, 1f, 9.5f, 8f, 0.3f, 0.9f, 0.5f, -0.3f, 13f),
-        floatArrayOf(-1f, 8f, 4f, 1f, 9f, 8f, 0.4f, 0.95f, 0.55f, -0.3f, 16f)
+        floatArrayOf(2.066f, 12.659f, 6.845f, 7.436f, 14.569f, 11.004f, -0.901f, 0.7f, 0.4f, 0.215f, 13f),
+        floatArrayOf(-3.923f, 11.06f, 6.203f, 3.997f, 12.535f, 10.124f, -0.051f, 0.5f, 0.1f, 0.264f, 2f),
+        floatArrayOf(2.267f, 13.887f, 6.463f, 6.986f, 15.358f, 10.703f, -0.823f, 1f, 0.5f, 0.026f, 17f),
+        floatArrayOf(1.285f, 14.41f, 5.552f, 7.722f, 13.369f, 10.422f, -0.928f, 1f, 0.55f, -0.086f, 17f)
     )
     private val SK_T = arrayOf(
         floatArrayOf(0.16f, 0.40f, 0.58f),
@@ -778,7 +786,12 @@ object Warrior3D {
             } else if (t < tS) {
                 var u = (t - tW) / (tS - tW)
                 u = u * u * (3f - 2f * u)
-                mixS(w, e, u)
+                // curva por três pontos (preparação, meio, fim) para a ponta seguir um arco limpo
+                val m = SK_M[sw]
+                val cw = 2f * (u - 0.5f) * (u - 1f)
+                val cm = -4f * u * (u - 1f)
+                val ce = 2f * u * (u - 0.5f)
+                for (i in 0..10) sPo[i] = w[i] * cw + m[i] * cm + e[i] * ce
             } else if (t < tH) {
                 val u = (t - tS) / (tH - tS)
                 val o = 0.05f * sin(u * PI.toFloat())
@@ -824,14 +837,80 @@ object Warrior3D {
         ikO[2] = -(a1 + a2)
     }
 
+    /** Aplica uma base (colunas x, y, z no quadro atual) à matriz do topo. */
+    private fun applyBasis(xx: Float, xy: Float, xz: Float, yx: Float, yy: Float, yz: Float, zx: Float, zy: Float, zz: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            val a = m[r * 3]
+            val b = m[r * 3 + 1]
+            val c = m[r * 3 + 2]
+            m[r * 3] = a * xx + b * xy + c * xz
+            m[r * 3 + 1] = a * yx + b * yy + c * yz
+            m[r * 3 + 2] = a * zx + b * zy + c * zz
+        }
+    }
+
+    /** Braço de dois ossos até a mão, com o cotovelo apontando para baixo e para fora (vetor-polo). */
     private fun spearArm(side: Float, hx: Float, hy: Float, hz: Float) {
         push()
         translate(side * 8.4f, 13.2f, 0f)
         pauldron(side)
-        ik(hx - side * 8.4f, hy - 13.2f, hz)
-        rotZ(ikO[1])
-        rotX(ikO[0])
-        armBase(ikO[2])
+        val l1 = 5.7f
+        val l2 = 6.1f
+        val rx = hx - side * 8.4f
+        val ry = hy - 13.2f
+        val rz = hz
+        val rl = sqrt(rx * rx + ry * ry + rz * rz).coerceAtLeast(0.0001f)
+        val d = rl.coerceIn(1.0f, 11.6f)
+        val nx = rx / rl
+        val ny = ry / rl
+        val nz = rz / rl
+        val a = (l1 * l1 - l2 * l2 + d * d) / (2f * d)
+        val rr = sqrt(max(0f, l1 * l1 - a * a))
+        // polo: cotovelo para baixo, para fora e um pouco para trás
+        var px = side * 0.6f
+        var py = -1f
+        var pz = -0.3f
+        val pd = px * nx + py * ny + pz * nz
+        px -= pd * nx; py -= pd * ny; pz -= pd * nz
+        val pl = sqrt(px * px + py * py + pz * pz).coerceAtLeast(0.0001f)
+        px /= pl; py /= pl; pz /= pl
+        val ex = nx * a + px * rr
+        val ey = ny * a + py * rr
+        val ez = nz * a + pz * rr
+        val ux = ex / l1
+        val uy = ey / l1
+        val uz = ez / l1
+        val fx = (nx * d - ex) / l2
+        val fy = (ny * d - ey) / l2
+        val fz = (nz * d - ez) / l2
+        // eixo X local = u × f (o antebraço dobra só em torno dele)
+        var xx = uy * fz - uz * fy
+        var xy = uz * fx - ux * fz
+        var xz = ux * fy - uy * fx
+        var xl = sqrt(xx * xx + xy * xy + xz * xz)
+        if (xl < 0.001f) {
+            xx = uy * 1f - uz * 0f
+            xy = uz * 0f - ux * 1f
+            xz = 0f
+            xl = sqrt(xx * xx + xy * xy + xz * xz).coerceAtLeast(0.0001f)
+        }
+        xx /= xl; xy /= xl; xz /= xl
+        val yx = -ux
+        val yy = -uy
+        val yz = -uz
+        var zx = xy * yz - xz * yy
+        var zy = xz * yx - xx * yz
+        var zz = xx * yy - xy * yx
+        if (fx * zx + fy * zy + fz * zz < 0f) {
+            xx = -xx; xy = -xy; xz = -xz
+            zx = -zx; zy = -zy; zz = -zz
+        }
+        val fyL = fx * yx + fy * yy + fz * yz
+        val fzL = fx * zx + fy * zy + fz * zz
+        val elb = atan2(-fzL, -fyL)
+        applyBasis(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+        armBase(elb)
         pop()
     }
 
@@ -905,17 +984,24 @@ object Warrior3D {
     private val kS = FloatArray(8)
 
     // keyframes por golpe: sh, z, el, tw, wrist, crouch, lean, hip
+    // calculados para a lâmina apontar na direção certa em cada ponto do arco (W preparação, M meio, E fim)
     private val K_W = arrayOf(
-        floatArrayOf(-2.9f, 0.75f, -1.0f, -0.75f, -0.45f, 0.15f, -0.18f, 0.35f),
-        floatArrayOf(-0.15f, -0.45f, -0.25f, 0.95f, 0.65f, 0.55f, 0.32f, -0.45f),
-        floatArrayOf(-1.0f, 0.20f, -1.7f, 0.75f, 0.9f, 0.40f, -0.12f, -0.55f),
-        floatArrayOf(-2.6f, 0.35f, -0.5f, -0.4f, 1.2f, 0.3f, -0.2f, 0.3f)
+        floatArrayOf(-1.658f, 0.528f, -1.387f, -0.4f, 0.879f, 0.15f, -0.18f, 0.35f),
+        floatArrayOf(0.742f, 0.185f, -2.462f, 0.827f, 1.6f, 0.55f, 0.32f, -0.45f),
+        floatArrayOf(-3.1f, 1.2f, -1.611f, 0.686f, 1.6f, 0.4f, -0.12f, -0.55f),
+        floatArrayOf(-2.539f, 0.091f, -0.441f, -0.267f, 0.721f, 0.3f, -0.2f, 0.3f)
+    )
+    private val K_M = arrayOf(
+        floatArrayOf(-0.83f, 0.35f, -1.692f, 0.111f, 1.6f, 0.325f, 0.05f, -0.025f),
+        floatArrayOf(-0.478f, 0.26f, -1.807f, 0.207f, 1.6f, 0.35f, 0.16f, -0.15f),
+        floatArrayOf(-1.122f, 1.046f, -0.985f, -0.037f, 1.467f, 0.5f, 0.09f, -0.05f),
+        floatArrayOf(-1.67f, -0.132f, -1.048f, -0.126f, 1.6f, 0.575f, 0.15f, 0f)
     )
     private val K_E = arrayOf(
-        floatArrayOf(-0.35f, -0.30f, -0.30f, 0.80f, 0.55f, 0.50f, 0.28f, -0.40f),
-        floatArrayOf(-2.7f, 0.10f, -0.45f, -0.20f, -0.10f, 0.15f, 0.0f, 0.15f),
-        floatArrayOf(-1.45f, 0.0f, -0.15f, -0.50f, 1.15f, 0.60f, 0.30f, 0.45f),
-        floatArrayOf(-0.1f, -0.1f, -0.2f, 0.45f, 0.6f, 0.85f, 0.5f, -0.3f)
+        floatArrayOf(0.512f, 0.631f, -2.13f, 0.498f, 1.344f, 0.5f, 0.28f, -0.4f),
+        floatArrayOf(-1.188f, 0.734f, -1.636f, -0.236f, 1.6f, 0.15f, 0f, 0.15f),
+        floatArrayOf(-0.995f, 1.2f, 0.1f, -0.15f, 1.6f, 0.6f, 0.3f, 0.45f),
+        floatArrayOf(1f, -0.7f, -2.473f, 0.3f, 1.6f, 0.85f, 0.5f, -0.3f)
     )
     // fim da preparação, fim do impacto, fim do segurar
     private val K_T = arrayOf(
@@ -1119,7 +1205,13 @@ object Warrior3D {
             } else if (t < tS) {
                 var u = (t - tW) / (tS - tW)
                 u = u * u * (3f - 2f * u)
-                mixK(K_W[sw], K_E[sw], u)
+                val kw = K_W[sw]
+                val km = K_M[sw]
+                val ke = K_E[sw]
+                val cw = 2f * (u - 0.5f) * (u - 1f)
+                val cm = -4f * u * (u - 1f)
+                val ce = 2f * u * (u - 0.5f)
+                for (i in 0..7) kO[i] = kw[i] * cw + km[i] * cm + ke[i] * ce
             } else if (t < tH) {
                 val u = (t - tS) / (tH - tS)
                 val o = 0.06f * sin(u * PI.toFloat())

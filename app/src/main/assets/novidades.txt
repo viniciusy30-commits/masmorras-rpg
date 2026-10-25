@@ -1,3 +1,7 @@
+#id 2026-10-25-d
+#titulo Golpes de espada e lança mais certeiros
+- Espada: os quatro golpes foram refeitos, com a lâmina seguindo um arco limpo da preparação até o impacto, sem atravessar o corpo
+- Lança: aponta para a frente durante os golpes, com guarda refeita e cotovelos para baixo e para fora
 #id 2026-10-25-c
 #titulo Lança de duas mãos, troca de arma e HUD mais caprichado
 - Guerreiro ganhou uma lança: ele segura com as duas mãos, com combo próprio (estocada, giro e investida) e golpe forte com alcance maior
