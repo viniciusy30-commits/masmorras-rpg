@@ -129,6 +129,7 @@ object Warrior3D {
     private val trMx = FloatArray(24)
     private val trMy = FloatArray(24)
     private var trN = 0
+    private val TRAIL_MAX = 10
     private var tipX = 0f
     private var tipY = 0f
     private var midX = 0f
@@ -743,10 +744,10 @@ object Warrior3D {
     )
     // fim da preparação, fim do impacto, fim do segurar
     private val K_T = arrayOf(
-        floatArrayOf(0.26f, 0.42f, 0.56f),
-        floatArrayOf(0.14f, 0.34f, 0.52f),
-        floatArrayOf(0.30f, 0.46f, 0.62f),
-        floatArrayOf(0.08f, 0.24f, 0.60f)
+        floatArrayOf(0.20f, 0.46f, 0.62f),
+        floatArrayOf(0.14f, 0.40f, 0.58f),
+        floatArrayOf(0.22f, 0.46f, 0.64f),
+        floatArrayOf(0.08f, 0.34f, 0.64f)
     )
     private val K_L = floatArrayOf(3.0f, 2.2f, 5.5f, 5.0f)
     private var prevAtk = 0f
@@ -927,7 +928,7 @@ object Warrior3D {
                 mixK(kS, K_W[sw], ease(t / tW))
             } else if (t < tS) {
                 var u = (t - tW) / (tS - tW)
-                u = 1f - (1f - u) * (1f - u) * (1f - u)
+                u = u * u * (3f - 2f * u)
                 mixK(K_W[sw], K_E[sw], u)
             } else if (t < tH) {
                 val u = (t - tS) / (tH - tS)
@@ -1090,15 +1091,10 @@ object Warrior3D {
             c.drawCircle(dX[i], dY[i], dS[i] * (1.6f - 0.6f * a), p)
         }
 
-        // ── anel de carga no chão ──
+        // ── faíscas da carga (o indicador fica no botão de ataque) ──
         if (chargeW > 0.05f && !attacking) {
             val ch = max(0f, charge)
             val rr = (10f + 16f * ch) * rs
-            p.style = Paint.Style.STROKE
-            p.strokeWidth = max(2f, rs * (1.2f + 1.5f * ch))
-            p.color = (((chargeW * (0.35f + 0.5f * ch) * 255f).toInt()) shl 24) or 0x00FFB74D
-            c.drawOval(fx - rr, fy - rr * SINP, fx + rr, fy + rr * SINP, p)
-            p.style = Paint.Style.FILL
             if (ch > 0.15f) {
                 sparkT -= dt
                 if (sparkT <= 0f) {
@@ -1114,12 +1110,12 @@ object Warrior3D {
             trN = 0
         } else {
             if (t >= tW && t <= tH + 0.05f) {
-                if (trN == 24) {
-                    System.arraycopy(trX, 1, trX, 0, 23)
-                    System.arraycopy(trY, 1, trY, 0, 23)
-                    System.arraycopy(trMx, 1, trMx, 0, 23)
-                    System.arraycopy(trMy, 1, trMy, 0, 23)
-                    trN = 23
+                if (trN == TRAIL_MAX) {
+                    System.arraycopy(trX, 1, trX, 0, TRAIL_MAX - 1)
+                    System.arraycopy(trY, 1, trY, 0, TRAIL_MAX - 1)
+                    System.arraycopy(trMx, 1, trMx, 0, TRAIL_MAX - 1)
+                    System.arraycopy(trMy, 1, trMy, 0, TRAIL_MAX - 1)
+                    trN = TRAIL_MAX - 1
                 }
                 trX[trN] = tipX
                 trY[trN] = tipY
@@ -1135,7 +1131,7 @@ object Warrior3D {
                     }
                 }
             }
-            val fade = min(1f, attack * 3f)
+            val fade = min(1f, attack * 4f) * 0.8f
             for (i in 1 until trN) {
                 val a = i.toFloat() / trN.toFloat()
                 path.reset()
@@ -1145,15 +1141,15 @@ object Warrior3D {
                 path.lineTo(trMx[i - 1], trMy[i - 1])
                 path.close()
                 p.style = Paint.Style.FILL
-                p.color = (((a * 0.55f * fade * 255f).toInt()) shl 24) or 0x00FFB74D
+                p.color = (((a * a * 0.22f * fade * 255f).toInt()) shl 24) or 0x00FFB74D
                 c.drawPath(path, p)
                 p.style = Paint.Style.STROKE
-                p.strokeWidth = max(2.4f, rs * 1.8f)
+                p.strokeWidth = max(1.6f, rs * 1.0f)
                 p.strokeCap = Paint.Cap.ROUND
-                p.color = (((a * 0.35f * fade * 255f).toInt()) shl 24) or 0x00FFE9A8
+                p.color = (((a * a * 0.14f * fade * 255f).toInt()) shl 24) or 0x00FFE9A8
                 c.drawLine(trX[i - 1], trY[i - 1], trX[i], trY[i], p)
-                p.strokeWidth = max(1.2f, rs * 0.8f)
-                p.color = (((a * 0.95f * fade * 255f).toInt()) shl 24) or 0x00FFFFFF
+                p.strokeWidth = max(1f, rs * 0.55f)
+                p.color = (((a * a * 0.55f * fade * 255f).toInt()) shl 24) or 0x00FFFFFF
                 c.drawLine(trX[i - 1], trY[i - 1], trX[i], trY[i], p)
             }
             p.style = Paint.Style.FILL

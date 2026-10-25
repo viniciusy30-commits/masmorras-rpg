@@ -83,6 +83,8 @@ class GameView @JvmOverloads constructor(
     private val LOOK_AHEAD = 70f
 
     var onGameOver: ((Boolean) -> Unit)? = null // true = vitória
+    var onCharge: ((Float) -> Unit)? = null // 0 = sem carga, 0..1 enquanto segura o ataque
+    private var lastChargeSent = -1f
 
     private val loop = object : Runnable {
         override fun run() {
@@ -366,6 +368,11 @@ class GameView @JvmOverloads constructor(
                     p.chargeT = ((heldT - 0.22f) / 0.8f).coerceIn(0f, 1f)
                 }
             }
+        }
+        val chargeNow = if (p.charging) p.chargeT else 0f
+        if (chargeNow != lastChargeSent) {
+            lastChargeSent = chargeNow
+            onCharge?.invoke(chargeNow)
         }
         // buffer de input: aperta um pouco antes de poder atacar e o golpe sai assim que liberar
         if (queuedAt != 0L) {

@@ -93,20 +93,20 @@ class Player(
 
     fun canAttack(now: Long): Boolean {
         if (rolling) return false
-        val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 560L else 300L)
+        val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
 
     fun doAttack(now: Long) {
         if (classe == Classe.GUERREIRO) {
-            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            val inWindow = comboStep >= 0 && now - lastAttack < 1200L
             comboStep = if (inWindow) (comboStep + 1) % 3 else 0
             swing = comboStep
             attackRate = when (swing) {
-                0 -> 2.6f
-                1 -> 3.1f
-                else -> 2.4f
+                0 -> 1.65f
+                1 -> 1.95f
+                else -> 1.55f
             }
         }
         lastAttack = now
@@ -118,7 +118,7 @@ class Player(
     fun doHeavy(now: Long) {
         comboStep = -1
         swing = 3
-        attackRate = 1.8f
+        attackRate = 1.15f
         charging = false
         chargeT = 0f
         lastAttack = now
@@ -194,7 +194,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) attackRate else 4f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)

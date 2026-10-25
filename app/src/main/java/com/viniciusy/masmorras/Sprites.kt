@@ -425,11 +425,11 @@ object Sprites {
         tmpRect.set(cx - reach * 0.9f, cy - reach * 0.9f, cx + reach * 0.9f, cy + reach * 0.9f)
         p.style = Paint.Style.STROKE
         p.strokeCap = Paint.Cap.ROUND
-        p.strokeWidth = 14f * a + 4f
-        p.color = V.alpha(color, a * 0.45f)
+        p.strokeWidth = 7f * a + 2f
+        p.color = V.alpha(color, a * 0.22f)
         c.drawArc(tmpRect, ang - 65f, 130f, false, p)
-        p.strokeWidth = 5f * a + 1.5f
-        p.color = V.alpha(0xFFFFFFFF.toInt(), a * 0.9f)
+        p.strokeWidth = 2.5f * a + 1f
+        p.color = V.alpha(0xFFFFFFFF.toInt(), a * 0.5f)
         c.drawArc(tmpRect, ang - 65f + (1f - a) * 30f, 130f - (1f - a) * 30f, false, p)
         p.style = Paint.Style.FILL
         p.strokeCap = Paint.Cap.BUTT

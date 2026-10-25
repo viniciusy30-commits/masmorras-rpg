@@ -253,6 +253,9 @@ class MainActivity : AppCompatActivity() {
             gameView.roll()
         }
 
+        val chargeRing = findViewById<ChargeRingView>(R.id.chargeRing)
+        gameView.onCharge = { chargeRing.setLevel(it) }
+
         gameView.onGameOver = { vitoria ->
             runOnUiThread {
                 overlayFim.visibility = View.VISIBLE

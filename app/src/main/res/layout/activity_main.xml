@@ -363,6 +363,12 @@
                     android:layout_marginBottom="4dp"
                     android:contentDescription="Atacar"
                     android:src="@drawable/ic_sword"/>
+
+                <com.viniciusy.masmorras.ChargeRingView
+                    android:id="@+id/chargeRing"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_gravity="bottom|end"/>
             </FrameLayout>
 
         </FrameLayout>
