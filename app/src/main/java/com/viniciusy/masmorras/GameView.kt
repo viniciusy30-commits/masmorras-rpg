@@ -7,6 +7,8 @@ import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.util.AttributeSet
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.cos
 import kotlin.math.hypot
@@ -38,6 +40,32 @@ class GameView @JvmOverloads constructor(
     private var lookAheadY = 0f
     private var camZoom = 1f
     private var targetZoom = 1f
+
+    // Zoom do jogador (pinça): 1.0 = o mais longe possível (visão atual); acima disso aproxima
+    private val MIN_ZOOM = 1.0f
+    private val MAX_ZOOM = 1.9f
+    private var userZoom = 1f
+    private var pinching = false
+    private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
+            pinching = true
+            return true
+        }
+
+        override fun onScale(d: ScaleGestureDetector): Boolean {
+            userZoom = (userZoom * d.scaleFactor).coerceIn(MIN_ZOOM, MAX_ZOOM)
+            return true
+        }
+
+        override fun onScaleEnd(d: ScaleGestureDetector) {
+            pinching = false
+        }
+    })
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        scaleDetector.onTouchEvent(event)
+        return true
+    }
     private var time = 0f
     private var shake = 0f
     private var lastTime = System.nanoTime()
@@ -99,8 +127,8 @@ class GameView @JvmOverloads constructor(
         camVY = 0f
         lookAheadX = 0f
         lookAheadY = 0f
-        camZoom = 1f
-        targetZoom = 1f
+        camZoom = userZoom
+        targetZoom = userZoom
         val desiredX = camClamp(sx - width * FRAME_X, map.worldWidth(), width.toFloat())
         val desiredY = camClamp(sy - height * FRAME_Y, map.worldHeight(), height.toFloat())
         camX = desiredX
@@ -390,17 +418,12 @@ class GameView @JvmOverloads constructor(
         camX = camClamp(camX, map.worldWidth(), width.toFloat())
         camY = camClamp(camY, map.worldHeight(), height.toFloat())
 
-        // Zoom leve: afasta um pouco quando corre / em combate perto de vários inimigos
-        var nearEnemies = 0
-        enemies.forEach { e ->
-            if (e.alive && hypot(e.x - p.x, e.y - p.y) < 160f) nearEnemies++
-        }
-        targetZoom = when {
-            nearEnemies >= 4 -> 0.92f
-            speed > 140f -> 0.96f
-            else -> 1f
-        }
-        camZoom += (targetZoom - camZoom) * (1f - kotlin.math.exp(-dt * 3.2f))
+        // Zoom controlado pelo jogador (pinça). Nunca afasta além do padrão (1.0), então
+        // a tela sempre fica coberta pelo mapa e não aparecem bordas pretas.
+        targetZoom = userZoom.coerceIn(MIN_ZOOM, MAX_ZOOM)
+        val zr = if (pinching) 16f else 7f
+        camZoom += (targetZoom - camZoom) * (1f - kotlin.math.exp(-dt * zr))
+        if (camZoom < MIN_ZOOM) camZoom = MIN_ZOOM
     }
 
     private fun feetRow(e: Entity): Int = ((e.y + e.radius * 0.6f) / map.tileSize).toInt()

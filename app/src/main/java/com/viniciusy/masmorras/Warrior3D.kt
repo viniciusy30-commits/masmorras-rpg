@@ -13,13 +13,14 @@ import kotlin.math.sin
 
 /**
  * Mini motor 3D de cubos (estilo Minecraft Dungeons) desenhado em Canvas.
- * O Guerreiro é um esqueleto de partes articuladas: pernas, tronco, cabeça, braços,
- * escudo, espada e capa. Cada cubo tem 3 faces visíveis com iluminação própria.
+ * O Guerreiro é um esqueleto de partes articuladas (pernas com joelho, quadril/peito com
+ * contra-rotação, cabeça, braços, escudo, espada, capa, penacho e tabardo em molas).
+ * Cada cubo tem 3 faces visíveis com iluminação própria.
  */
 object Warrior3D {
     private val V = VoxelArt
 
-    private const val MAX = 160
+    private const val MAX = 300
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -43,7 +44,9 @@ object Warrior3D {
     private val LEATHER_D = 0xFF3A2416.toInt()
     private val SKIN = 0xFFF1C27D.toInt()
     private val SKIN_D = 0xFFC98F55.toInt()
-    private val PANTS = 0xFF3B4650.toInt()
+    private val PANTS = 0xFF2F3A44.toInt()
+    private val STEEL_DD = 0xFF4A555E.toInt()
+    private val GOLD_D = 0xFFB88413.toInt()
     private val BLADE = 0xFFDDE6EC.toInt()
     private val EYE = 0xFF1B1B1B.toInt()
     private val CREAM = 0xFFF5ECD0.toInt()
@@ -264,115 +267,266 @@ object Warrior3D {
 
     // ───────────── partes do corpo ─────────────
 
-    private fun leg(side: Float, a: Float, hipY: Float, tuck: Float) {
+    private fun rgb(r: Int, g: Int, b: Int): Int = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+
+    private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float) {
         push()
-        translate(side * 3.3f, hipY, 0f)
+        translate(side * 3.4f, hipY, 0f)
         rotX(a)
-        cube(0f, -2.8f, 0f, 2.7f, 3.0f, 2.8f, PANTS)
-        cube(0f, -3.5f, 0f, 2.95f, 2.1f, 3.05f, STEEL_D)
-        cube(0f, -0.9f, 0f, 3.0f, 0.5f, 3.1f, GOLD)
+        cube(0f, -2.7f, 0f, 2.55f, 2.9f, 2.6f, PANTS)
+        cube(0f, -2.2f, 0.35f, 2.75f, 2.5f, 2.65f, STEEL_D)
+        cube(0f, -2.2f, 2.8f, 1.2f, 2.2f, 0.25f, STEEL)
+        cube(0f, -0.2f, 0f, 2.85f, 0.45f, 2.85f, GOLD)
         translate(0f, -5.6f, 0f)
-        rotX(max(0f, a) * 1.0f + 0.08f + tuck * 1.5f)
-        cube(0f, -2.6f, 0f, 2.55f, 2.8f, 2.65f, STEEL)
-        cube(0f, 0.1f, 2.0f, 2.1f, 1.5f, 0.9f, GOLD)
+        rotX(knee)
+        cube(0f, 0.2f, 2.0f, 2.3f, 1.5f, 1.0f, GOLD)
+        cube(0f, 0.2f, 2.9f, 1.0f, 0.9f, 0.4f, STEEL_L)
+        cube(0f, -2.7f, 0f, 2.35f, 2.8f, 2.4f, STEEL)
+        cube(0f, -2.9f, 2.4f, 1.1f, 2.4f, 0.3f, STEEL_L)
+        cube(0f, -5.2f, 0f, 2.55f, 0.4f, 2.6f, GOLD_D)
         translate(0f, -5.4f, 0f)
-        rotX(-max(0f, a) * 0.5f)
-        cube(0f, 0f, 1.1f, 3.0f, 1.6f, 3.9f, LEATHER)
-        cube(0f, -1.35f, 1.2f, 3.1f, 0.25f, 4.0f, LEATHER_D)
-        cube(0f, 1.0f, 3.9f, 2.4f, 0.6f, 0.9f, LEATHER_L)
+        rotX(foot)
+        cube(0f, 0.2f, 1.2f, 2.7f, 1.5f, 3.7f, LEATHER)
+        cube(0f, -1.2f, 1.3f, 2.85f, 0.3f, 3.9f, LEATHER_D)
+        cube(0f, 0.8f, 4.1f, 2.2f, 0.8f, 0.8f, STEEL_D)
         pop()
     }
 
     private fun pauldron(side: Float) {
-        cube(side * 0.9f, 1.4f, 0f, 3.9f, 1.4f, 3.7f, STEEL_L)
-        cube(side * 1.6f, 0f, 0f, 3.3f, 1.2f, 3.4f, STEEL)
-        cube(side * 0.9f, 2.9f, 0f, 3.95f, 0.35f, 3.75f, GOLD)
-        cube(side * 2.2f, 3.7f, 0f, 0.7f, 1.0f, 0.7f, GOLD)
+        cube(side * 0.8f, 1.5f, 0f, 3.1f, 1.0f, 3.2f, STEEL_L)
+        cube(side * 1.5f, 0.1f, 0f, 2.8f, 0.9f, 3.0f, STEEL)
+        cube(side * 2.0f, -1.0f, 0f, 2.4f, 0.8f, 2.7f, STEEL_D)
+        cube(side * 0.8f, 2.6f, 0f, 3.15f, 0.22f, 3.25f, GOLD)
+        cube(side * 1.9f, 3.3f, 0f, 0.55f, 1.0f, 0.55f, STEEL_L)
+        cube(side * 1.9f, 4.6f, 0f, 0.3f, 0.7f, 0.3f, STEEL_L)
     }
 
     private fun armBase(el: Float) {
-        // coxa-braço + antebraço (assume que o ombro já foi rotacionado)
-        cube(0f, -2.8f, 0f, 2.2f, 3.0f, 2.2f, STEEL_D)
-        cube(0f, -0.4f, 0f, 2.35f, 0.4f, 2.35f, GOLD)
-        translate(0f, -5.8f, 0f)
+        cube(0f, -2.7f, 0f, 2.0f, 2.9f, 2.0f, LEATHER_D)
+        cube(0f, -1.4f, 0f, 2.2f, 0.4f, 2.2f, GOLD)
+        translate(0f, -5.7f, 0f)
         rotX(el)
-        cube(0f, -2.6f, 0f, 2.35f, 2.8f, 2.35f, STEEL)
-        cube(0f, -0.3f, 0f, 2.5f, 0.45f, 2.5f, GOLD)
-        cube(0f, -4.9f, 0f, 2.5f, 0.4f, 2.5f, GOLD)
-        cube(0f, -5.9f, 0f, 1.9f, 1.5f, 1.9f, LEATHER_L)
+        cube(0f, -0.1f, 0f, 2.15f, 0.9f, 2.15f, STEEL_D)
+        cube(0f, -2.7f, 0f, 2.25f, 2.7f, 2.25f, STEEL)
+        cube(0f, -2.7f, 2.3f, 1.0f, 2.2f, 0.25f, STEEL_L)
+        cube(0f, -5.1f, 0f, 2.4f, 0.4f, 2.4f, GOLD)
+        cube(0f, -6.1f, 0f, 1.8f, 1.3f, 1.8f, LEATHER_L)
+        cube(0f, -6.2f, 1.7f, 1.5f, 0.5f, 0.4f, LEATHER)
     }
 
-    private fun rightArm(sh: Float, shZ: Float, el: Float, wrist: Float) {
+    private fun sword(glow: Float, wrist: Float) {
+        translate(0f, -6.1f, 0f)
+        rotX(1.9f + wrist)
+        cube(0f, 0.4f, 0f, 0.85f, 2.2f, 0.85f, LEATHER)
+        for (i in 0..2) cube(0f, -0.6f + i * 1.0f, 0f, 0.95f, 0.18f, 0.95f, LEATHER_D)
+        cube(0f, -2.5f, 0f, 1.3f, 0.8f, 1.3f, GOLD)
+        cube(0f, -2.6f, 1.35f, 0.5f, 0.4f, 0.3f, RED)
+        cube(0f, 3.1f, 0f, 4.6f, 0.6f, 1.5f, GOLD)
+        cube(-4.7f, 3.9f, 0f, 0.6f, 0.9f, 1.2f, GOLD)
+        cube(4.7f, 3.9f, 0f, 0.6f, 0.9f, 1.2f, GOLD)
+        cube(0f, 3.2f, 1.6f, 1.0f, 0.8f, 0.3f, RED)
+        cube(0f, 14.4f, 0f, 1.0f, 10.9f, 1.7f, BLADE)
+        cube(0f, 14.4f, 0f, 1.12f, 9.8f, 0.55f, STEEL)
+        cube(0f, 26.2f, 0.2f, 0.8f, 0.9f, 1.2f, BLADE)
+        cube(0f, 27.5f, 0.1f, 0.5f, 0.5f, 0.8f, STEEL_L)
+        val g = glow.coerceIn(0f, 1f)
+        val gc = rgb(255, (150 + 80 * g).toInt(), (60 + 90 * g).toInt())
+        for (i in 0..4) cube(0f, 8.5f + i * 3.6f, 1.75f, 0.45f, 0.9f, 0.18f, gc, true)
+        cube(0f, 14.4f, 1.9f, 0.25f, 10.2f, 0.12f, 0xFFFFFFFF.toInt(), true)
+    }
+
+    private fun rightArm(sh: Float, shZ: Float, el: Float, wrist: Float, glow: Float) {
         push()
-        translate(-8.7f, 13.2f, 0f)
+        translate(-8.4f, 13.2f, 0f)
         pauldron(-1f)
         rotZ(shZ)
         rotX(sh)
         armBase(el)
-        // espada na mão direita
-        translate(0f, -5.9f, 0f)
-        rotX(1.9f + wrist)
-        cube(0f, 0.4f, 0f, 0.9f, 2.2f, 0.9f, LEATHER)
-        cube(0f, -2.1f, 0f, 1.25f, 0.8f, 1.25f, GOLD)
-        cube(0f, 3.2f, 0f, 4.3f, 0.7f, 1.4f, GOLD)
-        cube(0f, 3.2f, 1.5f, 0.8f, 0.6f, 0.3f, RED)
-        cube(0f, 14.6f, 0f, 0.8f, 10.9f, 1.9f, BLADE)
-        cube(0f, 14.6f, 1.95f, 0.45f, 10.4f, 0.2f, 0xFFFFFFFF.toInt(), true)
-        cube(0f, 14.6f, 0f, 0.9f, 8.6f, 0.5f, STEEL)
-        cube(0f, 26.2f, 0.4f, 0.65f, 0.9f, 1.2f, BLADE)
-        projectTo(0f, 26.5f, 0.5f, 0)
+        sword(glow, wrist)
+        projectTo(0f, 27.5f, 0.2f, 0)
         projectTo(0f, 12f, 0.5f, 1)
         pop()
     }
 
     private fun leftArm(sh: Float, shZ: Float, el: Float) {
         push()
-        translate(8.7f, 13.2f, 0f)
+        translate(8.4f, 13.2f, 0f)
         pauldron(1f)
         rotZ(shZ)
         rotX(sh)
         armBase(el)
-        // escudo: frame "em pé" (cancela a inclinação do braço)
-        translate(0f, -5.6f, 0f)
+        translate(0f, -5.8f, 0f)
         rotX(-(sh + el))
-        cube(0.2f, 0.6f, 0.5f, 4.7f, 6.0f, 1.0f, STEEL_D)
-        cube(0.2f, 0.6f, 1.1f, 3.9f, 5.2f, 0.7f, RED)
-        cube(0.2f, 6.7f, 1.1f, 4.0f, 0.3f, 0.8f, GOLD)
-        cube(0.2f, -5.5f, 0.5f, 2.9f, 0.9f, 1.0f, STEEL_D)
-        cube(0.2f, -5.5f, 1.1f, 2.2f, 0.7f, 0.7f, RED)
-        cube(0.2f, -7.0f, 0.5f, 1.4f, 0.6f, 1.0f, STEEL_D)
-        cube(0.2f, 0.6f, 1.85f, 0.55f, 4.2f, 0.1f, CREAM)
-        cube(0.2f, 1.6f, 1.85f, 3.2f, 0.55f, 0.1f, CREAM)
-        cube(0.2f, 0.9f, 2.05f, 1.3f, 1.3f, 0.45f, GOLD)
+        cube(0.3f, 0.4f, 0.6f, 4.8f, 6.2f, 0.9f, STEEL_DD)
+        cube(0.3f, 0.4f, 1.25f, 4.1f, 5.5f, 0.6f, RED)
+        cube(0.3f, 6.9f, 1.2f, 4.2f, 0.35f, 0.8f, GOLD)
+        cube(-4.0f, 0.5f, 1.2f, 0.35f, 5.8f, 0.8f, GOLD)
+        cube(4.6f, 0.5f, 1.2f, 0.35f, 5.8f, 0.8f, GOLD)
+        cube(0.3f, -5.6f, 0.6f, 3.1f, 0.9f, 0.9f, STEEL_DD)
+        cube(0.3f, -5.6f, 1.25f, 2.4f, 0.7f, 0.6f, RED)
+        cube(0.3f, -7.2f, 0.6f, 1.5f, 0.7f, 0.9f, STEEL_DD)
+        cube(0.3f, -8.2f, 0.6f, 0.6f, 0.5f, 0.8f, STEEL_DD)
+        cube(0.3f, 0.6f, 1.95f, 0.6f, 4.4f, 0.1f, CREAM)
+        cube(0.3f, 1.7f, 1.95f, 3.4f, 0.6f, 0.1f, CREAM)
+        cube(0.3f, 1.0f, 2.15f, 1.5f, 1.5f, 0.4f, GOLD)
+        cube(0.3f, 1.0f, 2.5f, 0.7f, 0.7f, 0.25f, RED)
         pop()
     }
 
-    private fun head(turn: Float, tilt: Float) {
+    private fun head(turn: Float, tilt: Float, p0: Float, p1: Float) {
         push()
-        translate(0f, 14.0f, 0f)
+        translate(0f, 14.2f, 0f)
         rotY(turn)
         rotX(tilt)
-        cube(0f, 5.2f, 0f, 5.2f, 5.2f, 5.0f, SKIN)
-        // rosto
-        cube(-2.0f, 4.7f, 5.05f, 0.95f, 1.1f, 0.12f, EYE)
-        cube(2.0f, 4.7f, 5.05f, 0.95f, 1.1f, 0.12f, EYE)
-        cube(-2.0f, 5.35f, 5.1f, 0.5f, 0.45f, 0.1f, 0xFFFFFFFF.toInt())
-        cube(2.0f, 5.35f, 5.1f, 0.5f, 0.45f, 0.1f, 0xFFFFFFFF.toInt())
-        cube(0f, 3.2f, 5.3f, 0.6f, 0.7f, 0.3f, SKIN_D)
-        cube(0f, 1.6f, 5.05f, 1.3f, 0.3f, 0.12f, SKIN_D)
-        // elmo
-        cube(0f, 8.7f, 0f, 5.7f, 2.7f, 5.6f, STEEL)
-        cube(0f, 6.4f, 0f, 5.8f, 0.35f, 5.7f, GOLD)
-        cube(0f, 6.9f, 5.5f, 5.9f, 0.6f, 0.5f, STEEL_D)
-        cube(0f, 4.6f, 5.5f, 0.55f, 2.3f, 0.45f, STEEL)
-        cube(-5.5f, 4.4f, 0.5f, 0.5f, 2.4f, 3.6f, STEEL)
-        cube(5.5f, 4.4f, 0.5f, 0.5f, 2.4f, 3.6f, STEEL)
-        cube(0f, 11.7f, 0f, 0.9f, 0.9f, 5.2f, STEEL_D)
-        // penacho vermelho
-        cube(0f, 13.2f, -0.5f, 0.8f, 1.5f, 4.2f, RED)
-        cube(0f, 12.4f, -5.4f, 0.8f, 2.0f, 1.4f, RED_D)
-        cube(0f, 12.9f, 4.4f, 0.8f, 1.0f, 1.2f, RED)
+        cube(0f, 0.3f, 0f, 2.3f, 1.0f, 2.3f, SKIN_D)
+        cube(0f, 5.2f, 0f, 5.0f, 5.0f, 4.8f, SKIN)
+        cube(-2.0f, 4.7f, 4.85f, 1.05f, 1.0f, 0.12f, EYE)
+        cube(2.0f, 4.7f, 4.85f, 1.05f, 1.0f, 0.12f, EYE)
+        cube(-2.1f, 4.9f, 4.95f, 0.55f, 0.4f, 0.1f, 0xFFFFFFFF.toInt(), true)
+        cube(1.9f, 4.9f, 4.95f, 0.55f, 0.4f, 0.1f, 0xFFFFFFFF.toInt(), true)
+        cube(0f, 3.3f, 5.0f, 0.6f, 0.7f, 0.3f, SKIN_D)
+        cube(0f, 1.7f, 4.85f, 1.5f, 0.3f, 0.12f, SKIN_D)
+        cube(-2.0f, 6.4f, 4.9f, 1.4f, 0.25f, 0.1f, SKIN_D)
+        cube(2.0f, 6.4f, 4.9f, 1.4f, 0.25f, 0.1f, SKIN_D)
+        cube(0f, 8.6f, 0f, 5.5f, 2.9f, 5.4f, STEEL)
+        cube(0f, 6.3f, 0f, 5.7f, 0.4f, 5.5f, GOLD)
+        cube(0f, 7.0f, 5.4f, 5.6f, 0.55f, 0.45f, STEEL_D)
+        cube(0f, 4.8f, 5.3f, 0.55f, 2.4f, 0.4f, STEEL)
+        for (k in 0..1) {
+            val sd = if (k == 0) -1f else 1f
+            cube(sd * 5.4f, 4.6f, 0.3f, 0.55f, 2.5f, 3.9f, STEEL)
+            cube(sd * 5.7f, 3.0f, 0.3f, 0.35f, 0.9f, 2.6f, STEEL_D)
+            cube(sd * 5.9f, 7.8f, 0f, 0.3f, 1.0f, 3.0f, GOLD)
+            cube(sd * 6.6f, 9.2f, -0.5f, 0.5f, 1.0f, 2.6f, GOLD)
+            cube(sd * 7.6f, 10.6f, -0.9f, 0.4f, 0.9f, 2.0f, GOLD)
+            cube(sd * 8.4f, 12.0f, -1.2f, 0.35f, 0.8f, 1.4f, GOLD_D)
+        }
+        cube(0f, 11.7f, 0f, 1.0f, 0.9f, 5.3f, STEEL_D)
+        cube(0f, 11.9f, 3.0f, 0.5f, 0.4f, 1.0f, GOLD)
+        // penacho com mola (segue a cabeça com atraso)
+        push()
+        translate(0f, 12.4f, -4.5f)
+        rotX(0.45f + p0)
+        cube(0f, 0.8f, -0.6f, 0.85f, 0.8f, 2.8f, RED)
+        translate(0f, 0.4f, -3.4f)
+        rotX(0.5f + p1)
+        cube(0f, 0f, -1.6f, 0.8f, 0.8f, 2.8f, RED)
+        translate(0f, 0f, -4.4f)
+        rotX(0.5f + p1 * 1.3f)
+        cube(0f, -0.3f, -1.2f, 0.75f, 0.7f, 2.0f, RED_D)
         pop()
+        pop()
+    }
+
+    private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, tabA: Float, breath: Float) {
+        cube(0f, 0.6f, 0f, 5.6f, 1.4f, 3.5f, LEATHER)
+        cube(0f, 0.8f, 3.55f, 1.6f, 1.2f, 0.5f, GOLD)
+        cube(0f, 0.8f, 4.0f, 0.8f, 0.7f, 0.25f, RED)
+        for (k in 0..1) {
+            val sd = if (k == 0) -1f else 1f
+            cube(sd * 5.7f, 0.4f, 0f, 0.6f, 1.3f, 3.2f, LEATHER_D)
+            cube(sd * 3.0f, -1.4f, 3.6f, 2.2f, 2.6f, 0.45f, STEEL_D)
+            cube(sd * 3.0f, -1.3f, 4.0f, 1.7f, 2.0f, 0.25f, STEEL)
+        }
+        // tabardo balançando
+        push()
+        translate(0f, -0.6f, 3.9f)
+        rotX(tabA)
+        cube(0f, -2.6f, 0.2f, 2.4f, 2.8f, 0.3f, RED)
+        cube(0f, -5.4f, 0.2f, 2.4f, 0.4f, 0.4f, GOLD)
+        cube(0f, -5.9f, 0.2f, 1.8f, 0.3f, 0.3f, RED_D)
+        pop()
+        cube(0f, 3.8f, 0f, 5.2f, 2.2f, 3.5f, STEEL_D)
+        for (i in 0..2) cube(0f, 2.6f + i * 1.6f, 3.4f, 4.8f - i * 0.2f, 0.45f, 0.4f, STEEL)
+        // peitoral (respira + contra-rotaciona)
+        push()
+        rotY(chestTw)
+        translate(0f, breath, 0f)
+        cube(0f, 9.8f, 0f, 6.9f, 5.0f, 3.9f, STEEL)
+        cube(0f, 10.5f, 3.9f, 5.5f, 3.8f, 0.6f, STEEL_L)
+        cube(0f, 13.9f, 3.7f, 6.3f, 0.5f, 0.8f, GOLD)
+        cube(0f, 10.0f, 4.5f, 0.9f, 3.0f, 0.15f, RED)
+        cube(0f, 10.7f, 4.5f, 2.4f, 0.8f, 0.15f, RED)
+        cube(0f, 8.8f, 4.5f, 3.2f, 0.4f, 0.2f, GOLD_D)
+        cube(0f, 10.0f, -3.95f, 5.6f, 4.4f, 0.5f, STEEL_D)
+        cube(0f, 10.5f, -4.35f, 2.6f, 3.2f, 0.2f, STEEL)
+        cube(0f, 14.4f, 0f, 3.4f, 0.9f, 3.0f, STEEL_D)
+        // capa em 3 segmentos (molas)
+        push()
+        translate(0f, 13.6f, -4.1f)
+        rotX(c0)
+        cube(0f, -2.9f, -0.4f, 6.0f, 3.1f, 0.4f, RED_D)
+        cube(0f, 0.9f, 0.1f, 6.7f, 0.95f, 1.2f, STEEL_D)
+        cube(-5.2f, 0.6f, 0.1f, 1.0f, 1.0f, 1.4f, GOLD)
+        cube(5.2f, 0.6f, 0.1f, 1.0f, 1.0f, 1.4f, GOLD)
+        translate(0f, -5.8f, 0f)
+        rotX(c1)
+        cube(0f, -2.9f, -0.4f, 6.3f, 3.0f, 0.4f, RED)
+        translate(0f, -5.8f, 0f)
+        rotX(c2)
+        cube(0f, -2.6f, -0.4f, 6.0f, 2.6f, 0.4f, RED_D)
+        cube(0f, -5.3f, -0.4f, 6.0f, 0.4f, 0.5f, GOLD)
+        cube(-4.2f, -6.7f, -0.4f, 1.3f, 1.2f, 0.4f, RED)
+        cube(-1.4f, -6.7f, -0.4f, 1.3f, 1.2f, 0.4f, RED_D)
+        cube(1.4f, -6.7f, -0.4f, 1.3f, 1.2f, 0.4f, RED)
+        cube(4.2f, -6.7f, -0.4f, 1.3f, 1.2f, 0.4f, RED_D)
+        pop()
+        pop()
+    }
+
+    // ───────────── animação (molas + ataque) ─────────────
+
+    // molas: 0 inclinação, 1 banking, 2-4 capa, 5-6 penacho, 7 tabardo, 8 cabeça
+    private val sp = FloatArray(10)
+    private val sv = FloatArray(10)
+    private var combo = 0
+    private var prevAtk = 0f
+    private var prevPhase = 0f
+    private var spd = 0f
+    private var wasAir = false
+
+    // keyframes do golpe: sh, z, el, tw, wrist, crouch, lean, hip
+    private val kI = FloatArray(8)
+    private val kW = FloatArray(8)
+    private val kE = FloatArray(8)
+    private val kO = FloatArray(8)
+
+    // faíscas da lâmina
+    private const val NSP = 18
+    private val spX = FloatArray(NSP)
+    private val spY = FloatArray(NSP)
+    private val spVx = FloatArray(NSP)
+    private val spVy = FloatArray(NSP)
+    private val spL = FloatArray(NSP)
+    private var spNext = 0
+
+    private fun spring(i: Int, target: Float, k: Float, d: Float, dt: Float) {
+        sv[i] += ((target - sp[i]) * k - sv[i] * d) * dt
+        sp[i] += sv[i] * dt
+    }
+
+    private fun setK(
+        a: FloatArray, sh: Float, z: Float, el: Float, tw: Float,
+        wr: Float, cr: Float, lean: Float, hip: Float
+    ) {
+        a[0] = sh; a[1] = z; a[2] = el; a[3] = tw
+        a[4] = wr; a[5] = cr; a[6] = lean; a[7] = hip
+    }
+
+    private fun mixK(a: FloatArray, b: FloatArray, u: Float) {
+        for (i in 0..7) kO[i] = lerp(a[i], b[i], u)
+    }
+
+    private fun emitSpark(x: Float, y: Float) {
+        val i = spNext
+        spNext = (spNext + 1) % NSP
+        val r = kotlin.random.Random
+        val k = rs * 38f
+        spX[i] = x
+        spY[i] = y
+        spVx[i] = (r.nextFloat() - 0.5f) * 2f * k
+        spVy[i] = (-0.2f - r.nextFloat() * 0.9f) * k
+        spL[i] = 0.22f + r.nextFloat() * 0.2f
     }
 
     // ───────────── desenho principal ─────────────
@@ -383,11 +537,13 @@ object Warrior3D {
     ) {
         val now = System.nanoTime()
         val first = lastNs == 0L
-        val dt = if (first) 0.016f else ((now - lastNs) / 1_000_000_000f).coerceIn(0f, 0.1f)
+        val dt = if (first) 0.016f else ((now - lastNs) / 1_000_000_000f).coerceIn(0.001f, 0.1f)
         lastNs = now
         clock += dt
+        val sdt = min(dt, 0.04f)
 
-        // direção suave
+        // direção suave (guarda a velocidade angular para o banking)
+        var yawStep = 0f
         if (abs(faceX) + abs(faceY) > 0.01f) {
             val target = atan2(faceX, faceY)
             if (first) {
@@ -396,16 +552,32 @@ object Warrior3D {
                 var d = target - yaw
                 while (d > PI.toFloat()) d -= TWO_PI
                 while (d < -PI.toFloat()) d += TWO_PI
-                yaw += d * min(1f, dt * 16f)
+                yawStep = d * min(1f, dt * 16f)
+                yaw += yawStep
             }
         }
+        val yawVel = yawStep / dt
         blend += ((if (moving) 1f else 0f) - blend) * min(1f, dt * 12f)
+
+        // velocidade estimada pela fase da caminhada
+        val dPh = abs(phase - prevPhase)
+        prevPhase = phase
+        val spdTgt = if (first) 0f else (dPh / dt / 9.6f).coerceIn(0f, 1.6f)
+        spd += (spdTgt - spd) * min(1f, dt * 10f)
+        val spN = min(spd, 1f)
 
         // fase do golpe: 0..1 (negativo = sem ataque)
         val t = if (attack > 0.001f) 1f - attack else -1f
         val attacking = t >= 0f
+        if (attack > prevAtk + 0.3f) {
+            // golpe novo: alterna o combo e chacoalha capa/penacho
+            combo = 1 - combo
+            sv[2] += 2.5f; sv[3] += 3.5f; sv[4] += 4.5f
+            sv[5] += 2.0f; sv[6] += 3.0f; sv[7] += 2.0f
+        }
+        prevAtk = attack
+
         val rolling = rollP >= 0f
-        // Pesos de pose SUAVIZADOS: entram e saem aos poucos em vez de trocar de uma vez
         val airT = if (inAir && !rolling) 1f else 0f
         val rollTgt = if (rolling) min(rollP / 0.15f, (1f - rollP) / 0.2f).coerceIn(0f, 1f) else 0f
         if (first) {
@@ -415,15 +587,20 @@ object Warrior3D {
             airW += (airT - airW) * min(1f, dt * (if (airT > airW) 16f else 11f))
             rollW += (rollTgt - rollW) * min(1f, dt * 26f)
         }
+        if (wasAir && airW < 0.4f) {
+            // aterrissagem: capa sobe, corpo amortece
+            sv[2] -= 3f; sv[3] -= 4f; sv[4] -= 5f; sv[0] += 2.2f; sv[7] -= 3f
+            wasAir = false
+        } else if (airW > 0.7f) {
+            wasAir = true
+        }
         val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
-        // pernas recolhem mais na subida e vão esticando até a aterrissagem
         val tuck = max(rollW, airW * (0.28f + 0.32f * max(0f, vzN)))
         val still = 1f - max(rollW, airW)
-        val mv = still * (if (attacking) blend * 0.4f else blend)
-        val walk = sin(phase)
+        val mvs = still * (if (attacking) blend * 0.35f else blend)
 
-        // poses da espada (braço direito)
-        val idleSh = -0.5f + walk * 0.3f * mv
+        // ── pose do braço da espada ──
+        val idleSh = -0.5f + sin(phase) * 0.18f * mvs + sin(clock * 1.3f) * 0.04f * (1f - mvs)
         val idleZ = -0.12f
         val idleEl = -0.8f
         var sh = idleSh
@@ -432,45 +609,37 @@ object Warrior3D {
         var tw = 0f
         var lunge = 0f
         var wrist = 0f
+        var crouch = 0f
+        var leanAtk = 0f
+        var hipTw = 0f
         if (attacking) {
-            val wSh = -2.7f
-            val wZ = 0.55f
-            val wEl = -0.9f
-            val wTw = -0.55f
-            val eSh = -0.55f
-            val eZ = 0.35f
-            val eEl = -0.35f
-            val eTw = 0.55f
-            if (t < 0.26f) {
-                val u = ease(t / 0.26f)
-                sh = lerp(idleSh, wSh, u)
-                shZ = lerp(idleZ, wZ, u)
-                el = lerp(idleEl, wEl, u)
-                tw = lerp(0f, wTw, u)
-                wrist = lerp(0f, -0.3f, u)
-            } else if (t < 0.46f) {
-                var u = (t - 0.26f) / 0.2f
-                u = 1f - (1f - u) * (1f - u)
-                sh = lerp(wSh, eSh, u)
-                shZ = lerp(wZ, eZ, u)
-                el = lerp(wEl, eEl, u)
-                tw = lerp(wTw, eTw, u)
-                wrist = lerp(-0.3f, 0.35f, u)
+            if (combo == 0) {
+                setK(kW, -2.9f, 0.75f, -1.0f, -0.75f, -0.45f, 0.15f, -0.18f, 0.35f)
+                setK(kE, -0.35f, -0.30f, -0.30f, 0.80f, 0.55f, 0.50f, 0.28f, -0.40f)
             } else {
-                val u = ease((t - 0.46f) / 0.54f)
-                sh = lerp(eSh, idleSh, u)
-                shZ = lerp(eZ, idleZ, u)
-                el = lerp(eEl, idleEl, u)
-                tw = lerp(eTw, 0f, u)
-                wrist = lerp(0.35f, 0f, u)
+                setK(kW, -1.35f, -0.95f, -0.55f, 0.80f, 0.20f, 0.20f, 0.05f, -0.35f)
+                setK(kE, -1.55f, 1.25f, -0.25f, -0.95f, -0.15f, 0.45f, 0.22f, 0.45f)
             }
-            if (t in 0.2f..0.7f) {
-                lunge = sin(((t - 0.2f) / 0.5f) * PI.toFloat()) * 3f
+            setK(kI, idleSh, idleZ, idleEl, 0f, 0f, 0f, 0f, 0f)
+            if (t < 0.24f) {
+                mixK(kI, kW, ease(t / 0.24f))
+            } else if (t < 0.40f) {
+                var u = (t - 0.24f) / 0.16f
+                u = 1f - (1f - u) * (1f - u) * (1f - u)
+                mixK(kW, kE, u)
+            } else if (t < 0.55f) {
+                val u = (t - 0.40f) / 0.15f
+                val o = 0.06f * sin(u * PI.toFloat())
+                for (i in 0..7) kO[i] = kE[i] + (kE[i] - kW[i]) * o
+            } else {
+                mixK(kE, kI, ease((t - 0.55f) / 0.45f))
+            }
+            sh = kO[0]; shZ = kO[1]; el = kO[2]; tw = kO[3]
+            wrist = kO[4]; crouch = kO[5]; leanAtk = kO[6]; hipTw = kO[7]
+            if (t in 0.18f..0.62f) {
+                lunge = sin(((t - 0.18f) / 0.44f) * PI.toFloat()) * 3.6f
             }
         }
-
-        val bob = abs(walk) * 1.4f * mv + sin(clock * 2.4f) * 0.35f * (1f - mv)
-        val lean = 0.10f * mv + lunge * 0.04f
         if (rollW > 0.001f) {
             sh = lerp(sh, -1.2f, rollW)
             shZ = lerp(shZ, 0.2f, rollW)
@@ -478,14 +647,36 @@ object Warrior3D {
             wrist = lerp(wrist, 0.3f, rollW)
         }
         if (airW > 0.001f && !attacking) {
-            // braço sobe na subida e abre um pouco na descida
             sh = lerp(sh, -2.0f - 0.25f * vzN, airW)
             shZ = lerp(shZ, 0.5f, airW)
             el = lerp(el, -0.6f, airW)
         }
-        var shieldSh = (if (attacking) -0.45f else -0.25f) - walk * 0.15f * mv
+        var shieldSh = -0.3f - sin(phase) * 0.22f * mvs - (if (attacking) 0.2f else 0f)
         shieldSh = lerp(shieldSh, -1.0f, rollW)
         shieldSh = lerp(shieldSh, -1.1f - 0.2f * vzN, airW)
+
+        // ── molas (capa, penacho, tabardo, cabeça, inclinação) ──
+        val bankT = (-yawVel * 0.03f).coerceIn(-0.22f, 0.22f) * spN
+        spring(0, 0.13f * spN, 90f, 12f, sdt)
+        spring(1, bankT, 80f, 9f, sdt)
+        val capeBase = 0.14f + 0.30f * spN + airW * (0.35f - 0.3f * vzN) + lunge * 0.05f +
+            0.10f * sin(clock * 3f + phase * 2f) * (0.4f + spN)
+        spring(2, capeBase, 38f, 5.5f, sdt)
+        spring(3, capeBase * 0.8f + 0.08f, 28f, 4.5f, sdt)
+        spring(4, capeBase * 0.7f + 0.10f, 20f, 3.8f, sdt)
+        spring(5, 0.18f * spN, 55f, 6f, sdt)
+        spring(6, 0.22f * spN, 40f, 4.5f, sdt)
+        spring(7, 0.10f + 0.45f * spN, 60f, 7f, sdt)
+        spring(8, (yawVel * 0.03f).coerceIn(-0.35f, 0.35f), 70f, 9f, sdt)
+
+        val bob = (0.5f + 0.5f * cos(phase * 2f)) * 1.3f * mvs + sin(clock * 2.2f) * 0.35f * (1f - mvs)
+        val breath = sin(clock * 2.2f) * 0.28f * (1f - mvs * 0.6f)
+        val sway = sin(phase) * 0.9f * mvs + sin(clock * 0.9f) * 0.35f * (1f - mvs)
+        val lean = sp[0] + leanAtk * 0.5f
+        val hipY = 12.6f + bob - crouch * 3.2f
+        val wob = sin(phase) * 0.14f * mvs
+        val chestTw = tw - hipTw * 0.5f - wob - sin(phase) * 0.22f * mvs
+        val glow = 0.35f + 0.15f * sin(clock * 4f) + (if (attacking) 0.5f else 0f)
 
         rs = s * PX
         ox = fx
@@ -494,7 +685,8 @@ object Warrior3D {
         top = 0
         identity()
         rotY(yaw)
-        translate(0f, 0f, lunge)
+        rotZ(sp[1])
+        translate(sway * 0.5f, 0f, lunge)
         if (rolling) {
             val ang = (rollP * 0.55f + ease(rollP) * 0.45f) * TWO_PI
             val lift = 7f * sin(rollP * PI.toFloat())
@@ -503,54 +695,51 @@ object Warrior3D {
             translate(0f, -11f, 0f)
         }
 
-        // pernas
-        leg(1f, walk * 0.8f * mv - 1.0f * tuck, 12.5f + bob, tuck)
-        leg(-1f, -walk * 0.8f * mv - 1.0f * tuck, 12.5f + bob, tuck)
+        // pernas: swing + joelho dobrando na passada + passo no ataque
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            val pp = if (sd > 0f) phase else phase + PI.toFloat()
+            var a = sin(pp) * 0.85f * mvs
+            var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.10f + crouch * 0.9f
+            val ft = max(0f, cos(pp)) * 0.35f * mvs
+            if (attacking) {
+                val front = (combo == 0) == (sd > 0f)
+                val lk = lunge / 3.6f
+                if (front) {
+                    a -= 0.55f * lk
+                } else {
+                    a += 0.45f * lk
+                    kn += 0.35f * lk
+                }
+            }
+            a = a * (1f - airW) - tuck
+            leg(sd, a, kn + tuck * 1.5f, hipY, ft)
+        }
 
-        // tronco
+        // quadril → peito (contra-rotação) → cabeça e braços
         push()
-        translate(0f, 12.5f + bob, 0f)
+        translate(0f, hipY, 0f)
+        rotY(hipTw * 0.5f + wob)
         rotX(lean)
-        rotY(tw)
-        cube(0f, 1.2f, 0f, 6.6f, 1.6f, 3.8f, LEATHER)
-        cube(0f, 1.4f, 3.9f, 1.7f, 1.3f, 0.5f, GOLD)
-        cube(0f, 8.4f, 0f, 6.8f, 5.6f, 3.9f, STEEL)
-        cube(0f, 9.0f, 3.9f, 5.2f, 4.2f, 0.6f, STEEL_L)
-        cube(0f, 13.7f, 3.7f, 6.2f, 0.5f, 0.7f, GOLD)
-        cube(0f, 9.2f, 4.55f, 0.9f, 3.0f, 0.15f, RED)
-        cube(0f, 9.8f, 4.55f, 2.4f, 0.8f, 0.15f, RED)
-        cube(0f, 9.0f, -3.9f, 5.4f, 4.4f, 0.5f, STEEL_D)
-        cube(0f, -1.6f, 3.7f, 3.2f, 3.4f, 0.5f, RED)
-        cube(0f, -4.9f, 3.7f, 3.2f, 0.4f, 0.55f, GOLD)
-        cube(-5.4f, -0.8f, 0f, 1.3f, 2.4f, 3.6f, STEEL_D)
-        cube(5.4f, -0.8f, 0f, 1.3f, 2.4f, 3.6f, STEEL_D)
-
-        // capa
         push()
-        translate(0f, 13.4f, -4.2f)
-        val cape1 = 0.14f + 0.28f * mv + 0.12f * sin(clock * 3f + phase * 2f) * (0.4f + mv) + lunge * 0.05f +
-            airW * (0.35f - 0.3f * vzN)
-        rotX(cape1)
-        cube(0f, -5.8f, -0.4f, 5.9f, 6.0f, 0.45f, RED_D)
-        cube(0f, 0.9f, 0.1f, 6.6f, 1.0f, 1.2f, STEEL_D)
-        translate(0f, -11.8f, 0f)
-        rotX(0.1f + 0.3f * mv * (0.5f + 0.5f * sin(clock * 4f + phase * 2f)))
-        cube(0f, -3.0f, -0.4f, 6.1f, 3.2f, 0.45f, RED)
-        cube(0f, -6.0f, -0.4f, 6.1f, 0.4f, 0.55f, GOLD)
+        torso(chestTw, sp[2], sp[3], sp[4], sp[7], breath)
+        push()
+        rotY(chestTw)
+        translate(0f, breath, 0f)
+        head(-chestTw * 0.7f + sp[8], -lean * 0.6f, sp[5], sp[6])
+        rightArm(sh, shZ, el, wrist, glow)
+        leftArm(shieldSh, 0.12f, -1.4f)
         pop()
-
-        head(-tw * 0.6f, -lean * 0.8f)
-        rightArm(sh, shZ, el, wrist)
-        leftArm(shieldSh, 0.12f, -1.5f)
+        pop()
         pop()
 
         flush(c, p)
 
-        // rastro dourado da espada
+        // ── rastro da espada ──
         if (!attacking) {
             trN = 0
         } else {
-            if (t in 0.18f..0.9f) {
+            if (t in 0.22f..0.66f) {
                 if (trN == 24) {
                     System.arraycopy(trX, 1, trX, 0, 23)
                     System.arraycopy(trY, 1, trY, 0, 23)
@@ -563,6 +752,10 @@ object Warrior3D {
                 trMx[trN] = midX
                 trMy[trN] = midY
                 trN++
+                if (t in 0.26f..0.44f) {
+                    emitSpark(tipX, tipY)
+                    emitSpark(tipX, tipY)
+                }
             }
             val fade = min(1f, attack * 3f)
             for (i in 1 until trN) {
@@ -574,16 +767,33 @@ object Warrior3D {
                 path.lineTo(trMx[i - 1], trMy[i - 1])
                 path.close()
                 p.style = Paint.Style.FILL
-                p.color = (((a * 0.6f * fade * 255f).toInt()) shl 24) or 0x00FFE9A8
+                p.color = (((a * 0.55f * fade * 255f).toInt()) shl 24) or 0x00FFB74D
                 c.drawPath(path, p)
                 p.style = Paint.Style.STROKE
-                p.strokeWidth = max(1.2f, rs * 0.9f)
+                p.strokeWidth = max(2.4f, rs * 1.8f)
                 p.strokeCap = Paint.Cap.ROUND
-                p.color = (((a * 0.9f * fade * 255f).toInt()) shl 24) or 0x00FFFFFF
+                p.color = (((a * 0.35f * fade * 255f).toInt()) shl 24) or 0x00FFE9A8
+                c.drawLine(trX[i - 1], trY[i - 1], trX[i], trY[i], p)
+                p.strokeWidth = max(1.2f, rs * 0.8f)
+                p.color = (((a * 0.95f * fade * 255f).toInt()) shl 24) or 0x00FFFFFF
                 c.drawLine(trX[i - 1], trY[i - 1], trX[i], trY[i], p)
             }
             p.style = Paint.Style.FILL
             p.strokeCap = Paint.Cap.BUTT
+        }
+
+        // ── faíscas ──
+        p.style = Paint.Style.FILL
+        for (i in 0 until NSP) {
+            if (spL[i] <= 0f) continue
+            spL[i] -= dt
+            spX[i] += spVx[i] * dt
+            spY[i] += spVy[i] * dt
+            spVy[i] += rs * 120f * dt
+            val a = (spL[i] / 0.3f).coerceIn(0f, 1f)
+            val sz = max(1.2f, rs * 0.9f) * (0.5f + a * 0.5f)
+            p.color = (((a * 255f).toInt()) shl 24) or (if (a > 0.55f) 0x00FFFFFF else 0x00FFB74D)
+            c.drawRect(spX[i] - sz, spY[i] - sz, spX[i] + sz, spY[i] + sz, p)
         }
     }
 

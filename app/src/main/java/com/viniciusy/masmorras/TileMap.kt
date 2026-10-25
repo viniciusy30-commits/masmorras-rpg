@@ -54,6 +54,7 @@ class TileMap(override val width: Int = 96, override val height: Int = 72, overr
     private val chunks = arrayOfNulls<Bitmap>(cw * chh)
     private val lru = ArrayList<Int>()
     private val bakePaint = Paint()
+    private val chunkDst = android.graphics.RectF()
     private val bmpPaint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
 
     init {
@@ -542,9 +543,11 @@ class TileMap(override val width: Int = 96, override val height: Int = 72, overr
             val b = getChunk(cx, cy, budget > 0)
             if (b != null) {
                 if (!had) budget--
-                canvas.drawBitmap(
-                    b, Math.round(cx * cpx - camX).toFloat(), Math.round(cy * cpx - camY).toFloat(), bmpPaint
-                )
+                // +1px de sobreposição evita frestas escuras entre chunks (principalmente com zoom)
+                val dx0 = Math.floor((cx * cpx - camX).toDouble()).toFloat()
+                val dy0 = Math.floor((cy * cpx - camY).toDouble()).toFloat()
+                chunkDst.set(dx0, dy0, dx0 + cpx + 1f, dy0 + cpx + 1f)
+                canvas.drawBitmap(b, null, chunkDst, bmpPaint)
             } else {
                 paint.style = Paint.Style.FILL
                 paint.color = col(0xFF3F7A38)

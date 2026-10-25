@@ -1,3 +1,19 @@
+#id 2026-10-24-m
+#titulo Zoom da câmera e correção das bordas pretas
+- Zoom com gesto de pinça: aproxima até 1.9x; o mais longe é a visão padrão de antes
+- Removido o afastamento automático ao correr (era ele que mostrava bordas pretas piscando)
+- Corrigidas as frestas escuras entre os blocos do mapa ao andar e ao dar zoom
+
+#id 2026-10-24-l
+#titulo Guerreiro redesenhado e muito mais fluido
+- Armadura nova em camadas: elmo alado com penacho, ombreiras com espinhos, joelheiras, grevas, cinto e tabardo
+- Espada com runas brilhantes que pulsam e acendem no golpe; escudo com aro dourado
+- Caminhada com joelho dobrando, quadril e peito girando em sentidos opostos e balanço de peso
+- Capa em 3 partes, penacho e tabardo com física de mola (balançam, atrasam e vibram ao parar)
+- Golpe com antecipação, estocada com passo e recuperação suave; combo alterna entre corte diagonal e varredura
+- Rastro dourado mais largo e faíscas na lâmina
+- Inclinação do corpo nas curvas e amortecimento na aterrissagem
+
 #id 2026-10-24-k
 #titulo Interface nova estilo Minecraft Dungeons
 - Menu com parede de tijolos, tochas tremeluzindo e brasas subindo
