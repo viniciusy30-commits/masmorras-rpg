@@ -1,3 +1,16 @@
+#id 2026-10-26-b
+#titulo Câmera centralizada no personagem
+- A câmera agora fica sempre travada no centro da tela, sem atraso, sem olhar à frente e sem deslocar o herói para baixo (só para nas bordas do mapa)
+
+#id 2026-10-26-a
+#titulo Lança refeita: golpes de verdade e arremesso com mira!
+- Estocada rápida, varrida lateral e investida forte refeitas do zero: as duas mãos agora ficam sempre agarradas à haste, sem a lança "escapar" da mão
+- O dano agora sai exatamente quando a ponta acerta (antes saía antes da animação); a estocada atravessa todos os inimigos em linha e a varrida acerta em arco
+- Riscos de velocidade e clarão na ponta nas estocadas; a investida forte empurra os inimigos bem mais longe
+- Golpe carregado agora é o arremesso: segure o ataque, mire com o joystick (linha pontilhada, mira que trava em inimigos próximos) e solte para lançar
+- A lança voa reta, atravessa os inimigos e finca no chão ou na parede; fica brilhando com uma seta até você passar perto para pegar de volta
+- Sem a lança você fica de punhos fechados: pegue ela de volta ou troque para a espada
+
 #id 2026-10-25-e
 #titulo HUD refeito do zero, inspirado em Diablo 3 e Minecraft Dungeons
 - Orbes de vida e mana em vidro, menores, com moldura de ferro, ouro, espinhos e gema; o líquido sobe e desce e os números ficam dentro de cada orbe

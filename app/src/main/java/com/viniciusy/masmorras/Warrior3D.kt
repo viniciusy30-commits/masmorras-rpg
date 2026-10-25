@@ -120,6 +120,7 @@ object Warrior3D {
     var charge = -1f    // 0..1 enquanto segura o ataque; <0 = sem carga
     var airH = 0f       // altura (px) acima do chão
     var weapon = 0      // 0 espada e escudo, 1 lança (duas mãos)
+    var spearGone = false // lança arremessada: mãos vazias
 
     // estado de animação
     private var yaw = 0f
@@ -742,31 +743,36 @@ object Warrior3D {
     private val SK_TUCK = floatArrayOf(-3.111f, 8.15f, 5.915f, 3.153f, 10.016f, 9.349f, 0f, 0.3f, 0f, 0f, -2f)
     private val SK_DIP = floatArrayOf(-3.111f, 5.15f, 4.915f, 2.953f, 6.516f, 8.849f, 0f, 0.5f, 0f, 0f, -4f)
     // preparação (W), meio do golpe (M) e fim do golpe (E): a mão da frente aponta a lança para a frente
+    // poses geradas por tools/spear_keys.py: as duas mãos sempre agarram a haste (deslize limitado) e ficam ao alcance dos braços
+    // 0 estocada rápida, 1 varrida lateral, 2 investida forte, 3 arremesso
     private val SK_W = arrayOf(
-        floatArrayOf(-3.342f, 8.454f, 5.713f, 5.087f, 9.947f, 9.633f, -0.947f, 0.35f, -0.1f, 0.139f, -8f),
-        floatArrayOf(-4.157f, 11.603f, 1.395f, -2.233f, 13.172f, -5.68f, 1.245f, 0.45f, 0f, 0.273f, -2f),
-        floatArrayOf(-3.015f, 10.123f, 5.436f, 4.557f, 10.567f, 9.449f, -1.038f, 0.55f, -0.15f, 0.443f, -10f),
-        floatArrayOf(-3.129f, 16.649f, -3.831f, 0.929f, 22.058f, -4.939f, 1.157f, 0.3f, -0.35f, 0.22f, -6f)
+        floatArrayOf(-5.698f, 10.88f, 0.694f, 2.037f, 11.224f, 4.438f, -1f, 0.3f, -0.15f, -0.5f, -2f),
+        floatArrayOf(-2.593f, 11.01f, 2.291f, 4.401f, 11.182f, 7.292f, -2.1f, 0.35f, -0.1f, -1.6f, 0f),
+        floatArrayOf(-6.966f, 11.2f, 1.519f, 1.561f, 10.77f, 2.554f, -1.25f, 0.62f, -0.2f, -0.7f, -3f),
+        floatArrayOf(-7.584f, 14.742f, -4.522f, -0.309f, 17.447f, -0.819f, -1.1f, 0.35f, -0.3f, -0.8f, -3f)
     )
     private val SK_M = arrayOf(
-        floatArrayOf(0.736f, 12.475f, 5.624f, 8.097f, 13.94f, 10.115f, -0.96f, 0.55f, 0.2f, 0.511f, 4f),
-        floatArrayOf(1.593f, 12.655f, 5.181f, 6.379f, 13.781f, 10.172f, -0.699f, 0.5f, 0.2f, 0.079f, 2f),
-        floatArrayOf(0.788f, 12.9f, 5.48f, 6.724f, 14.671f, 10.182f, -0.858f, 0.8f, 0.25f, -0.641f, 6f),
-        floatArrayOf(1.573f, 17.569f, 4.481f, 6.598f, 22.838f, 6.092f, -1.143f, 0.5f, 0.1f, 0.238f, 2f)
+        floatArrayOf(-1.79f, 11.06f, 2.884f, 5.15f, 11.404f, 7.952f, -0.9f, 0.45f, 0.2f, -0.3f, 1.5f),
+        floatArrayOf(-1.78f, 11f, 2.873f, 5.215f, 11f, 7.875f, -0.95f, 0.5f, 0.15f, -0.6f, 1f),
+        floatArrayOf(-1.789f, 11f, 2.885f, 5.156f, 11f, 7.957f, -0.9f, 0.78f, 0.3f, -0.35f, 2f),
+        floatArrayOf(-2.535f, 14.718f, 1.714f, 3.186f, 16.595f, 7.855f, -0.75f, 0.55f, 0.25f, -0.2f, 0f)
     )
     private val SK_E = arrayOf(
-        floatArrayOf(2.066f, 12.659f, 6.845f, 7.436f, 14.569f, 11.004f, -0.901f, 0.7f, 0.4f, 0.215f, 13f),
-        floatArrayOf(-3.923f, 11.06f, 6.203f, 3.997f, 12.535f, 10.124f, -0.051f, 0.5f, 0.1f, 0.264f, 2f),
-        floatArrayOf(2.267f, 13.887f, 6.463f, 6.986f, 15.358f, 10.703f, -0.823f, 1f, 0.5f, 0.026f, 17f),
-        floatArrayOf(1.285f, 14.41f, 5.552f, 7.722f, 13.369f, 10.422f, -0.928f, 1f, 0.55f, -0.086f, 17f)
+        floatArrayOf(0.916f, 11.1f, 5.107f, 7.651f, 11.272f, 10.452f, -0.9f, 0.55f, 0.35f, 0.1f, 4f),
+        floatArrayOf(-2.187f, 11.04f, 2.581f, 4.803f, 11.384f, 7.58f, 0.15f, 0.45f, 0.2f, 0.1f, 1f),
+        floatArrayOf(1.362f, 11.44f, 5.321f, 8.182f, 12.127f, 10.515f, -0.92f, 0.85f, 0.55f, 0.15f, 5f),
+        floatArrayOf(-0.457f, 12.875f, 5.701f, 6.246f, 13.733f, 11.02f, -0.9f, 0.7f, 0.55f, 0.25f, 0f)
     )
+    // tempos (preparação, golpe, fim) — manter igual a Player.strikeDelay()
     private val SK_T = arrayOf(
-        floatArrayOf(0.16f, 0.40f, 0.58f),
-        floatArrayOf(0.22f, 0.48f, 0.64f),
-        floatArrayOf(0.24f, 0.46f, 0.64f),
-        floatArrayOf(0.08f, 0.34f, 0.64f)
+        floatArrayOf(0.10f, 0.30f, 0.55f),
+        floatArrayOf(0.14f, 0.38f, 0.62f),
+        floatArrayOf(0.20f, 0.42f, 0.66f),
+        floatArrayOf(0.06f, 0.22f, 0.55f)
     )
-    private val SK_L = floatArrayOf(3.2f, 2.0f, 6.5f, 6.0f)
+    private val SK_L = floatArrayOf(3.5f, 2.5f, 7.0f, 4.5f)
+    // mãos fechadas em guarda (quando a lança está arremessada)
+    private val SK_FIST = floatArrayOf(-4.4f, 10.0f, 5.6f, 4.4f, 10.0f, 5.6f, -0.1f, 0.3f, 0f, 0.1f, 0f)
 
     private fun mixS(a: FloatArray, b: FloatArray, u: Float) {
         for (i in 0..10) sPo[i] = lerp(a[i], b[i], u)
@@ -802,11 +808,14 @@ object Warrior3D {
         } else if (chargeW > 0.01f) {
             mixS(sI, SK_W[3], ease(chargeW))
             val ch = max(0f, charge)
-            sPo[2] += sin(clock * 47f) * 0.25f * ch
-            sPo[5] += sin(clock * 43f) * 0.25f * ch
+            sPo[2] += sin(clock * 47f) * 0.12f * ch - 1.3f * ch
+            sPo[5] += sin(clock * 43f) * 0.12f * ch - 0.7f * ch
             sPo[7] += 0.12f * ch
         } else {
             System.arraycopy(sI, 0, sPo, 0, 11)
+        }
+        if (spearEmptyW > 0.01f && !attacking) {
+            for (i in 0..10) sPo[i] = lerp(sPo[i], SK_FIST[i], ease(spearEmptyW))
         }
     }
 
@@ -932,7 +941,7 @@ object Warrior3D {
         rotY(psi)
         rotX(-theta)
         translate(0f, 0f, sPo[10])
-        spearModel()
+        if (!spearGone) spearModel()
         projectTo(0f, 0f, 38f, 0)
         projectTo(0f, 0f, 24f, 1)
         pop()
@@ -979,6 +988,7 @@ object Warrior3D {
     private val sv = FloatArray(10)
     private var combo = 0
     private var chargeW = 0f
+    private var spearEmptyW = 0f
     private var sparkT = 0f
     private val lastPose = FloatArray(8)
     private val kS = FloatArray(8)
@@ -1192,6 +1202,7 @@ object Warrior3D {
         var leanAtk = 0f
         var hipTw = 0f
         chargeW += ((if (charge >= 0f && !attacking) 1f else 0f) - chargeW) * min(1f, dt * 9f)
+        spearEmptyW += ((if (spearGone && !attacking) 1f else 0f) - spearEmptyW) * min(1f, dt * 10f)
         val spear = wShown == 1
         val KT = if (spear) SK_T else K_T
         val KL = if (spear) SK_L else K_L
@@ -1411,7 +1422,7 @@ object Warrior3D {
         if (!attacking) {
             trN = 0
         } else {
-            if (t >= tW && t <= tH + 0.05f) {
+            if (t >= tW && t <= tH + 0.05f && !(spear && sw == 3)) {
                 if (trN == TRAIL_MAX) {
                     System.arraycopy(trX, 1, trX, 0, TRAIL_MAX - 1)
                     System.arraycopy(trY, 1, trY, 0, TRAIL_MAX - 1)
@@ -1454,12 +1465,34 @@ object Warrior3D {
                 p.color = (((a * a * 0.55f * fade * 255f).toInt()) shl 24) or 0x00FFFFFF
                 c.drawLine(trX[i - 1], trY[i - 1], trX[i], trY[i], p)
             }
+            // estocada: riscos de velocidade e clarão na ponta da lança
+            if (spear && sw != 1 && sw != 3 && t >= tS - 0.06f && t <= tS + 0.22f) {
+                val k = 1f - ((t - (tS - 0.06f)) / 0.28f).coerceIn(0f, 1f)
+                var vx = tipX - midX
+                var vy = tipY - midY
+                val vl = hypot(vx, vy).coerceAtLeast(0.001f)
+                vx /= vl
+                vy /= vl
+                p.style = Paint.Style.STROKE
+                p.strokeCap = Paint.Cap.ROUND
+                for (i in -1..1) {
+                    val ox = -vy * i * 3.4f * rs
+                    val oy = vx * i * 3.4f * rs
+                    val len = (30f - abs(i) * 9f) * rs
+                    p.strokeWidth = max(1.2f, rs * (if (i == 0) 1.2f else 0.65f))
+                    p.color = (((k * 0.85f * 255f).toInt()) shl 24) or 0x00FFF2C0
+                    c.drawLine(tipX + ox - vx * len * 0.15f, tipY + oy - vy * len * 0.15f, tipX + ox - vx * len * 1.5f, tipY + oy - vy * len * 1.5f, p)
+                }
+                p.style = Paint.Style.FILL
+                p.color = (((k * 0.7f * 255f).toInt()) shl 24) or 0x00FFFFFF
+                c.drawCircle(tipX, tipY, rs * (1.5f + 3.5f * k), p)
+            }
             p.style = Paint.Style.FILL
             p.strokeCap = Paint.Cap.BUTT
         }
 
         // ── onda de choque do golpe forte ──
-        if (attacking && sw == 3 && t >= tS) {
+        if (attacking && sw == 3 && !spear && t >= tS) {
             val u = ((t - tS) / (1f - tS)).coerceIn(0f, 1f)
             val cxw = fx + sin(yaw) * 14f * rs
             val cyw = fy + cos(yaw) * 14f * SINP * rs

@@ -5,6 +5,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.min
 import kotlin.math.sin
@@ -91,6 +92,7 @@ class Player(
     var charging = false
     var chargeT = 0f
     var weapon = 0 // 0 espada e escudo, 1 lança
+    var spearOut = false // lança arremessada, ainda no chão esperando ser recolhida
     var swapUntil = 0L
 
     fun canAttack(now: Long): Boolean {
@@ -106,8 +108,8 @@ class Player(
             comboStep = if (inWindow) (comboStep + 1) % 3 else 0
             swing = comboStep
             attackRate = if (weapon == 1) when (swing) {
-                0 -> 1.9f
-                1 -> 1.6f
+                0 -> 2.0f
+                1 -> 1.7f
                 else -> 1.4f
             } else when (swing) {
                 0 -> 1.65f
@@ -124,12 +126,20 @@ class Player(
     fun doHeavy(now: Long) {
         comboStep = -1
         swing = 3
-        attackRate = 1.15f
+        attackRate = if (weapon == 1) 1.2f else 1.15f
         charging = false
         chargeT = 0f
         lastAttack = now
         attackAnim = 1f
         attackPunch = 1.6f
+    }
+
+    /** Segundos até a ponta da lança acertar (o dano só sai nesse instante, sincronizado com a animação). */
+    fun strikeDelay(): Float = when (swing) {
+        0 -> 0.30f / 2.0f
+        1 -> 0.38f / 1.7f
+        2 -> 0.42f / 1.4f
+        else -> 0.22f / 1.2f
     }
 
     fun jump(): Boolean {
@@ -190,7 +200,7 @@ class Player(
             vx = rollDX * spd
             vy = rollDY * spd
         } else {
-            val slow = if (charging) 0.45f else 1f
+            val slow = if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f
             vx = inX * classe.velocidade * 60f * slow
             vy = inY * classe.velocidade * 60f * slow
         }
@@ -248,6 +258,7 @@ class Player(
         Warrior3D.airVz = vz
         Warrior3D.swing = swing
         Warrior3D.weapon = weapon
+        Warrior3D.spearGone = weapon == 1 && spearOut
         Warrior3D.charge = if (charging) chargeT else -1f
         canvas.save()
         canvas.scale(squashX, squashY, drawX, drawY)
@@ -456,3 +467,119 @@ class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, var lif
 }
 
 class DmgText(var x: Float, var y: Float, val text: String, var life: Float, val color: Int)
+
+
+/** Lança arremessada: voa reta, atravessa inimigos, finca no chão ou na parede e espera o herói passar perto. */
+class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val range: Float, val damage: Float) {
+    var flying = true
+    var travelled = 0f
+    var age = 0f
+    var stuckT = 0f
+    var wobble = 0f
+    val hit = HashSet<Enemy>()
+
+    fun update(dt: Float) {
+        age += dt
+        if (flying) {
+            val step = 800f * min(dt, 0.04f)
+            x += dx * step
+            y += dy * step
+            travelled += step
+            if (travelled >= range) land()
+        } else {
+            stuckT += dt
+            wobble = (wobble - dt * 2.4f).coerceAtLeast(0f)
+        }
+    }
+
+    fun land() {
+        flying = false
+        wobble = 1f
+    }
+
+    // desenha com a ponta na origem e o corpo para trás (-x)
+    private fun shape(canvas: Canvas, paint: Paint) {
+        paint.style = Paint.Style.FILL
+        paint.color = 0xFF6D4C2F.toInt()
+        canvas.drawRect(-76f, -2f, -6f, 2f, paint)
+        paint.color = 0xFF9C6B3F.toInt()
+        canvas.drawRect(-76f, -2f, -6f, -0.5f, paint)
+        paint.color = 0xFF3E2A18.toInt()
+        for (i in 0..3) canvas.drawRect(-70f + i * 14f, -2.3f, -69f + i * 14f, 2.3f, paint)
+        paint.color = 0xFFF2C94C.toInt()
+        canvas.drawRect(-80f, -3f, -76f, 3f, paint)
+        canvas.drawRect(-14f, -3.2f, -9f, 3.2f, paint)
+        // flâmula vermelha
+        val fl = sin(age * 22f) * 1.6f
+        paint.color = 0xFFD83A4A.toInt()
+        val pn = android.graphics.Path()
+        pn.moveTo(-16f, 0f); pn.lineTo(-34f, -8f + fl); pn.lineTo(-30f, -3f); pn.lineTo(-40f, -3f + fl); pn.lineTo(-16f, 1.5f)
+        pn.close()
+        canvas.drawPath(pn, paint)
+        // lâmina
+        paint.color = 0xFFB9C3CC.toInt()
+        val bl = android.graphics.Path()
+        bl.moveTo(-8f, -3f); bl.lineTo(-2f, -5.5f); bl.lineTo(14f, 0f); bl.lineTo(-2f, 5.5f); bl.lineTo(-8f, 3f)
+        bl.close()
+        canvas.drawPath(bl, paint)
+        paint.color = 0xFFF4F8FB.toInt()
+        canvas.drawRect(-6f, -1f, 10f, 0.4f, paint)
+        paint.color = 0xFF7C8A96.toInt()
+        canvas.drawRect(-8f, 1.4f, 4f, 3f, paint)
+    }
+
+    fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float, time: Float) {
+        val sx = x - camX
+        val gy = y - camY
+        paint.style = Paint.Style.FILL
+        if (flying) {
+            // sombra no chão + rastro
+            paint.color = 0x33000000
+            canvas.drawOval(sx - 20f, gy - 3f, sx + 20f, gy + 4f, paint)
+            val len = hypot(dx, dy * 0.85f).coerceAtLeast(0.001f)
+            val ux = dx / len
+            val uy = dy * 0.85f / len
+            for (i in 1..6) {
+                paint.color = ((0.30f * (1f - i / 7f) * 255f).toInt() shl 24) or 0x00FFF2C0
+                paint.strokeWidth = 5f - i * 0.6f
+                paint.style = Paint.Style.STROKE
+                paint.strokeCap = Paint.Cap.ROUND
+                canvas.drawLine(sx - ux * (i * 14f), gy - 22f - uy * (i * 14f), sx - ux * ((i + 1) * 14f), gy - 22f - uy * ((i + 1) * 14f), paint)
+            }
+            paint.style = Paint.Style.FILL
+            canvas.save()
+            canvas.translate(sx, gy - 22f)
+            canvas.rotate(atan2(uy, ux) * 57.29578f)
+            shape(canvas, paint)
+            canvas.restore()
+        } else {
+            // brilho no chão chamando o herói
+            val pul = 0.5f + 0.5f * sin(time * 4.5f)
+            val r = 26f + 6f * pul
+            paint.color = ((0.16f + 0.14f * pul) * 255f).toInt() shl 24 or 0x00FFD54F
+            canvas.drawOval(sx - r, gy - r * 0.55f, sx + r, gy + r * 0.55f, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.5f
+            paint.color = ((0.55f + 0.3f * pul) * 255f).toInt() shl 24 or 0x00FFE08A
+            canvas.drawOval(sx - r, gy - r * 0.55f, sx + r, gy + r * 0.55f, paint)
+            paint.style = Paint.Style.FILL
+            paint.color = 0x44000000
+            canvas.drawOval(sx - 14f, gy - 3f, sx + 14f, gy + 5f, paint)
+            // lança cravada, inclinada, balançando
+            val lean = if (dx >= 0f) 1f else -1f
+            val ang = atan2(1f, 0.32f * lean) * 57.29578f + sin(stuckT * 38f) * wobble * 7f * lean
+            canvas.save()
+            canvas.translate(sx, gy + 3f)
+            canvas.rotate(ang)
+            shape(canvas, paint)
+            canvas.restore()
+            // setinha pulando acima
+            val by = gy - 96f + sin(time * 5f) * 4f
+            paint.color = 0xFFFFD54F.toInt()
+            val ar = android.graphics.Path()
+            ar.moveTo(sx - 8f, by - 8f); ar.lineTo(sx + 8f, by - 8f); ar.lineTo(sx, by + 4f)
+            ar.close()
+            canvas.drawPath(ar, paint)
+        }
+    }
+}

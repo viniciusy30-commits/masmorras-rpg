@@ -10,6 +10,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -49,6 +50,17 @@ class GameView @JvmOverloads constructor(
     private val MAX_ZOOM = 1.9f
     private var userZoom = 1f
     private var attackHeld = false
+    // lança: golpe pendente (dano sai no instante da estocada), arremesso pendente e a lança no chão
+    private var thrown: ThrownSpear? = null
+    private var pendingHitT = -1f
+    private var pendingHitSwing = 0
+    private var pendingThrow = false
+    private var throwDX = 1f
+    private var throwDY = 0f
+    private var throwRange = 0f
+    private var throwPower = 0f
+    private var aimTarget: Enemy? = null
+    private var hintCd = 0f
     private var heldT = 0f
     private var queuedAt = 0L
     private var pinching = false
@@ -81,9 +93,9 @@ class GameView @JvmOverloads constructor(
 
     // Framing estilo Minecraft Dungeons: herói um pouco abaixo do centro
     private val FRAME_X = 0.50f
-    private val FRAME_Y = 0.62f
+    private val FRAME_Y = 0.50f
     private val CAM_SMOOTH = 8.5f
-    private val LOOK_AHEAD = 70f
+    private val LOOK_AHEAD = 0f
 
     var onGameOver: ((Boolean) -> Unit)? = null // true = vitória
     var onCharge: ((Float) -> Unit)? = null // 0 = sem carga, 0..1 enquanto segura o ataque
@@ -123,6 +135,10 @@ class GameView @JvmOverloads constructor(
         player = Player(sx, sy, classe)
         enemies.clear()
         projectiles.clear()
+        thrown = null
+        pendingHitT = -1f
+        pendingThrow = false
+        aimTarget = null
         particles.clear()
         texts.clear()
         enemies.addAll(map.createEnemies())
@@ -216,6 +232,10 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         if (!p.alive || gameOver) return
         val now = System.currentTimeMillis()
+        if (p.classe == Classe.GUERREIRO && p.weapon == 1 && p.spearOut) {
+            spearHint(p)
+            return
+        }
         if (!p.canAttack(now)) {
             if (p.classe == Classe.GUERREIRO && !p.rolling) queuedAt = now
             return
@@ -238,6 +258,11 @@ class GameView @JvmOverloads constructor(
             )
         } else {
             p.doAttack(now)
+            if (p.classe == Classe.GUERREIRO && p.weapon == 1) {
+                pendingHitT = p.strikeDelay()
+                pendingHitSwing = p.swing
+                return
+            }
             // estocada (3º golpe do combo): alcança mais longe, cone estreito, dano maior
             val spear = p.classe == Classe.GUERREIRO && p.weapon == 1
             val thrust = p.classe == Classe.GUERREIRO && (if (spear) p.swing != 1 else p.swing == 2)
@@ -263,6 +288,10 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         if (!p.alive || gameOver) return
         if (p.classe == Classe.GUERREIRO) {
+            if (p.weapon == 1 && p.spearOut) {
+                spearHint(p)
+                return
+            }
             attackHeld = true
             heldT = 0f
         } else {
@@ -287,8 +316,199 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    private fun spearHint(p: Player) {
+        if (hintCd > 0f) return
+        hintCd = 1.3f
+        texts.add(DmgText(p.x, p.y - p.radius - 40f, "Sem lança!", 0.9f, 0xFFFF8A80.toInt()))
+    }
+
+    /** Estocadas e varrida da lança; chamado no instante em que a ponta acerta. */
+    private fun spearStrike(sw: Int) {
+        val p = player ?: return
+        if (!p.alive) return
+        var fx = p.facingX
+        var fy = p.facingY
+        val fl = hypot(fx, fy).coerceAtLeast(0.001f)
+        fx /= fl
+        fy /= fl
+        val reach = p.classe.alcance * (if (sw == 0) 1.9f else if (sw == 1) 1.45f else 2.4f)
+        val dmg = p.classe.danoBase * (if (sw == 0) 1.0f else if (sw == 1) 0.9f else 1.75f)
+        val half = if (sw == 0) 15f else 24f
+        var hits = 0
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            val dx = e.x - p.x
+            val dy = e.y - p.y
+            val along = dx * fx + dy * fy
+            val perp = abs(dx * fy - dy * fx)
+            val ok = if (sw == 1) {
+                hypot(dx, dy) < reach + e.radius && along > -6f
+            } else {
+                along > -10f && along < reach + e.radius * 0.6f && perp < e.radius + half
+            }
+            if (ok) {
+                damageEnemy(e, dmg, p.x, p.y, if (sw == 2) 2.4f else if (sw == 1) 1.5f else 1f)
+                hits++
+            }
+        }
+        val tx = p.x + fx * reach * 0.8f
+        val ty = p.y + fy * reach * 0.8f - 14f
+        if (hits > 0) {
+            burst(tx, ty, 6 + hits * 2, 0xFFFFF2C0.toInt())
+            shake = max(shake, if (sw == 2) 0.24f else if (sw == 1) 0.14f else 0.1f)
+        } else {
+            burst(tx, ty, 3, 0xFFE0E6EC.toInt())
+            shake = max(shake, 0.04f)
+        }
+    }
+
+    private fun rayLen(x: Float, y: Float, ax: Float, ay: Float, range: Float): Float {
+        var d = 24f
+        while (d < range) {
+            if (map.isWall(x + ax * d, y + ay * d)) return d - 8f
+            d += 8f
+        }
+        return range
+    }
+
+    /** Direção da mira (com leve ímã em inimigos próximos da linha) e alcance do arremesso. */
+    private fun aimInfo(p: Player, power: Float): Triple<Float, Float, Float> {
+        var ax = p.facingX
+        var ay = p.facingY
+        val l = hypot(ax, ay).coerceAtLeast(0.001f)
+        ax /= l
+        ay /= l
+        val range = 240f + 400f * power
+        var best = 0.94f
+        var tgt: Enemy? = null
+        for (e in enemies) {
+            if (!e.alive) continue
+            val ex = e.x - p.x
+            val ey = e.y - p.y
+            val d = hypot(ex, ey)
+            if (d < 24f || d > range + e.radius) continue
+            val c = (ex * ax + ey * ay) / d
+            if (c > best) {
+                best = c
+                tgt = e
+            }
+        }
+        aimTarget = tgt
+        tgt?.let {
+            val ex = it.x - p.x
+            val ey = it.y - p.y
+            val d = hypot(ex, ey)
+            ax = ex / d
+            ay = ey / d
+        }
+        return Triple(ax, ay, range)
+    }
+
+    private fun throwSpear(power: Float) {
+        val p = player ?: return
+        p.doHeavy(System.currentTimeMillis())
+        val (ax, ay, range) = aimInfo(p, power)
+        throwDX = ax
+        throwDY = ay
+        throwRange = range
+        throwPower = power
+        p.facingX = ax
+        p.facingY = ay
+        pendingThrow = true
+        aimTarget = null
+    }
+
+    private fun releaseSpear() {
+        val p = player ?: return
+        var sx = p.x + throwDX * 26f
+        var sy = p.y + throwDY * 26f
+        if (map.isWall(sx, sy)) {
+            sx = p.x
+            sy = p.y
+        }
+        thrown = ThrownSpear(sx, sy, throwDX, throwDY, throwRange, p.classe.danoBase * (2.4f + 1.8f * throwPower))
+        p.spearOut = true
+        burst(sx, sy - 18f, 8, 0xFFFFE08A.toInt())
+        shake = max(shake, 0.12f)
+    }
+
+    private fun updateThrown(dt: Float, p: Player) {
+        val ts = thrown ?: return
+        ts.update(dt)
+        if (ts.flying) {
+            if (map.isWall(ts.x, ts.y)) {
+                ts.x -= ts.dx * 12f
+                ts.y -= ts.dy * 12f
+                ts.land()
+                burst(ts.x + ts.dx * 10f, ts.y - 14f, 8, 0xFFB0BEC5.toInt())
+                shake = max(shake, 0.12f)
+            } else {
+                for (e in enemies) {
+                    if (!e.alive || ts.hit.contains(e)) continue
+                    if (hypot(e.x - ts.x, e.y - ts.y) < e.radius + 12f) {
+                        ts.hit.add(e)
+                        damageEnemy(e, ts.damage, ts.x - ts.dx * 30f, ts.y - ts.dy * 30f, 1.8f)
+                        burst(e.x, e.y - 16f, 10, 0xFFFFE08A.toInt())
+                        shake = max(shake, 0.2f)
+                    }
+                }
+            }
+        } else if (ts.stuckT > 0.3f && hypot(p.x - ts.x, p.y - ts.y) < p.radius + 40f) {
+            p.spearOut = false
+            thrown = null
+            burst(p.x, p.y - 26f, 12, 0xFFFFD54F.toInt())
+            texts.add(DmgText(p.x, p.y - p.radius - 40f, "Lança recuperada!", 0.9f, 0xFFFFD54F.toInt()))
+        }
+    }
+
+    private fun drawAim(canvas: Canvas, p: Player) {
+        val (ax, ay, range) = aimInfo(p, p.chargeT)
+        val fy0 = p.y + p.radius * 0.55f - p.ground
+        val len = rayLen(p.x, fy0, ax, ay, range)
+        val lock = aimTarget
+        val col = if (lock != null) 0xFFFF5252.toInt() else 0xFFFFF2C0.toInt()
+        paint.style = Paint.Style.FILL
+        var d = 34f + ((time * 70f) % 18f)
+        while (d < len) {
+            val k = d / range
+            paint.color = VoxelArt.alpha(col, 0.85f * (1f - 0.5f * k))
+            canvas.drawCircle(p.x + ax * d - camX, fy0 + ay * d - camY, 2.2f + 1.4f * (1f - k), paint)
+            d += 18f
+        }
+        val ex = p.x + ax * len - camX
+        val ey = fy0 + ay * len - camY
+        val pul = 1f + 0.12f * sin(time * 9f)
+        val r = (13f + 6f * p.chargeT) * pul
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        paint.color = VoxelArt.alpha(col, 0.95f)
+        canvas.drawOval(ex - r, ey - r * 0.6f, ex + r, ey + r * 0.6f, paint)
+        canvas.drawLine(ex - r - 6f, ey, ex - r * 0.4f, ey, paint)
+        canvas.drawLine(ex + r * 0.4f, ey, ex + r + 6f, ey, paint)
+        canvas.drawLine(ex, ey - r * 0.6f - 6f, ex, ey - r * 0.25f, paint)
+        canvas.drawLine(ex, ey + r * 0.25f, ex, ey + r * 0.6f + 6f, paint)
+        if (lock != null) {
+            val lx = lock.x - camX
+            val ly = lock.y - camY + lock.radius * 0.5f
+            val rr = lock.radius + 10f
+            val c2 = 8f
+            paint.strokeWidth = 3.5f
+            for (sxn in intArrayOf(-1, 1)) for (syn in intArrayOf(-1, 1)) {
+                val cx = lx + sxn * rr
+                val cy = ly + syn * rr * 0.6f
+                canvas.drawLine(cx, cy, cx - sxn * c2, cy, paint)
+                canvas.drawLine(cx, cy, cx, cy - syn * c2, paint)
+            }
+        }
+        paint.style = Paint.Style.FILL
+    }
+
     private fun heavyAttack(power: Float) {
         val p = player ?: return
+        if (p.weapon == 1) {
+            throwSpear(power)
+            return
+        }
         val now = System.currentTimeMillis()
         p.doHeavy(now)
         val spear = p.weapon == 1
@@ -328,7 +548,7 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float) {
+    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float, kbMul: Float = 1f) {
         e.takeDamage(dmg)
         val big = dmg >= 28f
         texts.add(
@@ -340,7 +560,7 @@ class GameView @JvmOverloads constructor(
         val dx = e.x - fromX
         val dy = e.y - fromY
         val d = hypot(dx, dy).coerceAtLeast(1f)
-        val kb = if (e.tipo == 2) 6f else 16f
+        val kb = (if (e.tipo == 2) 6f else 16f) * kbMul
         val nx = e.x + dx / d * kb
         val ny = e.y + dy / d * kb
         if (!blockedAt(nx, ny, e.radius * 0.55f)) {
@@ -375,6 +595,20 @@ class GameView @JvmOverloads constructor(
             }
             return
         }
+
+        if (hintCd > 0f) hintCd -= dt
+        if (pendingHitT >= 0f) {
+            pendingHitT -= dt
+            if (pendingHitT <= 0f) {
+                pendingHitT = -1f
+                spearStrike(pendingHitSwing)
+            }
+        }
+        if (pendingThrow && p.attackAnim <= 0.78f) {
+            pendingThrow = false
+            releaseSpear()
+        }
+        updateThrown(dt, p)
 
         // segurar o ataque (guerreiro): levanta a espada; soltar = golpe forte
         if (attackHeld) {
@@ -520,14 +754,11 @@ class GameView @JvmOverloads constructor(
         val desiredY = camClamp(p.y + lookAheadY - height * FRAME_Y, map.worldHeight(), height.toFloat())
 
         // Spring damping (mais cinematográfico que lerp linear)
-        val ax = (desiredX - camX) * CAM_SMOOTH
-        val ay = (desiredY - camY) * CAM_SMOOTH
-        camVX += ax * dt
-        camVY += ay * dt
-        camVX *= (1f - 6.2f * dt).coerceIn(0.5f, 1f)
-        camVY *= (1f - 6.2f * dt).coerceIn(0.5f, 1f)
-        camX += camVX * dt
-        camY += camVY * dt
+        // câmera presa no herói: sempre no centro da tela (só para nas bordas do mapa)
+        camVX = 0f
+        camVY = 0f
+        camX = desiredX
+        camY = desiredY
         camX = camClamp(camX, map.worldWidth(), width.toFloat())
         camY = camClamp(camY, map.worldHeight(), height.toFloat())
 
@@ -551,7 +782,7 @@ class GameView @JvmOverloads constructor(
         canvas.save()
         // Zoom centrado no meio da tela (sensação de profundidade MCD)
         if (camZoom != 1f) {
-            canvas.scale(camZoom, camZoom, w * 0.5f, h * 0.55f)
+            canvas.scale(camZoom, camZoom, w * 0.5f, h * 0.5f)
         }
         if (shake > 0f) {
             val intensity = shake * 28f
@@ -594,6 +825,10 @@ class GameView @JvmOverloads constructor(
         }
 
         projectiles.forEach { it.draw(canvas, paint, camX, camY) }
+        thrown?.draw(canvas, paint, camX, camY, time)
+        player?.let { p ->
+            if (p.alive && p.charging && p.weapon == 1 && p.classe == Classe.GUERREIRO) drawAim(canvas, p)
+        }
         particles.forEach { it.draw(canvas, paint, camX, camY) }
         canvas.restore()
 
