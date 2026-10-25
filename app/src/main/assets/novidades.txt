@@ -1,5 +1,8 @@
-#id 2026-10-25-b
-#titulo Interface em pixel art e golpes mais suaves
+#id 2026-10-25-c
+#titulo Lança de duas mãos, troca de arma e HUD mais caprichado
+- Guerreiro ganhou uma lança: ele segura com as duas mãos, com combo próprio (estocada, giro e investida) e golpe forte com alcance maior
+- Botão hexagonal novo para trocar entre espada com escudo e lança, com animação de troca
+- Ícones do HUD centralizados e redesenhados, medalhão de mana na barra
 - Fonte pixel em todo o jogo (menus, HUD, botões, logo e números de dano)
 - Painéis de pedra com moldura dourada, botões biselados, barras de vida, mana e atributos em pixel art
 - Ícones novos desenhados em pixel: espada, rolar, pular, coração, mana e caveira

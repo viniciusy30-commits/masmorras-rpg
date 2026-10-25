@@ -172,6 +172,22 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    var onWeapon: ((Int) -> Unit)? = null
+
+    /** Troca entre espada+escudo e lança (só Guerreiro, parado no chão e sem golpe em andamento). */
+    fun switchWeapon() {
+        val p = player ?: return
+        if (!p.alive || gameOver || p.classe != Classe.GUERREIRO) return
+        if (p.rolling || attackHeld || p.charging) return
+        val now = System.currentTimeMillis()
+        if (now < p.swapUntil) return
+        p.weapon = 1 - p.weapon
+        p.swapUntil = now + 450L
+        p.comboStep = -1
+        burst(p.x, p.y + p.radius * 0.55f - p.ground, 7, 0xFFFFE08A.toInt())
+        onWeapon?.invoke(p.weapon)
+    }
+
     fun jump() {
         val p = player ?: return
         if (gameOver) return
@@ -223,9 +239,10 @@ class GameView @JvmOverloads constructor(
         } else {
             p.doAttack(now)
             // estocada (3º golpe do combo): alcança mais longe, cone estreito, dano maior
-            val thrust = p.classe == Classe.GUERREIRO && p.swing == 2
-            val reach = p.classe.alcance * (if (thrust) 1.3f else 1f)
-            val dmg = p.classe.danoBase * (if (thrust) 1.3f else 1f)
+            val spear = p.classe == Classe.GUERREIRO && p.weapon == 1
+            val thrust = p.classe == Classe.GUERREIRO && (if (spear) p.swing != 1 else p.swing == 2)
+            val reach = p.classe.alcance * (if (spear) (if (p.swing == 0) 1.55f else if (p.swing == 1) 1.2f else 1.95f) else if (thrust) 1.3f else 1f)
+            val dmg = p.classe.danoBase * (if (spear) (if (p.swing == 0) 0.95f else if (p.swing == 1) 0.85f else 1.45f) else if (thrust) 1.3f else 1f)
             enemies.forEach { e ->
                 if (!e.alive) return@forEach
                 val dist = hypot(e.x - p.x, e.y - p.y)
@@ -233,11 +250,11 @@ class GameView @JvmOverloads constructor(
                     val dx = e.x - p.x
                     val dy = e.y - p.y
                     val dot = dx * p.facingX + dy * p.facingY
-                    val inArc = if (thrust) dot > 0.5f * dist else (dot > 0 || dist < 40f)
+                    val inArc = if (thrust) dot > (if (spear) 0.6f else 0.5f) * dist else (dot > 0 || dist < 40f)
                     if (inArc) damageEnemy(e, dmg, p.x, p.y)
                 }
             }
-            if (thrust) shake = max(shake, 0.1f)
+            if (thrust) shake = max(shake, if (spear && p.swing == 2) 0.16f else 0.1f)
         }
     }
 
@@ -274,7 +291,8 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         val now = System.currentTimeMillis()
         p.doHeavy(now)
-        val reach = p.classe.alcance * 1.35f
+        val spear = p.weapon == 1
+        val reach = p.classe.alcance * (if (spear) 1.9f else 1.35f)
         val dmg = p.classe.danoBase * (1.7f + 1.3f * power)
         enemies.forEach { e ->
             if (!e.alive) return@forEach
@@ -283,7 +301,7 @@ class GameView @JvmOverloads constructor(
                 val dx = e.x - p.x
                 val dy = e.y - p.y
                 val dot = dx * p.facingX + dy * p.facingY
-                if (dot > -0.35f * dist) damageEnemy(e, dmg, p.x, p.y)
+                if (dot > (if (spear) 0.3f else -0.35f) * dist) damageEnemy(e, dmg, p.x, p.y)
             }
         }
         shake = max(shake, 0.3f)

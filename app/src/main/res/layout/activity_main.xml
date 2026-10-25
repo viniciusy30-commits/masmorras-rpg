@@ -247,8 +247,8 @@
                     android:background="@drawable/hud_hotbar"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingLeft="16dp"
-                    android:paddingRight="16dp">
+                    android:paddingLeft="38dp"
+                    android:paddingRight="38dp">
 
                     <TextView
                         android:id="@+id/tvHpNum"
@@ -313,6 +313,19 @@
                     android:background="@drawable/hudhex_menu_n"
                     android:gravity="center"
                     android:textSize="18sp"/>
+
+                <!-- medalhão hexagonal da mana, na ponta direita -->
+                <ImageView
+                    android:id="@+id/ivManaSlot"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginBottom="1dp"
+                    android:background="@drawable/hudhex_menu_n"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:alpha="0.45"
+                    android:src="@drawable/hudic_mana"/>
 
                 <!-- encaixe dourado + coração (enche de baixo para cima) -->
                 <ImageView
@@ -401,6 +414,21 @@
                     android:contentDescription="Atacar"
                     android:padding="20dp"
                     android:src="@drawable/hudic_sword"/>
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnWeapon"
+                    style="@style/Mc.Slot"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="14dp"
+                    android:layout_marginBottom="114dp"
+                    android:background="@drawable/hudbtn_weapon"
+                    android:contentDescription="Trocar arma"
+                    android:padding="9dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hudic_sword"
+                    android:visibility="gone"/>
 
                 <com.viniciusy.masmorras.ChargeRingView
                     android:id="@+id/chargeRing"

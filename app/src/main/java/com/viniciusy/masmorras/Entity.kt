@@ -90,9 +90,11 @@ class Player(
     private var attackRate = 2.5f
     var charging = false
     var chargeT = 0f
+    var weapon = 0 // 0 espada e escudo, 1 lança
+    var swapUntil = 0L
 
     fun canAttack(now: Long): Boolean {
-        if (rolling) return false
+        if (rolling || now < swapUntil) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
@@ -103,7 +105,11 @@ class Player(
             val inWindow = comboStep >= 0 && now - lastAttack < 1200L
             comboStep = if (inWindow) (comboStep + 1) % 3 else 0
             swing = comboStep
-            attackRate = when (swing) {
+            attackRate = if (weapon == 1) when (swing) {
+                0 -> 1.9f
+                1 -> 1.6f
+                else -> 1.4f
+            } else when (swing) {
                 0 -> 1.65f
                 1 -> 1.95f
                 else -> 1.55f
@@ -241,6 +247,7 @@ class Player(
         Warrior3D.airH = up
         Warrior3D.airVz = vz
         Warrior3D.swing = swing
+        Warrior3D.weapon = weapon
         Warrior3D.charge = if (charging) chargeT else -1f
         canvas.save()
         canvas.scale(squashX, squashY, drawX, drawY)

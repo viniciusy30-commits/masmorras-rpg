@@ -10,7 +10,9 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.acos
 import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
@@ -60,6 +62,9 @@ object Warrior3D {
     private val BLADE = 0xFFDDE6EC.toInt()
     private val EYE = 0xFF1B1B1B.toInt()
     private val CREAM = 0xFFF5ECD0.toInt()
+    private val SHAFT = 0xFF8A5A33.toInt()
+    private val SHAFT_L = 0xFFAD7842.toInt()
+    private val SHAFT_D = 0xFF5E3B20.toInt()
 
     // pilha de matrizes: 9 floats de rotação (linha a linha) + 3 de translação
     private val stack = Array(12) { FloatArray(12) }
@@ -114,6 +119,7 @@ object Warrior3D {
     var swing = 0       // 0 corte diagonal, 1 corte vertical (volta), 2 estocada, 3 golpe forte
     var charge = -1f    // 0..1 enquanto segura o ataque; <0 = sem carga
     var airH = 0f       // altura (px) acima do chão
+    var weapon = 0      // 0 espada e escudo, 1 lança (duas mãos)
 
     // estado de animação
     private var yaw = 0f
@@ -718,6 +724,175 @@ object Warrior3D {
         pop()
     }
 
+    // ───────────── lança (duas mãos) ─────────────
+
+    private var wShown = 0
+    private var swapU = -1f
+    private val sPo = FloatArray(11)
+    private val sS = FloatArray(11)
+    private val lastSp = FloatArray(11)
+    private val sI = FloatArray(11)
+    private val tR = FloatArray(3)
+    private val tL = FloatArray(3)
+    private val ikO = FloatArray(3)
+
+    // chaves: mão de trás (x,y,z), mão da frente (x,y,z), giro do peito, agachar, inclinar, quadril, deslize da haste
+    private val SK_I = floatArrayOf(-5f, 9f, 3f, 2.5f, 11.5f, 9.5f, 0f, 0f, 0f, 0f, 0f)
+    private val SK_TUCK = floatArrayOf(-3.5f, 7.5f, 3.5f, 2f, 9f, 6.5f, 0f, 0.3f, 0f, 0f, -2f)
+    private val SK_DIP = floatArrayOf(-5f, 4f, 2f, 1.5f, 5f, 6.5f, 0f, 0.5f, 0f, 0f, -4f)
+    private val SK_W = arrayOf(
+        floatArrayOf(-5f, 9.5f, 0.5f, 2f, 11f, 6.5f, -0.45f, 0.25f, -0.12f, 0.35f, -6f),
+        floatArrayOf(-6f, 8f, 2f, 3f, 9.5f, 7.5f, -1.0f, 0.4f, -0.1f, 0.55f, -2f),
+        floatArrayOf(-5.5f, 11f, -1f, 2f, 12.5f, 5.5f, -0.55f, 0.6f, -0.2f, 0.5f, -7f),
+        floatArrayOf(-6f, 12.5f, -2f, 1.5f, 13.5f, 5f, -0.8f, 0.35f, -0.25f, 0.6f, -9f)
+    )
+    private val SK_E = arrayOf(
+        floatArrayOf(-4.5f, 10f, 5.5f, 3f, 11.2f, 10f, 0.55f, 0.5f, 0.3f, -0.45f, 8f),
+        floatArrayOf(-5f, 9f, 3f, 3f, 9.5f, 9f, 1.0f, 0.5f, 0.2f, -0.55f, 2f),
+        floatArrayOf(-4f, 8.5f, 6f, 3f, 10f, 10.5f, 0.4f, 0.9f, 0.5f, -0.4f, 12f),
+        floatArrayOf(-4f, 8f, 6.5f, 3f, 9.5f, 10.5f, 0.5f, 0.95f, 0.55f, -0.35f, 15f)
+    )
+    private val SK_T = arrayOf(
+        floatArrayOf(0.16f, 0.40f, 0.58f),
+        floatArrayOf(0.22f, 0.48f, 0.64f),
+        floatArrayOf(0.24f, 0.46f, 0.64f),
+        floatArrayOf(0.08f, 0.34f, 0.64f)
+    )
+    private val SK_L = floatArrayOf(3.2f, 2.0f, 6.5f, 6.0f)
+
+    private fun mixS(a: FloatArray, b: FloatArray, u: Float) {
+        for (i in 0..10) sPo[i] = lerp(a[i], b[i], u)
+    }
+
+    private fun spearPose(attacking: Boolean, t: Float, sw: Int, tW: Float, tS: Float, tH: Float, phase: Float, mvs: Float) {
+        System.arraycopy(SK_I, 0, sI, 0, 11)
+        sI[1] += sin(clock * 1.3f) * 0.25f * (1f - mvs) + sin(phase * 2f) * 0.5f * mvs
+        sI[4] += sin(clock * 1.3f) * 0.25f * (1f - mvs) + sin(phase * 2f) * 0.5f * mvs
+        sI[2] += sin(phase) * 0.8f * mvs
+        sI[5] += sin(phase) * 0.8f * mvs
+        if (attacking) {
+            val w = SK_W[sw]
+            val e = SK_E[sw]
+            if (t < tW) {
+                mixS(sS, w, ease(t / tW))
+            } else if (t < tS) {
+                var u = (t - tW) / (tS - tW)
+                u = u * u * (3f - 2f * u)
+                mixS(w, e, u)
+            } else if (t < tH) {
+                val u = (t - tS) / (tH - tS)
+                val o = 0.05f * sin(u * PI.toFloat())
+                for (i in 0..10) sPo[i] = e[i] + (e[i] - w[i]) * o
+            } else {
+                mixS(e, sI, ease((t - tH) / (1f - tH)))
+            }
+        } else if (chargeW > 0.01f) {
+            mixS(sI, SK_W[3], ease(chargeW))
+            val ch = max(0f, charge)
+            sPo[2] += sin(clock * 47f) * 0.25f * ch
+            sPo[5] += sin(clock * 43f) * 0.25f * ch
+            sPo[7] += 0.12f * ch
+        } else {
+            System.arraycopy(sI, 0, sPo, 0, 11)
+        }
+    }
+
+    /** Limita o alvo da mão ao alcance do braço (ombro em sx,13.2,0). */
+    private fun clampReach(sx: Float, x: Float, y: Float, z: Float, out: FloatArray) {
+        val dx = x - sx
+        val dy = y - 13.2f
+        val d = sqrt(dx * dx + dy * dy + z * z)
+        val mx = 11.3f
+        val k = if (d > mx) mx / d else 1f
+        out[0] = sx + dx * k
+        out[1] = 13.2f + dy * k
+        out[2] = z * k
+    }
+
+    /** Dois ossos (5.7 + 6.1) até o alvo relativo ao ombro → sh, shZ, el. */
+    private fun ik(x: Float, y: Float, z: Float) {
+        val l1 = 5.7f
+        val l2 = 6.1f
+        val h = hypot(x, y).coerceAtLeast(0.0001f)
+        val shZ = atan2(x, -y)
+        val d = hypot(h, z).coerceIn(abs(l1 - l2) + 0.5f, (l1 + l2) * 0.985f)
+        val phi = atan2(-z, h)
+        val a1 = acos(((l1 * l1 + d * d - l2 * l2) / (2f * l1 * d)).coerceIn(-1f, 1f))
+        val a2 = acos(((l2 * l2 + d * d - l1 * l1) / (2f * l2 * d)).coerceIn(-1f, 1f))
+        ikO[0] = phi + a1
+        ikO[1] = shZ
+        ikO[2] = -(a1 + a2)
+    }
+
+    private fun spearArm(side: Float, hx: Float, hy: Float, hz: Float) {
+        push()
+        translate(side * 8.4f, 13.2f, 0f)
+        pauldron(side)
+        ik(hx - side * 8.4f, hy - 13.2f, hz)
+        rotZ(ikO[1])
+        rotX(ikO[0])
+        armBase(ikO[2])
+        pop()
+    }
+
+    private fun spearRig() {
+        clampReach(-8.4f, sPo[0], sPo[1], sPo[2], tR)
+        clampReach(8.4f, sPo[3], sPo[4], sPo[5], tL)
+        spearArm(-1f, tR[0], tR[1], tR[2])
+        spearArm(1f, tL[0], tL[1], tL[2])
+        var dx = tL[0] - tR[0]
+        var dy = tL[1] - tR[1]
+        var dz = tL[2] - tR[2]
+        var len = sqrt(dx * dx + dy * dy + dz * dz)
+        if (len < 2.5f) { dx = 0.3f; dy = 0.25f; dz = 1f; len = sqrt(dx * dx + dy * dy + dz * dz) }
+        dx /= len; dy /= len; dz /= len
+        val psi = atan2(dx, dz)
+        val theta = asinSafe(dy)
+        push()
+        translate(tR[0], tR[1], tR[2])
+        rotY(psi)
+        rotX(-theta)
+        translate(0f, 0f, sPo[10])
+        spearModel()
+        projectTo(0f, 0f, 38f, 0)
+        projectTo(0f, 0f, 24f, 1)
+        pop()
+    }
+
+    private fun asinSafe(v: Float): Float = atan2(v, sqrt(max(0f, 1f - v * v)))
+
+    private fun spearModel() {
+        // haste
+        cube(0f, 0f, 10f, 0.55f, 0.55f, 20f, SHAFT)
+        cube(-0.3f, 0.3f, 10f, 0.2f, 0.2f, 19.5f, SHAFT_L)
+        for (i in 0..5) cube(0f, 0f, -4f + i * 7f, 0.62f, 0.62f, 0.25f, SHAFT_D)
+        // empunhaduras de couro
+        cube(0f, 0f, 0f, 0.72f, 0.72f, 2.2f, LEATHER_D)
+        cube(0f, 0f, 9.5f, 0.72f, 0.72f, 2.2f, LEATHER_D)
+        // contrapeso
+        cube(0f, 0f, -10.3f, 0.85f, 0.85f, 0.7f, GOLD)
+        cube(0f, 0f, -11.4f, 0.45f, 0.45f, 0.9f, STEEL_D)
+        // colar dourado + flâmula vermelha
+        cube(0f, 0f, 30.4f, 0.95f, 0.95f, 0.5f, GOLD)
+        cube(0f, 0f, 31.4f, 0.8f, 0.8f, 0.5f, GOLD_D)
+        val wv = sp[3] * 0.8f
+        cube(0f, -1.6f - wv, 29f, 0.28f, 1.6f, 1.1f, RED)
+        cube(0f, -3.4f - wv, 29f, 0.28f, 0.7f, 0.8f, RED_D)
+        cube(wv * 0.6f, -1.2f, 27.2f, 0.25f, 1.2f, 0.8f, RED_D)
+        // ponta em folha
+        cube(0f, 0f, 32.6f, 0.75f, 0.75f, 1.2f, STEEL_D)
+        cube(0f, 0f, 34.2f, 1.25f, 0.32f, 1.1f, BLADE)
+        cube(0f, 0f, 35.9f, 1.85f, 0.32f, 1.1f, BLADE)
+        cube(0f, 0f, 37.6f, 2.1f, 0.32f, 1.0f, BLADE)
+        cube(0f, 0f, 39.2f, 1.7f, 0.32f, 1.0f, BLADE)
+        cube(0f, 0f, 40.7f, 1.2f, 0.32f, 0.9f, BLADE)
+        cube(0f, 0f, 42.0f, 0.7f, 0.32f, 0.8f, STEEL_L)
+        cube(0f, 0f, 43.2f, 0.3f, 0.3f, 0.7f, STEEL_L)
+        // nervura central e brilho
+        cube(0f, 0f, 38f, 0.3f, 0.6f, 5.2f, STEEL)
+        cube(0f, 0.65f, 38.5f, 0.12f, 0.1f, 4.4f, 0xFFFFFFFF.toInt(), true)
+    }
+
     // ───────────── animação (molas + ataque) ─────────────
 
     // molas: 0 inclinação, 1 banking, 2-4 capa, 5-6 penacho, 7 tabardo, 8 cabeça
@@ -828,6 +1003,17 @@ object Warrior3D {
         lastNs = now
         clock += dt
         val sdt = min(dt, 0.04f)
+        if (first) wShown = weapon
+        if (weapon != wShown && swapU < 0f) swapU = 0f
+        if (swapU >= 0f) {
+            swapU += dt / 0.45f
+            if (swapU >= 0.5f && wShown != weapon) {
+                wShown = weapon
+                for (i in 0..5) emitSpark(fx + (kotlin.random.Random.nextFloat() - 0.5f) * 14f * s * PX, fy - 14f * s * PX)
+            }
+            if (swapU >= 1f) swapU = -1f
+        }
+        val swapDip = if (swapU >= 0f) sin(swapU * PI.toFloat()) else 0f
 
         // direção suave (guarda a velocidade angular para o banking)
         var yawStep = 0f
@@ -861,6 +1047,7 @@ object Warrior3D {
             // golpe novo: começa a partir da pose atual (é isso que encadeia o combo)
             combo = sw
             System.arraycopy(lastPose, 0, kS, 0, 8)
+            System.arraycopy(lastSp, 0, sS, 0, 11)
             sv[2] += 2.5f; sv[3] += 3.5f; sv[4] += 4.5f
             sv[5] += 2.0f; sv[6] += 3.0f; sv[7] += 2.0f
             if (sw == 3) { sv[2] += 3f; sv[3] += 4f; sv[4] += 5f }
@@ -919,9 +1106,12 @@ object Warrior3D {
         var leanAtk = 0f
         var hipTw = 0f
         chargeW += ((if (charge >= 0f && !attacking) 1f else 0f) - chargeW) * min(1f, dt * 9f)
-        val tW = K_T[sw][0]
-        val tS = K_T[sw][1]
-        val tH = K_T[sw][2]
+        val spear = wShown == 1
+        val KT = if (spear) SK_T else K_T
+        val KL = if (spear) SK_L else K_L
+        val tW = KT[sw][0]
+        val tS = KT[sw][1]
+        val tH = KT[sw][2]
         if (attacking) {
             setK(kI, idleSh, idleZ, idleEl, 0f, 0f, 0f, 0f, 0f)
             if (t < tW) {
@@ -942,7 +1132,7 @@ object Warrior3D {
             val la = tW - 0.04f
             val lb = tH + 0.05f
             if (t > la && t < lb) {
-                lunge = sin(((t - la) / (lb - la)) * PI.toFloat()) * K_L[sw]
+                lunge = sin(((t - la) / (lb - la)) * PI.toFloat()) * KL[sw]
             }
         } else if (chargeW > 0.01f) {
             // segurando: espada erguida, corpo agachado e tremendo de energia
@@ -956,6 +1146,22 @@ object Warrior3D {
         }
         lastPose[0] = sh; lastPose[1] = shZ; lastPose[2] = el; lastPose[3] = tw
         lastPose[4] = wrist; lastPose[5] = crouch; lastPose[6] = leanAtk; lastPose[7] = hipTw
+        if (spear) {
+            spearPose(attacking, t, sw, tW, tS, tH, phase, mvs)
+            System.arraycopy(sPo, 0, lastSp, 0, 11)
+            tw = sPo[6]; crouch = sPo[7]; leanAtk = sPo[8]; hipTw = sPo[9]
+            val tk = max(rollW, if (attacking) 0f else airW * 0.8f)
+            if (tk > 0.001f) for (i in 0..10) sPo[i] = lerp(sPo[i], SK_TUCK[i], tk)
+        }
+        if (swapDip > 0.001f) {
+            if (spear) {
+                for (i in 0..10) sPo[i] = lerp(sPo[i], SK_DIP[i], swapDip)
+            } else {
+                sh = lerp(sh, 0.5f, swapDip)
+                el = lerp(el, -0.2f, swapDip)
+                wrist = lerp(wrist, -0.3f, swapDip)
+            }
+        }
         if (rollW > 0.001f) {
             sh = lerp(sh, -1.2f, rollW)
             shZ = lerp(shZ, 0.2f, rollW)
@@ -1024,7 +1230,7 @@ object Warrior3D {
             val ft = max(0f, cos(pp)) * 0.35f * mvs
             if (attacking) {
                 val front = (combo % 2 == 0) == (sd > 0f)
-                val lk = lunge / K_L[sw]
+                val lk = lunge / KL[sw]
                 if (front) {
                     a -= 0.55f * lk
                 } else {
@@ -1047,8 +1253,12 @@ object Warrior3D {
         rotY(chestTw)
         translate(0f, breath, 0f)
         head(-chestTw * 0.7f + sp[8], -lean * 0.6f, sp[5], sp[6])
-        rightArm(sh, shZ, el, wrist, glow)
-        leftArm(shieldSh, 0.12f, -1.4f)
+        if (spear) {
+            spearRig()
+        } else {
+            rightArm(sh, shZ, el, wrist, glow)
+            leftArm(shieldSh, 0.12f, -1.4f)
+        }
         pop()
         pop()
         pop()
