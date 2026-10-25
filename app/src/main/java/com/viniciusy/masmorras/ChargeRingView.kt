@@ -3,23 +3,30 @@ package com.viniciusy.masmorras
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.RectF
+import android.graphics.Path
+import android.graphics.PathMeasure
 import android.util.AttributeSet
 import android.view.View
+import kotlin.math.cos
+import kotlin.math.min
 import kotlin.math.sin
 
-/** Anel de carga do golpe forte, desenhado por cima do botão de ataque. Não captura toques. */
+/** Anel de carga do golpe forte: percorre o hexágono gravado no botão de ataque. Não captura toques. */
 class ChargeRingView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null
 ) : View(context, attrs) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
+        strokeCap = Paint.Cap.BUTT
+        strokeJoin = Paint.Join.MITER
     }
-    private val rect = RectF()
+    private val hex = Path()
+    private val seg = Path()
+    private val measure = PathMeasure()
     private var level = 0f
     private var shown = 0f // suavizado pra subir/sumir sem piscar
+    private var builtFor = 0f
 
     fun setLevel(v: Float) {
         val nv = v.coerceIn(0f, 1f)
@@ -28,31 +35,49 @@ class ChargeRingView @JvmOverloads constructor(
         invalidate()
     }
 
+    private fun buildHex(cx: Float, cy: Float, r: Float) {
+        hex.reset()
+        for (k in 0..5) {
+            val a = Math.toRadians(-90.0 + 60.0 * k)
+            val x = cx + r * cos(a).toFloat()
+            val y = cy + r * sin(a).toFloat()
+            if (k == 0) hex.moveTo(x, y) else hex.lineTo(x, y)
+        }
+        hex.close()
+        measure.setPath(hex, false)
+        builtFor = r
+    }
+
     override fun onDraw(canvas: Canvas) {
         shown += (level - shown) * (if (level > shown) 0.6f else 0.25f)
         if (level <= 0f && shown < 0.01f) { shown = 0f; return }
 
         val d = resources.displayMetrics.density
-        val w = 6f * d
+        // raio do hexágono do botão e do anel gravado dentro dele
+        val outer = min(width, height) / 2f - 0.5f * d
+        val r = outer - 15.5f * d * 2f / 1.7320508f
+        if (builtFor != r) buildHex(width / 2f, height / 2f, r)
+
         val full = level >= 0.999f
         val pulse = if (full) 0.5f + 0.5f * sin(System.currentTimeMillis() / 70.0).toFloat() else 0f
-        val inset = w / 2f + 1f * d
-        rect.set(inset, inset, width - inset, height - inset)
+        val w = 5f * d
 
         // trilho escuro
-        paint.strokeWidth = w
-        paint.color = 0x99000000.toInt()
-        canvas.drawArc(rect, 0f, 360f, false, paint)
+        paint.strokeWidth = w + 2f * d
+        paint.color = 0xCC0C0B0A.toInt()
+        canvas.drawPath(hex, paint)
 
-        // progresso (sentido horário, começando no topo)
+        // progresso, a partir do vértice do topo, sentido horário
+        seg.reset()
+        measure.getSegment(0f, measure.length * shown, seg, true)
         paint.strokeWidth = w
         paint.color = if (full) mix(0xFFFFB74D.toInt(), 0xFFFFFFFF.toInt(), pulse) else 0xFFFFB74D.toInt()
-        canvas.drawArc(rect, -90f, 360f * shown, false, paint)
+        canvas.drawPath(seg, paint)
 
         // brilho interno fino
         paint.strokeWidth = w * 0.35f
-        paint.color = 0xCCFFF3C4.toInt()
-        canvas.drawArc(rect, -90f, 360f * shown, false, paint)
+        paint.color = 0xDDFFF3C4.toInt()
+        canvas.drawPath(seg, paint)
 
         if (full) postInvalidateOnAnimation()
         else if (kotlin.math.abs(level - shown) > 0.005f) postInvalidateOnAnimation()

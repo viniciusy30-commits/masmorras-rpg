@@ -3,7 +3,7 @@
 - Fonte pixel em todo o jogo (menus, HUD, botões, logo e números de dano)
 - Painéis de pedra com moldura dourada, botões biselados, barras de vida, mana e atributos em pixel art
 - Ícones novos desenhados em pixel: espada, rolar, pular, coração, mana e caveira
-- HUD refeito no estilo Minecraft Dungeons: botões e joystick hexagonais, coração de vida grande no centro de uma barra inferior (enche de baixo para cima), mana em um slot ao lado e contador de inimigos solto no topo
+- HUD refeito do zero no estilo Dungeons: botões e joystick hexagonais com moldura de metal e gemas, barra inferior compacta com coração de vida em encaixe dourado, mana em tubo de vidro, caveira e etiqueta de classe no topo
 - Ícones de rolar e pular com setas duplas
 - Golpes do Guerreiro mais lentos, com arco mais claro e rastro bem mais discreto
 - Golpe forte: o indicador de carga agora aparece no botão de ataque, não mais ao redor do herói

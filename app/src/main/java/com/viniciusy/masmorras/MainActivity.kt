@@ -374,7 +374,7 @@ class MainActivity : AppCompatActivity() {
         tvClasseHud.text = classe.nome
         tvClasseHud.setTextColor(0xFFF2B63D.toInt())
         tvClasseBadge.text = classe.nome.take(1).uppercase()
-        tvClasseBadge.background = Ui.bevel(this, classe.cor)
+        tvClasseBadge.setTextColor(Ui.lighten(classe.cor, 0.45f))
         overlayFim.visibility = View.GONE
         show(gameContainer)
         gameView.startGame(classe, custom)

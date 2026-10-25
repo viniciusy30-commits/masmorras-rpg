@@ -155,7 +155,7 @@
             android:layout_height="match_parent"
             android:padding="8dp">
 
-            <!-- Topo esquerdo: contador de inimigos (estilo Dungeons, sem painel) + nome do herói -->
+            <!-- Topo esquerdo: caveira + contador de inimigos e etiqueta com a classe -->
             <LinearLayout
                 android:id="@+id/hudPanel"
                 android:layout_width="wrap_content"
@@ -170,9 +170,9 @@
                     android:orientation="horizontal">
 
                     <ImageView
-                        android:layout_width="32dp"
-                        android:layout_height="32dp"
-                        android:src="@drawable/ic_skull"/>
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:src="@drawable/hudic_skull"/>
 
                     <TextView
                         android:id="@+id/tvInimigos"
@@ -182,7 +182,7 @@
                         android:layout_marginStart="8dp"
                         android:text="0"
                         android:textColor="#FFFFFF"
-                        android:textSize="26sp"
+                        android:textSize="28sp"
                         android:shadowDx="3"
                         android:shadowDy="3"/>
                 </LinearLayout>
@@ -192,25 +192,34 @@
                     style="@style/Mc.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="2dp"
-                    android:layout_marginTop="2dp"
+                    android:layout_marginTop="3dp"
+                    android:background="@drawable/hud_tag"
+                    android:paddingLeft="12dp"
+                    android:paddingRight="12dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="4dp"
                     android:textColor="@color/mc_gold"
-                    android:textSize="13sp"
+                    android:textSize="12sp"
                     android:textAllCaps="true"/>
             </LinearLayout>
 
-            <!-- Topo direito: objetivo + menu hexagonal -->
+            <!-- Topo direito: objetivo (faixa com degradê) + menu hexagonal -->
             <TextView
                 style="@style/Mc.Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|end"
-                android:layout_marginTop="6dp"
-                android:layout_marginEnd="56dp"
-                android:gravity="end"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="50dp"
+                android:background="@drawable/hud_banner"
+                android:gravity="end|center_vertical"
+                android:paddingLeft="48dp"
+                android:paddingRight="12dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="8dp"
                 android:text="ELIMINE OS INIMIGOS"
                 android:textColor="#FFFFFF"
-                android:textSize="15sp"/>
+                android:textSize="14sp"/>
 
             <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnSairJogo"
@@ -218,77 +227,73 @@
                 android:layout_width="44dp"
                 android:layout_height="44dp"
                 android:layout_gravity="top|end"
-                android:background="@drawable/hex_btn_22"
+                android:background="@drawable/hudbtn_menu"
                 android:paddingLeft="0dp"
                 android:paddingRight="0dp"
                 android:text="✕"
-                android:textSize="15sp"/>
+                android:textSize="14sp"/>
 
-            <!-- Barra inferior: herói | coração de vida | mana (como a hotbar do Dungeons) -->
+            <!-- Barra inferior compacta: medalhão da classe | vida | coração | mana -->
             <FrameLayout
-                android:layout_width="318dp"
-                android:layout_height="84dp"
+                android:layout_width="300dp"
+                android:layout_height="62dp"
                 android:layout_gravity="bottom|center_horizontal">
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="50dp"
+                    android:layout_height="32dp"
                     android:layout_gravity="bottom"
-                    android:background="@drawable/hotbar_bg"
+                    android:layout_marginBottom="2dp"
+                    android:background="@drawable/hud_hotbar"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingLeft="10dp"
-                    android:paddingRight="10dp">
+                    android:paddingLeft="16dp"
+                    android:paddingRight="16dp">
 
                     <TextView
-                        android:id="@+id/tvClasseBadge"
+                        android:id="@+id/tvHpNum"
                         style="@style/Mc.Text"
-                        android:layout_width="38dp"
-                        android:layout_height="38dp"
-                        android:gravity="center"
-                        android:textSize="20sp"/>
-
-                    <View
                         android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"/>
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center_vertical|end"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:shadowDx="2"
+                        android:shadowDy="2"/>
 
-                    <!-- espaço do coração -->
                     <View
-                        android:layout_width="72dp"
+                        android:layout_width="62dp"
                         android:layout_height="1dp"/>
 
-                    <View
-                        android:layout_width="0dp"
-                        android:layout_height="1dp"
-                        android:layout_weight="1"/>
-
                     <FrameLayout
-                        android:layout_width="104dp"
-                        android:layout_height="38dp"
-                        android:background="@drawable/slot_bg">
+                        android:layout_width="0dp"
+                        android:layout_height="match_parent"
+                        android:layout_weight="1">
 
                         <LinearLayout
                             android:id="@+id/mpRow"
                             android:layout_width="match_parent"
-                            android:layout_height="match_parent"
+                            android:layout_height="18dp"
+                            android:layout_gravity="center_vertical"
+                            android:background="@drawable/hud_tube"
                             android:gravity="center_vertical"
                             android:orientation="horizontal"
-                            android:paddingLeft="6dp"
-                            android:paddingRight="8dp"
+                            android:paddingLeft="5dp"
+                            android:paddingRight="5dp"
                             android:visibility="gone">
 
                             <ImageView
-                                android:layout_width="22dp"
-                                android:layout_height="22dp"
-                                android:src="@drawable/ic_mana"/>
+                                android:layout_width="14dp"
+                                android:layout_height="14dp"
+                                android:src="@drawable/hudic_mana"/>
 
                             <ProgressBar
                                 android:id="@+id/mpBar"
                                 style="?android:attr/progressBarStyleHorizontal"
                                 android:layout_width="0dp"
-                                android:layout_height="12dp"
-                                android:layout_marginStart="5dp"
+                                android:layout_height="11dp"
+                                android:layout_marginStart="3dp"
                                 android:layout_weight="1"
                                 android:max="100"
                                 android:progress="100"
@@ -297,33 +302,36 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- Coração de vida (enche de baixo para cima) -->
-                <FrameLayout
-                    android:layout_width="80dp"
-                    android:layout_height="72dp"
-                    android:layout_gravity="center_horizontal|bottom"
-                    android:layout_marginBottom="6dp">
+                <!-- medalhão hexagonal da classe, na ponta esquerda -->
+                <TextView
+                    android:id="@+id/tvClasseBadge"
+                    style="@style/Mc.Text"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:layout_gravity="bottom|start"
+                    android:layout_marginBottom="1dp"
+                    android:background="@drawable/hudhex_menu_n"
+                    android:gravity="center"
+                    android:textSize="18sp"/>
 
-                    <ProgressBar
-                        android:id="@+id/hpBar"
-                        style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:max="100"
-                        android:progress="100"
-                        android:progressDrawable="@drawable/bar_hp"/>
+                <!-- encaixe dourado + coração (enche de baixo para cima) -->
+                <ImageView
+                    android:layout_width="60dp"
+                    android:layout_height="46dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="10dp"
+                    android:src="@drawable/hud_socket"/>
 
-                    <TextView
-                        android:id="@+id/tvHpNum"
-                        style="@style/Mc.Text"
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:gravity="center"
-                        android:paddingBottom="4dp"
-                        android:textSize="10sp"
-                        android:shadowDx="2"
-                        android:shadowDy="2"/>
-                </FrameLayout>
+                <ProgressBar
+                    android:id="@+id/hpBar"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="40dp"
+                    android:layout_height="36dp"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="16dp"
+                    android:max="100"
+                    android:progress="100"
+                    android:progressDrawable="@drawable/bar_hp"/>
             </FrameLayout>
 
             <!-- Joystick hexagonal -->
@@ -339,17 +347,17 @@
                     android:layout_width="112dp"
                     android:layout_height="112dp"
                     android:layout_gravity="center"
-                    android:background="@drawable/joystick_hex_base"/>
+                    android:background="@drawable/hud_joy_base"/>
 
                 <View
                     android:id="@+id/joystickKnob"
-                    android:layout_width="56dp"
-                    android:layout_height="56dp"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
                     android:layout_gravity="center"
-                    android:background="@drawable/joystick_hex_knob"/>
+                    android:background="@drawable/hud_joy_knob"/>
             </FrameLayout>
 
-            <!-- Botões de ação hexagonais: ATK grande, ROLAR ao lado, PULAR acima -->
+            <!-- Botões de ação hexagonais -->
             <FrameLayout
                 android:layout_width="184dp"
                 android:layout_height="172dp"
@@ -361,43 +369,43 @@
                     android:layout_width="60dp"
                     android:layout_height="60dp"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="86dp"
-                    android:layout_marginBottom="104dp"
-                    android:background="@drawable/hex_btn_30"
+                    android:layout_marginEnd="70dp"
+                    android:layout_marginBottom="108dp"
+                    android:background="@drawable/hudbtn_jump"
                     android:contentDescription="Pular"
-                    android:padding="10dp"
-                    android:src="@drawable/ic_jump"/>
+                    android:padding="8dp"
+                    android:src="@drawable/hudic_jump"/>
 
                 <androidx.appcompat.widget.AppCompatImageButton
                     android:id="@+id/btnRoll"
                     style="@style/Mc.Slot"
-                    android:layout_width="64dp"
-                    android:layout_height="64dp"
+                    android:layout_width="66dp"
+                    android:layout_height="66dp"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="106dp"
-                    android:layout_marginBottom="6dp"
-                    android:background="@drawable/hex_btn_32"
+                    android:layout_marginEnd="108dp"
+                    android:layout_marginBottom="4dp"
+                    android:background="@drawable/hudbtn_roll"
                     android:contentDescription="Rolar"
-                    android:padding="12dp"
-                    android:src="@drawable/ic_roll"/>
+                    android:padding="10dp"
+                    android:src="@drawable/hudic_roll"/>
 
                 <androidx.appcompat.widget.AppCompatImageButton
                     android:id="@+id/btnAttack"
                     style="@style/Mc.Slot"
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
+                    android:layout_width="104dp"
+                    android:layout_height="104dp"
                     android:layout_gravity="bottom|end"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"
-                    android:background="@drawable/hex_btn_50"
+                    android:background="@drawable/hudbtn_attack"
                     android:contentDescription="Atacar"
-                    android:padding="26dp"
-                    android:src="@drawable/ic_sword"/>
+                    android:padding="20dp"
+                    android:src="@drawable/hudic_sword"/>
 
                 <com.viniciusy.masmorras.ChargeRingView
                     android:id="@+id/chargeRing"
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
+                    android:layout_width="104dp"
+                    android:layout_height="104dp"
                     android:layout_gravity="bottom|end"
                     android:layout_marginEnd="2dp"
                     android:layout_marginBottom="2dp"/>
