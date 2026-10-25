@@ -22,6 +22,9 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val pixelFace: Typeface by lazy {
+        androidx.core.content.res.ResourcesCompat.getFont(context, R.font.pixel) ?: Typeface.DEFAULT_BOLD
+    }
     private var map: GameMap = TileMap()
     private var hadEnemies = true
     private var player: Player? = null
@@ -583,7 +586,7 @@ class GameView @JvmOverloads constructor(
             paint.shader = null
         }
 
-        paint.typeface = Typeface.DEFAULT_BOLD
+        paint.typeface = pixelFace
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = 30f
         texts.forEach { t ->

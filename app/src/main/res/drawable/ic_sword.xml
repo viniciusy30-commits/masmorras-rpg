@@ -1,12 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="#E6EDF2" android:strokeColor="#0C0B0A" android:strokeWidth="1.6" android:strokeLineJoin="miter"
-        android:pathData="M21,3 L21,8 L10,19 L5,14 L16,3 Z"/>
-    <path android:fillColor="#9FB3C2" android:pathData="M19,5 L19,8 L10,17 L8,15 Z"/>
-    <path android:fillColor="#F2B63D" android:strokeColor="#0C0B0A" android:strokeWidth="1.6" android:strokeLineJoin="miter"
-        android:pathData="M3,10 L12,19 L10,21 L1,12 Z"/>
-    <path android:strokeColor="#0C0B0A" android:strokeWidth="5" android:pathData="M7.5,16.5 L3.5,20.5"/>
-    <path android:strokeColor="#8B5A2B" android:strokeWidth="3" android:pathData="M7.5,16.5 L3.5,20.5"/>
-    <path android:fillColor="#F2B63D" android:strokeColor="#0C0B0A" android:strokeWidth="1.2" android:pathData="M1,20 L4,23 L2,23 L1,22 Z"/>
-</vector>
+<bitmap xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/px_ic_sword"
+    android:filter="false"
+    android:dither="false"
+    android:gravity="fill"/>

@@ -1,13 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:id="@android:id/background"><shape><solid android:color="#0C0B0A"/></shape></item>
-    <item android:left="2dp" android:top="2dp" android:right="2dp" android:bottom="2dp"><shape><solid android:color="#3A0F0F"/></shape></item>
+    <item android:id="@android:id/background" android:drawable="@drawable/px_barbg_hp"/>
     <item android:id="@android:id/progress" android:left="2dp" android:top="2dp" android:right="2dp" android:bottom="2dp">
-        <clip android:clipOrientation="horizontal" android:gravity="start">
-            <layer-list>
-                <item><shape><gradient android:angle="270" android:startColor="#F44336" android:endColor="#B71C1C"/></shape></item>
-                <item android:height="3dp" android:gravity="top"><shape><solid android:color="#66FFFFFF"/></shape></item>
-            </layer-list>
-        </clip>
+        <clip android:drawable="@drawable/px_fill_hp" android:clipOrientation="horizontal" android:gravity="start"/>
     </item>
 </layer-list>

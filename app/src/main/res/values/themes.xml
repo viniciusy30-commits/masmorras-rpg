@@ -9,6 +9,7 @@
         <item name="android:windowBackground">@color/background</item>
         <item name="android:textColorPrimary">@color/text_primary</item>
         <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="android:fontFamily">@font/pixel</item>
         <item name="alertDialogTheme">@style/Theme.Masmorras.Dialog</item>
     </style>
 
@@ -19,6 +20,7 @@
         <item name="android:textColorSecondary">@color/text_secondary</item>
         <item name="android:textColorAlertDialogListItem">#FFFFFF</item>
         <item name="colorAccent">@color/mc_gold</item>
+        <item name="android:fontFamily">@font/pixel</item>
         <item name="buttonBarButtonStyle">@style/Mc.DialogButton</item>
     </style>
 

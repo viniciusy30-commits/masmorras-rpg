@@ -38,7 +38,7 @@
             android:textSize="17sp"
             android:textStyle="bold"
             android:textAllCaps="true"
-            android:letterSpacing="0.05"/>
+            android:letterSpacing="0.02"/>
 
         <TextView
             android:id="@+id/tvDescClasse"

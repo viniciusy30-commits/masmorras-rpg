@@ -1,3 +1,12 @@
+#id 2026-10-25-b
+#titulo Interface em pixel art e golpes mais suaves
+- Fonte pixel em todo o jogo (menus, HUD, botões, logo e números de dano)
+- Painéis de pedra com moldura dourada, botões biselados, barras de vida, mana e atributos em pixel art
+- Ícones novos desenhados em pixel: espada, rolar, pular, coração, mana e caveira
+- Joystick em pixel art
+- Golpes do Guerreiro mais lentos, com arco mais claro e rastro bem mais discreto
+- Golpe forte: o indicador de carga agora aparece no botão de ataque, não mais ao redor do herói
+
 #id 2026-10-25-a
 #titulo Guerreiro sem piscar: render novo, mais estável e com mais vida
 - Corrigido o "piscar": peças da armadura (peitoral, tabardo, cinto, pernas) não trocam mais de ordem ao andar, girar ou atacar

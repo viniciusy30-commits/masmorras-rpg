@@ -23,8 +23,9 @@ class TitleView @JvmOverloads constructor(
     private var running = false
 
     init {
-        paint.typeface = Typeface.create("sans-serif-black", Typeface.NORMAL)
-        paint.letterSpacing = 0.06f
+        paint.typeface = androidx.core.content.res.ResourcesCompat.getFont(context, R.font.pixel)
+            ?: Typeface.create("sans-serif-black", Typeface.NORMAL)
+        paint.letterSpacing = 0.02f
         paint.strokeJoin = Paint.Join.BEVEL
     }
 

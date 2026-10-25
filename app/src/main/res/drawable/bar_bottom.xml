@@ -1,5 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape><solid android:color="#F00C0B0A"/></shape></item>
-    <item android:top="3dp"><shape><gradient android:angle="270" android:startColor="#FF3B3836" android:endColor="#FF282624"/></shape></item>
-</layer-list>
+<nine-patch xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/px_bar_bottom"
+    android:dither="false"/>

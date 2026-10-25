@@ -48,7 +48,7 @@
                 android:textColor="@color/mc_ink"
                 android:textSize="13sp"
                 android:textStyle="bold"
-                android:letterSpacing="0.3"
+                android:letterSpacing="0.12"
                 android:shadowColor="#99FFF2C0"
                 android:shadowDx="0"
                 android:shadowDy="2"/>
@@ -190,7 +190,7 @@
                         android:textSize="14sp"
                         android:textStyle="bold"
                         android:textAllCaps="true"
-                        android:letterSpacing="0.1"/>
+                        android:letterSpacing="0.04"/>
 
                     <LinearLayout
                         android:layout_width="match_parent"

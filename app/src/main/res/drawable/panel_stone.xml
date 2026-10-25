@@ -1,7 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item><shape><solid android:color="#0C0B0A"/></shape></item>
-    <item android:left="3dp" android:top="3dp" android:right="3dp" android:bottom="3dp"><shape><solid android:color="#6B665F"/></shape></item>
-    <item android:left="6dp" android:top="6dp" android:right="3dp" android:bottom="3dp"><shape><solid android:color="#161412"/></shape></item>
-    <item android:left="6dp" android:top="6dp" android:right="6dp" android:bottom="6dp"><shape><gradient android:angle="270" android:startColor="#35322F" android:endColor="#272422"/></shape></item>
-</layer-list>
+<nine-patch xmlns:android="http://schemas.android.com/apk/res/android"
+    android:src="@drawable/px_panel"
+    android:dither="false"/>

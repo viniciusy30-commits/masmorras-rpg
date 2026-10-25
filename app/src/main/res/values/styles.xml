@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Texto base: sombra dura estilo jogo. Para usar uma fonte pixel, coloque o .ttf em res/font
-         e troque o fontFamily aqui. -->
+    <!-- Texto base: sombra dura estilo jogo. Fonte pixel em res/font/pixel.xml. -->
     <style name="Mc.Text" parent="">
-        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:fontFamily">@font/pixel</item>
         <item name="android:textColor">@color/text_primary</item>
         <item name="android:shadowColor">#FF000000</item>
         <item name="android:shadowDx">2</item>
@@ -12,10 +11,10 @@
     </style>
 
     <style name="Mc.Header" parent="Mc.Text">
-        <item name="android:textSize">24sp</item>
+        <item name="android:textSize">22sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:letterSpacing">0.12</item>
+        <item name="android:letterSpacing">0.04</item>
         <item name="android:gravity">center</item>
     </style>
 
@@ -27,12 +26,12 @@
 
     <style name="Mc.Button" parent="Widget.AppCompat.Button">
         <item name="android:background">@drawable/btn_stone</item>
-        <item name="android:fontFamily">sans-serif-condensed</item>
+        <item name="android:fontFamily">@font/pixel</item>
         <item name="android:textColor">#FFFFFF</item>
         <item name="android:textSize">16sp</item>
         <item name="android:textStyle">bold</item>
         <item name="android:textAllCaps">true</item>
-        <item name="android:letterSpacing">0.08</item>
+        <item name="android:letterSpacing">0.03</item>
         <item name="android:shadowColor">#FF000000</item>
         <item name="android:shadowDx">2</item>
         <item name="android:shadowDy">2</item>
