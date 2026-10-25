@@ -1,3 +1,13 @@
+#id 2026-10-25-a
+#titulo Guerreiro sem piscar: render novo, mais estável e com mais vida
+- Corrigido o "piscar": peças da armadura (peitoral, tabardo, cinto, pernas) não trocam mais de ordem ao andar, girar ou atacar
+- Render com profundidade por pixel e contorno nítido: o guerreiro fica sólido de qualquer ângulo, inclusive de costas e rolando
+- Iluminação estável: as cores não mudam mais a cada passo ou balanço de braço e perna
+- Sombreado suave perto do chão dá mais volume ao corpo
+- Ao tomar dano o guerreiro recua, a cabeça chicoteia e a capa balança
+- Piscar de olhos, poeira nos passos, na aterrissagem e no rolamento
+- Pose de pulo não ativa mais sozinha em pequenos desníveis; anel de carga agora fica no chão, sob o herói
+
 #id 2026-10-24-n
 #titulo Combo de 3 golpes e golpe forte do Guerreiro
 - Combo encadeado: corte diagonal de cima para baixo, corte vertical voltando e estocada final (um golpe começa de onde o outro terminou)

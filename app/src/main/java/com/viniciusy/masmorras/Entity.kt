@@ -161,7 +161,7 @@ class Player(
             vz -= 1500f * dt
             alt += vz * dt
             if (alt <= groundPx) {
-                if (vz < -140f) {
+                if (vz < -210f) {
                     landed = (-vz) / 400f
                     landSquash = ((-vz) / 380f).coerceIn(0.15f, 0.55f)
                 }
@@ -238,6 +238,7 @@ class Player(
         VoxelArt.flash = hitFlash
         Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Warrior3D.inAir = up > 1f
+        Warrior3D.airH = up
         Warrior3D.airVz = vz
         Warrior3D.swing = swing
         Warrior3D.charge = if (charging) chargeT else -1f
