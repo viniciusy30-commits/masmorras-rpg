@@ -47,6 +47,32 @@ object MT {
     const val F_CARPET_B = 28
     const val F_CARPET_G = 29
     const val F_RUNE = 30
+    const val F_DEEPSLATE = 31
+    const val F_COBBLED_DEEPSLATE = 32
+    const val F_BLACKSTONE = 33
+    const val F_NETHERRACK = 34
+    const val F_SOULSAND = 35
+    const val F_QUARTZ = 36
+    const val F_COPPER = 37
+    const val F_TERRACOTTA = 38
+    const val F_REDSAND = 39
+    const val F_SANDSTONE = 40
+    const val F_BIRCH = 41
+    const val F_DARKOAK = 42
+    const val F_BAMBOO = 43
+    const val F_CONCRETE = 44
+    const val F_PODZOL = 45
+    const val F_MOSSCARPET = 46
+    const val F_MYCELIUM = 47
+    const val F_GOLD = 48
+    const val F_OBSIDIAN = 49
+    const val F_GLOWSTONE = 50
+    const val F_CRACKED = 51
+    const val F_MOSSYCOBBLE = 52
+    const val F_MUDBRICK = 53
+    const val F_PRISMARINE = 54
+    const val F_HAYFLOOR = 55
+    const val F_MAGMA = 56
 
     // paredes (altas, sólidas — a porta é atravessável)
     const val W_STONE = 1
@@ -83,6 +109,28 @@ object MT {
     const val W_CHIMNEY = 122
     const val W_ARCH = 123
     const val W_ROOF_PLUM = 124
+    const val W_DEEPSLATE = 125
+    const val W_NETHER = 126
+    const val W_QUARTZ = 127
+    const val W_COPPER = 128
+    const val W_TERRACOTTA = 129
+    const val W_BOOKCASE = 130
+    const val W_HAYBALE = 131
+    const val W_PRISMARINE = 132
+    const val W_PURPUR = 133
+    const val W_BLACKSTONE = 134
+    const val W_MOSSYCOBBLE = 135
+    const val W_CRACKED = 136
+    const val W_MUDBRICK = 137
+    const val W_BAMBOO = 138
+    const val W_SNOWBRICK = 139
+    const val W_WHITEWASH = 200
+    const val W_COBBLE = 201
+    const val W_IRONPLATE = 202
+    const val W_GOLDBLOCK = 203
+    const val W_AMETHYST = 204
+    const val W_SPRUCE = 205
+    const val W_BIRCHWOOD = 206
 
     // props
     const val P_CRATE = 20
@@ -186,6 +234,40 @@ object MT {
     const val P_HARP = 154
     const val P_SINK = 155
 
+    // objetos novos (64x96)
+    const val P_CRAFTING = 160
+    const val P_FURNACE = 161
+    const val P_ENCHANT = 162
+    const val P_BREWING = 163
+    const val P_JACKO = 164
+    const val P_MELON = 165
+    const val P_POPPY = 166
+    const val P_DANDELION = 167
+    const val P_ORCHID = 168
+    const val P_TULIP = 169
+    const val P_FERN = 170
+    const val P_SUGARCANE = 171
+    const val P_BAMBOO = 172
+    const val P_DEADBUSH = 173
+    const val P_SAPLING = 174
+    const val P_BEEHIVE = 175
+    const val P_SOULLANTERN = 176
+    const val P_SEALANTERN = 177
+    const val P_ENDROD = 178
+    const val P_LADDER = 179
+    const val P_SIGNPOST = 180
+    const val P_BELL = 181
+    const val P_BEACON = 182
+    const val P_SPAWNER = 183
+    const val P_TNT = 184
+    const val P_SCAFFOLD = 185
+    const val P_STONELANTERN = 186
+    const val P_CROSSGRAVE = 187
+    const val P_LOOM = 188
+    const val P_GRINDSTONE = 189
+    const val P_STUMPTABLE = 190
+    const val P_HANGLANTERN = 191
+
     /** file = nome em assets/tiles/<file>.png. Texturas animadas são tiras horizontais com `frames` quadros. */
     class Def(val id: Int, val name: String, val file: String, val vary: Boolean = false, val frames: Int = 1, val fps: Float = 8f)
 
@@ -220,7 +302,33 @@ object MT {
         Def(F_CHECKER, "Xadrez", "floor_checker"),
         Def(F_CARPET_B, "Tapete azul", "floor_carpet_b"),
         Def(F_CARPET_G, "Tapete verde", "floor_carpet_g"),
-        Def(F_RUNE, "Piso rúnico", "floor_rune", false, 8, 6f)
+        Def(F_RUNE, "Piso rúnico", "floor_rune", false, 8, 6f),
+        Def(F_DEEPSLATE, "Ardósia profunda", "floor_deepslate"),
+        Def(F_COBBLED_DEEPSLATE, "Ardósia bruta", "floor_cobbled_deepslate"),
+        Def(F_BLACKSTONE, "Pedra negra", "floor_blackstone"),
+        Def(F_NETHERRACK, "Rocha infernal", "floor_netherrack"),
+        Def(F_SOULSAND, "Areia das almas", "floor_soulsand"),
+        Def(F_QUARTZ, "Quartzo", "floor_quartz"),
+        Def(F_COPPER, "Cobre", "floor_copper"),
+        Def(F_TERRACOTTA, "Terracota", "floor_terracotta"),
+        Def(F_REDSAND, "Areia vermelha", "floor_redsand", true),
+        Def(F_SANDSTONE, "Arenito liso", "floor_sandstone"),
+        Def(F_BIRCH, "Tábuas de bétula", "floor_birch"),
+        Def(F_DARKOAK, "Tábuas escuras", "floor_darkoak"),
+        Def(F_BAMBOO, "Bambu", "floor_bamboo"),
+        Def(F_CONCRETE, "Concreto", "floor_concrete"),
+        Def(F_PODZOL, "Podzol", "floor_podzol", true),
+        Def(F_MOSSCARPET, "Musgo", "floor_mosscarpet", true),
+        Def(F_MYCELIUM, "Micélio", "floor_mycelium", true),
+        Def(F_GOLD, "Ouro", "floor_gold"),
+        Def(F_OBSIDIAN, "Obsidiana", "floor_obsidian"),
+        Def(F_GLOWSTONE, "Pedra luminosa", "floor_glowstone"),
+        Def(F_CRACKED, "Pedra rachada", "floor_crackedstone"),
+        Def(F_MOSSYCOBBLE, "Pedregulho musgoso", "floor_mossycobble"),
+        Def(F_MUDBRICK, "Tijolo de barro", "floor_mudbrick"),
+        Def(F_PRISMARINE, "Prismarinho", "floor_prismarine"),
+        Def(F_HAYFLOOR, "Feno", "floor_hay"),
+        Def(F_MAGMA, "Magma", "floor_magma", false, 8, 5f)
     )
 
     val walls = listOf(
@@ -255,7 +363,29 @@ object MT {
         Def(W_ROOF_BLUE, "Telhado azul", "wall_roof_blue"),
         Def(W_ROOF_SHINGLE, "Telhado madeira", "wall_roof_shingle"),
         Def(W_ROOF_PLUM, "Telhado ameixa", "wall_roof_plum"),
-        Def(W_CHIMNEY, "Chaminé", "wall_chimney")
+        Def(W_CHIMNEY, "Chaminé", "wall_chimney"),
+        Def(W_DEEPSLATE, "Ardósia", "wall_deepslate"),
+        Def(W_NETHER, "Tijolo infernal", "wall_nether"),
+        Def(W_QUARTZ, "Quartzo", "wall_quartz"),
+        Def(W_COPPER, "Cobre oxidado", "wall_copper"),
+        Def(W_TERRACOTTA, "Terracota", "wall_terracotta"),
+        Def(W_BOOKCASE, "Estante de livros", "wall_bookcase"),
+        Def(W_HAYBALE, "Fardo de feno", "wall_haybale"),
+        Def(W_PRISMARINE, "Prismarinho", "wall_prismarine"),
+        Def(W_PURPUR, "Púrpura", "wall_purpur"),
+        Def(W_BLACKSTONE, "Pedra negra", "wall_blackstone"),
+        Def(W_MOSSYCOBBLE, "Pedregulho musgoso", "wall_mossycobble"),
+        Def(W_CRACKED, "Pedra rachada", "wall_crackedstone"),
+        Def(W_MUDBRICK, "Tijolo de barro", "wall_mudbrick"),
+        Def(W_BAMBOO, "Bambu", "wall_bamboo"),
+        Def(W_SNOWBRICK, "Tijolo de neve", "wall_snowbrick"),
+        Def(W_WHITEWASH, "Caiado", "wall_whitewash"),
+        Def(W_COBBLE, "Pedregulho", "wall_cobblewall"),
+        Def(W_IRONPLATE, "Placa de ferro", "wall_ironplate"),
+        Def(W_GOLDBLOCK, "Ouro", "wall_goldblock"),
+        Def(W_AMETHYST, "Ametista", "wall_amethyst"),
+        Def(W_SPRUCE, "Madeira escura", "wall_spruce"),
+        Def(W_BIRCHWOOD, "Madeira de bétula", "wall_birch")
     )
 
     val props = listOf(
@@ -356,11 +486,43 @@ object MT {
         Def(P_AQUARIUM, "Aquário", "prop_aquarium", false, 6, 5f),
         Def(P_EASEL, "Cavalete", "prop_easel"),
         Def(P_HARP, "Harpa", "prop_harp", false, 4, 4f),
-        Def(P_SINK, "Pia", "prop_sink", false, 4, 4f)
+        Def(P_SINK, "Pia", "prop_sink", false, 4, 4f),
+        Def(P_CRAFTING, "Mesa de trabalho", "prop_crafting_table"),
+        Def(P_FURNACE, "Fornalha", "prop_furnace", false, 6, 10f),
+        Def(P_ENCHANT, "Mesa de encantamento", "prop_enchanting_table", false, 6, 6f),
+        Def(P_BREWING, "Estande de poções", "prop_brewing_stand", false, 6, 6f),
+        Def(P_JACKO, "Abóbora lanterna", "prop_jack_o_lantern", false, 6, 8f),
+        Def(P_MELON, "Melancia", "prop_melon"),
+        Def(P_POPPY, "Papoulas", "prop_poppy", false, 4, 2.5f),
+        Def(P_DANDELION, "Dentes-de-leão", "prop_dandelion", false, 4, 2.5f),
+        Def(P_ORCHID, "Orquídea azul", "prop_blue_orchid", false, 4, 2.5f),
+        Def(P_TULIP, "Tulipas", "prop_tulip", false, 4, 2.5f),
+        Def(P_FERN, "Samambaia", "prop_fern", false, 4, 2.5f),
+        Def(P_SUGARCANE, "Cana-de-açúcar", "prop_sugarcane", false, 4, 2.5f),
+        Def(P_BAMBOO, "Bambuzal", "prop_bamboo", false, 4, 2.5f),
+        Def(P_DEADBUSH, "Arbusto seco", "prop_dead_bush"),
+        Def(P_SAPLING, "Muda de árvore", "prop_sapling", false, 4, 2.5f),
+        Def(P_BEEHIVE, "Colmeia", "prop_beehive", false, 4, 6f),
+        Def(P_SOULLANTERN, "Lanterna de almas", "prop_soul_lantern", false, 6, 8f),
+        Def(P_SEALANTERN, "Lanterna marinha", "prop_sea_lantern", false, 6, 4f),
+        Def(P_ENDROD, "Bastão do fim", "prop_end_rod", false, 6, 6f),
+        Def(P_LADDER, "Escada de mão", "prop_ladder"),
+        Def(P_SIGNPOST, "Poste de placas", "prop_signpost"),
+        Def(P_BELL, "Sino", "prop_bell", false, 4, 3f),
+        Def(P_BEACON, "Farol mágico", "prop_beacon", false, 6, 5f),
+        Def(P_SPAWNER, "Gaiola de monstros", "prop_spawner", false, 6, 6f),
+        Def(P_TNT, "Dinamite", "prop_tnt"),
+        Def(P_SCAFFOLD, "Andaime", "prop_scaffolding"),
+        Def(P_STONELANTERN, "Lanterna de pedra", "prop_stone_lantern", false, 6, 8f),
+        Def(P_CROSSGRAVE, "Cruz de túmulo", "prop_cross_grave"),
+        Def(P_LOOM, "Tear", "prop_loom"),
+        Def(P_GRINDSTONE, "Rebolo", "prop_grindstone"),
+        Def(P_STUMPTABLE, "Mesa de toco", "prop_stump_table"),
+        Def(P_HANGLANTERN, "Lanterna pendurada", "prop_hanging_lantern", false, 6, 8f)
     )
 
     /** Materiais que o botão "Topo" do editor alterna (andares de cima das paredes). */
-    val capChoices = listOf(0, W_ROOF_RED, W_ROOF_SLATE, W_THATCH, W_ROOF_GREEN, W_ROOF_BLUE, W_ROOF_SHINGLE, W_ROOF_PLUM, W_STONE, W_BRICK, W_CASTLE, W_MARBLE, W_HOUSE, W_TIMBER, W_WOOD, W_CHIMNEY)
+    val capChoices = listOf(0, W_ROOF_RED, W_ROOF_SLATE, W_THATCH, W_ROOF_GREEN, W_ROOF_BLUE, W_ROOF_SHINGLE, W_ROOF_PLUM, W_STONE, W_BRICK, W_CASTLE, W_MARBLE, W_HOUSE, W_TIMBER, W_WOOD, W_CHIMNEY, W_DEEPSLATE, W_QUARTZ, W_TERRACOTTA, W_COPPER, W_BAMBOO, W_SPRUCE)
 
     // ---- relevo e pontes
     /** Altura em pixels de um nível de relevo (igual ao degrau de pulo do herói). */
@@ -381,14 +543,18 @@ object MT {
     val propCats = listOf("Todos", "Casa", "Cozinha e banho", "Natureza", "Masmorra", "Magia e luz", "Cenário")
 
     private val catHome = setOf(P_BED, P_TABLE, P_CHAIR, P_SHELF, P_WARDROBE, P_FIREPLACE, P_VASE, P_BENCH, P_CHANDELIER, P_CANDLES,
-        P_SOFA, P_BIGBED, P_PIANO, P_DESK, P_MIRROR, P_CLOCK, P_DRESSER, P_STOOL, P_FLOORLAMP, P_PLANTPOT, P_AQUARIUM, P_EASEL, P_HARP, P_THRONE)
-    private val catKitchen = setOf(P_COUNTER, P_SINK, P_BATHTUB, P_STOVE, P_BARREL, P_KEG, P_CRATE, P_SACKS, P_CAULDRON, P_FIREWOOD)
+        P_SOFA, P_BIGBED, P_PIANO, P_DESK, P_MIRROR, P_CLOCK, P_DRESSER, P_STOOL, P_FLOORLAMP, P_PLANTPOT, P_AQUARIUM, P_EASEL, P_HARP, P_THRONE,
+        P_LOOM, P_STUMPTABLE, P_HANGLANTERN)
+    private val catKitchen = setOf(P_COUNTER, P_SINK, P_BATHTUB, P_STOVE, P_BARREL, P_KEG, P_CRATE, P_SACKS, P_CAULDRON, P_FIREWOOD, P_CRAFTING, P_FURNACE)
     private val catNature = setOf(P_TREE, P_PINE, P_DEADTREE, P_BUSH, P_TUFT, P_ROCK, P_BIRCH, P_AUTUMN, P_CHERRY, P_PALM, P_CACTUS, P_TALLGRASS,
-        P_REEDS, P_LILYPAD, P_BIGMUSH, P_LOG, P_STUMP, P_BOULDER, P_SNOWMAN, P_SNOWPINE, P_PUMPKINS, P_SUNFLOWERS, P_WHEAT, P_MUSHROOM, P_HAY)
+        P_REEDS, P_LILYPAD, P_BIGMUSH, P_LOG, P_STUMP, P_BOULDER, P_SNOWMAN, P_SNOWPINE, P_PUMPKINS, P_SUNFLOWERS, P_WHEAT, P_MUSHROOM, P_HAY,
+        P_MELON, P_POPPY, P_DANDELION, P_ORCHID, P_TULIP, P_FERN, P_SUGARCANE, P_BAMBOO, P_DEADBUSH, P_SAPLING, P_BEEHIVE, P_JACKO)
     private val catDungeon = setOf(P_BONES, P_SKULLS, P_WEB, P_TOMB, P_SARCOPHAGUS, P_CAGE, P_SPIKETRAP, P_GARGOYLE, P_TREASURE, P_CHEST, P_STATUE,
-        P_PILLAR, P_WEAPONRACK, P_ARMORSTAND, P_DUMMY, P_ANVIL, P_FORGE, P_ALTAR)
+        P_PILLAR, P_WEAPONRACK, P_ARMORSTAND, P_DUMMY, P_ANVIL, P_FORGE, P_ALTAR,
+        P_SPAWNER, P_TNT, P_CROSSGRAVE, P_GRINDSTONE)
     private val catMagic = setOf(P_TORCH, P_LAMP, P_BRAZIER, P_CAMPFIRE, P_LANTERN, P_CRYSTAL_B, P_CRYSTAL_R, P_PORTAL, P_ALCHEMY, P_CRYSTALBALL,
-        P_MAGICCIRCLE, P_BANNER, P_TOTEM)
+        P_MAGICCIRCLE, P_BANNER, P_TOTEM,
+        P_ENCHANT, P_BREWING, P_SOULLANTERN, P_SEALANTERN, P_ENDROD, P_BEACON, P_STONELANTERN)
 
     /** Categoria (1..6) de um objeto; 6 = cenário (o resto). */
     fun propCat(id: Int): Int = when (id) {
@@ -405,7 +571,7 @@ object MT {
     fun wallDef(id: Int): Def? = walls.firstOrNull { it.id == id }
     fun propDef(id: Int): Def? = props.firstOrNull { it.id == id }
 
-    fun isWall(o: Int) = o in 1..19 || o in 110..139
+    fun isWall(o: Int) = o in 1..19 || o in 110..139 || o in 200..239
     fun isProp(o: Int) = o >= 20 && !isWall(o)
     fun solidFloor(f: Int) = f == F_VOID || f == F_WATER || f == F_LAVA || f == F_SLIME
 
@@ -428,7 +594,11 @@ object MT {
         P_ALTAR to Glow(0x60E0FF, 90f, 0.4f, 58f),
         P_STOVE to Glow(0xFF8030, 100f, 1f, 60f), P_CHANDELIER to Glow(0xFFC060, 130f, 0.8f, 30f), P_LANTERN to Glow(0xFFC060, 100f, 0.6f, 34f),
         P_CRYSTALBALL to Glow(0xA060FF, 90f, 0.4f, 50f), P_MAGICCIRCLE to Glow(0xB060FF, 100f, 0.4f, 70f), P_ALCHEMY to Glow(0x60FF80, 80f, 0.4f, 50f),
-        P_TREASURE to Glow(0xFFD060, 80f, 0.5f, 60f), P_FLOORLAMP to Glow(0xFFD890, 110f, 0.4f, 22f)
+        P_TREASURE to Glow(0xFFD060, 80f, 0.5f, 60f), P_FLOORLAMP to Glow(0xFFD890, 110f, 0.4f, 22f),
+        P_FURNACE to Glow(0xFF8030, 100f, 1f, 62f), P_ENCHANT to Glow(0x9A6AFF, 90f, 0.4f, 50f), P_JACKO to Glow(0xFFA030, 100f, 0.8f, 66f),
+        P_SOULLANTERN to Glow(0x40E0F0, 110f, 0.5f, 52f), P_SEALANTERN to Glow(0x80FFF0, 120f, 0.3f, 60f), P_ENDROD to Glow(0xE0A0FF, 100f, 0.4f, 22f),
+        P_BEACON to Glow(0x60FFF0, 130f, 0.4f, 50f), P_SPAWNER to Glow(0xA060FF, 90f, 0.5f, 70f), P_STONELANTERN to Glow(0xFFB050, 100f, 0.8f, 46f),
+        P_HANGLANTERN to Glow(0xFFB040, 110f, 0.7f, 40f)
     )
 }
 
@@ -628,7 +798,7 @@ object MapTex {
     private fun buildCliff(def: MT.Def): Bitmap {
         val avg = avgColor(tile(def, 0))
         val f = def.file
-        val earth = f.contains("grass") || f.contains("flowery") || f.contains("dry") || f.contains("dirt") || f.contains("mud") || f.contains("farm")
+        val earth = f.contains("grass") || f.contains("flowery") || f.contains("dry") || f.contains("dirt") || f.contains("mud") || f.contains("farm") || f.contains("podzol") || f.contains("mosscarpet") || f.contains("mycelium")
         val body = when {
             f.contains("sand") -> 0xB89A5C
 
@@ -750,10 +920,13 @@ object MapTex {
 
     const val FACE_SRC_H = 20
 
+    /** Altura da face frontal na textura: 20px para texturas de 32, 40px para 64 (proporção 5/8 da largura). */
+    fun faceH(w: Int): Int = maxOf(1, w * 5 / 8)
+
     /** Quantos quadros de animação a textura tem (portas: topo + 4 faces empilhadas). */
     fun wallFrames(def: MT.Def): Int {
         val src = base(def.file)
-        return if (src.height > src.width) maxOf(1, (src.height - src.width) / FACE_SRC_H) else 1
+        return if (src.height > src.width) maxOf(1, (src.height - src.width) / faceH(src.width)) else 1
     }
 
     /**
@@ -802,9 +975,10 @@ object MapTex {
             val src = base(md.file)
             val w = src.width
             val split = src.height > w
-            val nFr = if (split) maxOf(1, (src.height - w) / FACE_SRC_H) else 1
+            val fh = faceH(w)
+            val nFr = if (split) maxOf(1, (src.height - w) / fh) else 1
             val fi = if (k == 0) frame.coerceIn(0, nFr - 1) else 0
-            val fr = if (split) Rect(0, w + fi * FACE_SRC_H, w, w + (fi + 1) * FACE_SRC_H) else Rect(0, 0, w, src.height)
+            val fr = if (split) Rect(0, w + fi * fh, w, w + (fi + 1) * fh) else Rect(0, 0, w, src.height)
             val y0 = TS + (hgt - 1 - k) * WALL_H
             c.drawBitmap(src, fr, Rect(0, y0, TS, y0 + WALL_H), p)
             val yy = y0.toFloat()
@@ -843,9 +1017,14 @@ object PropArt {
         var out: Array<Bitmap>? = null
         if (def != null) {
             val src = MapTex.base(def.file)
-            if (src.height == 48 && src.width % 32 == 0) {
-                val n = src.width / 32
-                out = Array(n) { fi -> Bitmap.createScaledBitmap(Bitmap.createBitmap(src, fi * 32, 0, 32, 48), W, H, false) }
+            // quadro = 2/3 da altura de largura (32x48 antigo, 64x96 novo); tira horizontal
+            val fw = src.height * 2 / 3
+            if (src.height >= 48 && src.height % 3 == 0 && fw > 0 && src.width % fw == 0) {
+                val n = src.width / fw
+                out = Array(n) { fi ->
+                    val cut = Bitmap.createBitmap(src, fi * fw, 0, fw, src.height)
+                    if (fw == W && src.height == H) cut else Bitmap.createScaledBitmap(cut, W, H, false)
+                }
             }
         }
         out ?: arrayOf(legacy(id))

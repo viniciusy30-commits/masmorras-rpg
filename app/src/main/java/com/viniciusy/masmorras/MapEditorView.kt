@@ -40,6 +40,13 @@ class MapEditorView @JvmOverloads constructor(
         const val T_LINE = 5
         const val T_PICK = 6
         const val T_COPY = 7
+        const val T_OVAL = 8
+        const val T_FRAME = 9
+        const val T_REPLACE = 10
+        const val T_SPRAY = 11
+        const val T_CUT = 12
+
+        private fun isSel(t: Int) = t == T_COPY || t == T_CUT
 
         private const val MODE_NONE = 0
         private const val MODE_DRAW = 1
@@ -216,6 +223,10 @@ class MapEditorView @JvmOverloads constructor(
         private set
     var layer = L_FLOOR
     var tool = T_BRUSH
+    /** Simetria ao pintar: 0 nenhuma, 1 espelha esquerda/direita, 2 cima/baixo, 3 os dois. */
+    var symmetry = 0
+        set(v) { field = v; invalidate() }
+    private val rnd = java.util.Random()
     var showGrid = true
         set(v) { field = v; invalidate() }
     val selected = intArrayOf(MT.F_STONE, MT.W_STONE, MT.P_CRATE, 0, 0, 10, MT.B_WOOD, 0)
@@ -298,7 +309,7 @@ class MapEditorView @JvmOverloads constructor(
 
     private fun pushUndo(s: MapSnap) {
         undoStack.add(s)
-        if (undoStack.size > 60) undoStack.removeAt(0)
+        if (undoStack.size > 100) undoStack.removeAt(0)
         redoStack.clear()
         onHistoryChanged?.invoke()
     }
@@ -326,6 +337,14 @@ class MapEditorView @JvmOverloads constructor(
     // ───────────────────────── edição ─────────────────────────
 
     private fun applyCell(m: MapData, x: Int, y: Int, erase: Boolean) {
+        applyCell0(m, x, y, erase)
+        if (symmetry == 0 || layer == L_TERRAIN) return
+        if (symmetry and 1 != 0) applyCell0(m, m.w - 1 - x, y, erase)
+        if (symmetry and 2 != 0) applyCell0(m, x, m.h - 1 - y, erase)
+        if (symmetry == 3) applyCell0(m, m.w - 1 - x, m.h - 1 - y, erase)
+    }
+
+    private fun applyCell0(m: MapData, x: Int, y: Int, erase: Boolean) {
         if (!m.inB(x, y)) return
         val i = y * m.w + x
         when (layer) {
@@ -478,7 +497,7 @@ class MapEditorView @JvmOverloads constructor(
         return out
     }
 
-    private fun floodFill(m: MapData, sx: Int, sy: Int) {
+    private fun floodFill(m: MapData, sx: Int, sy: Int, global: Boolean = false) {
         if (!m.inB(sx, sy)) return
         val arr = when (layer) {
             L_FLOOR -> m.floor
@@ -498,6 +517,17 @@ class MapEditorView @JvmOverloads constructor(
 
         val target = arr[sy * m.w + sx]
         if (target == repl) return
+        if (global) {
+            var n = 0
+            for (i in arr.indices) {
+                if (arr[i] != target) continue
+                arr[i] = repl
+                if (layer == L_WALL) { m.hgt[i] = wallHeight; m.cap[i] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[i] = 0; m.cap[i] = 0 }
+                n++
+            }
+            onMessage?.invoke("Trocados $n blocos no mapa todo")
+            return
+        }
         val seen = BooleanArray(m.w * m.h)
         val queue = IntArray(m.w * m.h)
         var head = 0
@@ -517,6 +547,103 @@ class MapEditorView @JvmOverloads constructor(
         }
     }
 
+    /** Espalhar: pincel 3x3 que pinta só uma parte das células (bom para árvores, flores, pedras). */
+    private fun spray(m: MapData, cx: Int, cy: Int) {
+        for (dy in -1..1) for (dx in -1..1) {
+            val x = cx + dx
+            val y = cy + dy
+            if (!m.inB(x, y)) continue
+            if (seenCell(m, y * m.w + x)) continue
+            if (rnd.nextFloat() < 0.3f) applyCell(m, x, y, false)
+        }
+    }
+
+    private fun sprayLine(m: MapData, x0: Int, y0: Int, x1: Int, y1: Int) {
+        for ((x, y) in lineCells(x0, y0, x1, y1)) spray(m, x, y)
+    }
+
+    private fun ovalCells(x0: Int, y0: Int, x1: Int, y1: Int, filled: Boolean): List<Pair<Int, Int>> {
+        val out = ArrayList<Pair<Int, Int>>()
+        val ax = min(x0, x1)
+        val bx = max(x0, x1)
+        val ay = min(y0, y1)
+        val by = max(y0, y1)
+        val cx = (ax + bx) / 2f
+        val cy = (ay + by) / 2f
+        val rx = (bx - ax + 1) / 2f
+        val ry = (by - ay + 1) / 2f
+        fun inside(x: Int, y: Int): Boolean {
+            val u = (x - cx) / rx
+            val v = (y - cy) / ry
+            return u * u + v * v <= 1f
+        }
+        for (y in ay..by) for (x in ax..bx) {
+            if (!inside(x, y)) continue
+            if (!filled && inside(x - 1, y) && inside(x + 1, y) && inside(x, y - 1) && inside(x, y + 1)) continue
+            out.add(x to y)
+        }
+        return out
+    }
+
+    private fun frameCells(x0: Int, y0: Int, x1: Int, y1: Int): List<Pair<Int, Int>> {
+        val out = ArrayList<Pair<Int, Int>>()
+        val ax = min(x0, x1)
+        val bx = max(x0, x1)
+        val ay = min(y0, y1)
+        val by = max(y0, y1)
+        for (y in ay..by) for (x in ax..bx) if (x == ax || x == bx || y == ay || y == by) out.add(x to y)
+        return out
+    }
+
+    private fun shapeCells(): List<Pair<Int, Int>> =
+        if (curTool == T_OVAL) ovalCells(rectSx, rectSy, rectEx, rectEy, true) else frameCells(rectSx, rectSy, rectEx, rectEy)
+
+    /** Espelha (1 = esquerda/direita, 2 = cima/baixo) ou gira (3 = 90° horário) a área copiada. */
+    fun transformClip(kind: Int) {
+        val t = Houses.clipboard
+        if (t == null) {
+            onMessage?.invoke("Copie ou recorte uma área primeiro")
+            return
+        }
+        val nw = if (kind == 3) t.h else t.w
+        val nh = if (kind == 3) t.w else t.h
+        val o = Template(nw, nh)
+        fun ramp(e: Int): Int {
+            if (e < 0) return e
+            val r = MT.ramp(e)
+            val nr = when (kind) {
+                1 -> when (r) { 2 -> 4; 4 -> 2; else -> r }
+                2 -> when (r) { 1 -> 3; 3 -> 1; else -> r }
+                else -> if (r == 0) 0 else r % 4 + 1
+            }
+            return MT.elevOf(MT.level(e), nr)
+        }
+        for (y in 0 until t.h) for (x in 0 until t.w) {
+            val nx: Int
+            val ny: Int
+            when (kind) {
+                1 -> { nx = t.w - 1 - x; ny = y }
+                2 -> { nx = x; ny = t.h - 1 - y }
+                else -> { nx = t.h - 1 - y; ny = x }
+            }
+            val si = y * t.w + x
+            val di = ny * nw + nx
+            o.floor[di] = t.floor[si]
+            o.obj[di] = t.obj[si]
+            o.hgt[di] = t.hgt[si]
+            o.cap[di] = t.cap[si]
+            o.elev[di] = ramp(t.elev[si])
+            o.bridge[di] = t.bridge[si]
+        }
+        Houses.clipboard = o
+        layer = L_HOUSE
+        selected[L_HOUSE] = Houses.CLIP_ID
+        tool = T_BRUSH
+        onMessage?.invoke(when (kind) { 1 -> "Área espelhada ↔"; 2 -> "Área espelhada ↕"; else -> "Área girada 90°" } + " (${o.w}×${o.h}). Toque no mapa para carimbar")
+        onPick?.invoke()
+        invalidate()
+    }
+
     private fun cellAt(x: Float, y: Float): Pair<Int, Int> =
         Pair(floor((x - offX) / cell).toInt(), floor((y - offY) / cell).toInt())
 
@@ -529,7 +656,7 @@ class MapEditorView @JvmOverloads constructor(
         val (cx, cy) = cellAt(x, y)
         lastCx = cx
         lastCy = cy
-        if (layer == L_HOUSE && curTool != T_COPY && curTool != T_PICK) {
+        if (layer == L_HOUSE && !isSel(curTool) && curTool != T_PICK) {
             if (curTool == T_ERASE) onMessage?.invoke("Para apagar, use a borracha nas abas Chão, Paredes, Objetos, Relevo ou Pontes")
             invalidate()
             return
@@ -541,10 +668,15 @@ class MapEditorView @JvmOverloads constructor(
         }
         when (curTool) {
             T_BRUSH, T_ERASE -> applyCell(m, cx, cy, curTool == T_ERASE)
-            T_RECT, T_LINE, T_COPY -> {
-
-                if (layer == L_ENT && curTool != T_COPY) onMessage?.invoke("Para entidades use o pincel")
+            T_RECT, T_LINE, T_COPY, T_CUT, T_OVAL, T_FRAME -> {
+                if (layer == L_ENT && !isSel(curTool)) onMessage?.invoke("Para entidades use o pincel")
                 rectSx = cx; rectSy = cy; rectEx = cx; rectEy = cy
+            }
+            T_SPRAY -> {
+                if (layer == L_ENT) onMessage?.invoke("Para entidades use o pincel") else spray(m, cx, cy)
+            }
+            T_REPLACE -> {
+                if (layer == L_ENT) onMessage?.invoke("Para entidades use o pincel") else floodFill(m, cx, cy, true)
             }
             T_PICK -> pick(m, cx, cy)
             T_FILL -> {
@@ -558,7 +690,7 @@ class MapEditorView @JvmOverloads constructor(
     private fun moveStroke(m: MapData, x: Float, y: Float) {
         val (cx, cy) = cellAt(x, y)
         if (cx == lastCx && cy == lastCy) return
-        if ((layer == L_HOUSE && curTool != T_COPY && curTool != T_PICK) || (layer == L_BUILD && curTool == T_ERASE)) {
+        if ((layer == L_HOUSE && !isSel(curTool) && curTool != T_PICK) || (layer == L_BUILD && curTool == T_ERASE)) {
             lastCx = cx
             lastCy = cy
             invalidate()
@@ -566,7 +698,8 @@ class MapEditorView @JvmOverloads constructor(
         }
         when (curTool) {
             T_BRUSH, T_ERASE -> line(m, lastCx, lastCy, cx, cy, curTool == T_ERASE)
-            T_RECT, T_LINE, T_COPY -> { rectEx = cx; rectEy = cy }
+            T_RECT, T_LINE, T_COPY, T_CUT, T_OVAL, T_FRAME -> { rectEx = cx; rectEy = cy }
+            T_SPRAY -> if (layer != L_ENT) { sprayLine(m, lastCx, lastCy, cx, cy) }
         }
         lastCx = cx
         lastCy = cy
@@ -637,7 +770,7 @@ class MapEditorView @JvmOverloads constructor(
     }
 
     /** Copia a área marcada para a lista de Casas ("Cópia"), pronta para carimbar em outro lugar. */
-    private fun copyArea(m: MapData) {
+    private fun copyArea(m: MapData, cut: Boolean = false) {
         val x0 = max(0, min(rectSx, rectEx))
         val x1 = min(m.w - 1, max(rectSx, rectEx))
         val y0 = max(0, min(rectSy, rectEy))
@@ -655,19 +788,35 @@ class MapEditorView @JvmOverloads constructor(
             tp.bridge[ti] = m.bridge[si]
         }
         Houses.clipboard = tp
+        if (cut) {
+            // piso que fica no lugar: o da célula logo fora da área (ou pedra)
+            val nf = when {
+                m.inB(x0 - 1, y0) -> m.floor[y0 * m.w + x0 - 1]
+                m.inB(x1 + 1, y0) -> m.floor[y0 * m.w + x1 + 1]
+                else -> MT.F_STONE
+            }
+            for (yy in y0..y1) for (xx in x0..x1) {
+                val si = yy * m.w + xx
+                m.floor[si] = nf; m.obj[si] = 0; m.hgt[si] = 0; m.cap[si] = 0; m.elev[si] = 0; m.bridge[si] = 0
+            }
+            dirty = true
+        }
         layer = L_HOUSE
         selected[L_HOUSE] = Houses.CLIP_ID
         tool = T_BRUSH
-        onMessage?.invoke("Área copiada (${tp.w}×${tp.h}). Toque no mapa para carimbar")
+        onMessage?.invoke((if (cut) "Área recortada (" else "Área copiada (") + tp.w + "×" + tp.h + "). Toque no mapa para " + (if (cut) "colocar no novo lugar" else "carimbar"))
         onPick?.invoke()
     }
 
     private fun endStroke(m: MapData) {
-        if (layer == L_HOUSE && curTool != T_ERASE && curTool != T_COPY && curTool != T_PICK) stampHouse(m, lastCx, lastCy)
+        if (layer == L_HOUSE && curTool != T_ERASE && !isSel(curTool) && curTool != T_PICK) stampHouse(m, lastCx, lastCy)
         if (curTool == T_LINE && isCellLayer()) {
             line(m, rectSx, rectSy, rectEx, rectEy, false)
         }
-        if (curTool == T_COPY) copyArea(m)
+        if (isSel(curTool)) copyArea(m, curTool == T_CUT)
+        if ((curTool == T_OVAL || curTool == T_FRAME) && isCellLayer()) {
+            for ((x, y) in shapeCells()) applyCell(m, x, y, false)
+        }
         if (curTool == T_RECT && layer == L_BUILD) {
             onMessage?.invoke(RoomBuilder.build(m, rectSx, rectSy, rectEx, rectEy, buildOpts))
         } else if (curTool == T_RECT && isCellLayer()) {
@@ -882,7 +1031,14 @@ class MapEditorView @JvmOverloads constructor(
                 rf.set(offX + lx * cell, offY + ly * cell, offX + (lx + 1) * cell, offY + (ly + 1) * cell)
                 canvas.drawRect(rf, paint)
             }
-        } else if (mode == MODE_DRAW && ((curTool == T_RECT && (isCellLayer() || layer == L_BUILD)) || curTool == T_COPY)) {
+        } else if (mode == MODE_DRAW && (curTool == T_OVAL || curTool == T_FRAME) && isCellLayer()) {
+            paint.style = Paint.Style.FILL
+            paint.color = 0x55FFC107
+            for ((lx, ly) in shapeCells()) {
+                rf.set(offX + lx * cell, offY + ly * cell, offX + (lx + 1) * cell, offY + (ly + 1) * cell)
+                canvas.drawRect(rf, paint)
+            }
+        } else if (mode == MODE_DRAW && ((curTool == T_RECT && (isCellLayer() || layer == L_BUILD)) || isSel(curTool))) {
             val ax = min(rectSx, rectEx)
             val bx = max(rectSx, rectEx)
             val ay = min(rectSy, rectEy)
@@ -895,7 +1051,7 @@ class MapEditorView @JvmOverloads constructor(
             paint.strokeWidth = 3f
             paint.color = 0xFFFFC107.toInt()
             canvas.drawRect(rf, paint)
-            if (layer == L_BUILD || curTool == T_COPY) {
+            if (layer == L_BUILD || isSel(curTool)) {
                 textPaint.textSize = cell * 0.42f
                 textPaint.color = 0xFFFFFFFF.toInt()
                 canvas.drawText("" + (bx - ax + 1) + "×" + (by - ay + 1), (rf.left + rf.right) / 2f, rf.top - cell * 0.12f, textPaint)
@@ -915,6 +1071,14 @@ class MapEditorView @JvmOverloads constructor(
             paint.strokeWidth = 2f
             paint.color = 0xCCFFFFFF.toInt()
             canvas.drawRect(rf, paint)
+        }
+        // eixos da simetria
+        if (symmetry != 0) {
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2f
+            paint.color = 0xCC40E0FF.toInt()
+            if (symmetry and 1 != 0) canvas.drawLine(offX + m.w * cell / 2f, offY, offX + m.w * cell / 2f, offY + m.h * cell, paint)
+            if (symmetry and 2 != 0) canvas.drawLine(offX, offY + m.h * cell / 2f, offX + m.w * cell, offY + m.h * cell / 2f, paint)
         }
         // borda do mapa
         paint.style = Paint.Style.STROKE

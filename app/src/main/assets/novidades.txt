@@ -1,3 +1,24 @@
+#id 2026-10-26-k
+#titulo Editor de mapas: mais ferramentas
+- Recortar: marca uma área, ela some do lugar e fica pronta para colocar em outro (mover construções inteiras)
+- Espelhar ↔, Espelhar ↕ e Girar 90° na área copiada ou recortada (rampas giram junto)
+- Oval e Contorno: círculos/elipses preenchidos e retângulos só com a borda
+- Trocar tudo: toque num bloco e todos iguais do mapa viram o bloco escolhido
+- Espalhar: pincel aleatório para árvores, flores, pedras e detalhes
+- Simetria: pinte um lado e o outro se espelha sozinho (esquerda/direita, cima/baixo ou os dois), com linhas-guia no mapa
+- Desfazer agora guarda 100 passos
+- O botão Mover virou Tela (arrasta o mapa)
+
+#id 2026-10-26-j
+#titulo Texturas em alta resolução e blocos novos
+- Todos os pisos e as paredes comuns refeitos em 64 pixels (o dobro de detalhe), com variação de cor, rachaduras, musgo, juntas e relevo nos blocos
+- Água, lava e lodo tóxico animados refeitos, mais o piso rúnico
+- 26 pisos novos: ardósia profunda, pedra negra, rocha infernal, areia das almas, quartzo, cobre, terracota, areia vermelha, tábuas de bétula e escuras, bambu, concreto, podzol, musgo, micélio, ouro, obsidiana, pedra luminosa, pedra rachada, pedregulho musgoso, tijolo de barro, prismarinho, feno e magma animado
+- 23 paredes novas: ardósia, tijolo infernal, quartzo, cobre oxidado, terracota, estante de livros, fardo de feno, prismarinho, púrpura, pedra negra, pedregulho musgoso, pedra rachada, tijolo de barro, bambu, tijolo de neve, caiado, placa de ferro, ouro, ametista e madeiras escura e de bétula
+- 32 objetos novos, vários animados e com luz: mesa de trabalho, fornalha, mesa de encantamento, estande de poções, abóbora lanterna, melancia, flores, samambaia, cana-de-açúcar, bambuzal, colmeia, lanternas (almas, marinha, pedra, pendurada), bastão do fim, sino, farol mágico, gaiola de monstros, dinamite, tear, rebolo e mais
+- A aba Obra ganhou mais paredes e pisos para escolher
+- Mapas antigos continuam funcionando
+
 #id 2026-10-26-i
 #titulo Editor de mapas: relevo, pontes, obras e móveis
 - Nova aba Relevo: suba e baixe o terreno em níveis (até 6), faça rampas nas 4 direções (pincel ou retângulo para rampa comprida) e colinas prontas com rampas em volta; o balde nivela áreas

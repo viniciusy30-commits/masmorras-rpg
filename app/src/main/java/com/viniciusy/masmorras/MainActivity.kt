@@ -644,11 +644,16 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.T_LINE to "Linha",
             MapEditorView.T_PICK to "Conta-gotas",
             MapEditorView.T_COPY to "Copiar",
-            MapEditorView.T_PAN to "Mover"
+            MapEditorView.T_CUT to "Recortar",
+            MapEditorView.T_OVAL to "Oval",
+            MapEditorView.T_FRAME to "Contorno",
+            MapEditorView.T_REPLACE to "Trocar tudo",
+            MapEditorView.T_SPRAY to "Espalhar",
+            MapEditorView.T_PAN to "Tela"
         )
         // duas colunas de ferramentas
         edTools.orientation = LinearLayout.HORIZONTAL
-        val toolCols = listOf(LinearLayout(this), LinearLayout(this))
+        val toolCols = listOf(LinearLayout(this), LinearLayout(this), LinearLayout(this))
         for (col in toolCols) {
             col.orientation = LinearLayout.VERTICAL
             edTools.addView(col)
@@ -660,8 +665,20 @@ class MainActivity : AppCompatActivity() {
                 refreshTools()
             }
             toolChips.add(t to c)
-            toolCols[idx % 2].addView(c)
+            toolCols[idx % 3].addView(c)
         }
+        // ações sobre a área copiada e simetria
+        toolCols[0].addView(chip("Espelhar ↔", 62, 32, 10f) { editorView.transformClip(1) })
+        toolCols[1].addView(chip("Espelhar ↕", 62, 32, 10f) { editorView.transformClip(2) })
+        toolCols[2].addView(chip("Girar 90°", 62, 32, 10f) { editorView.transformClip(3) })
+        val symNames = listOf("Simetria: não", "Simetria ↔", "Simetria ↕", "Simetria ✛")
+        lateinit var symChip: TextView
+        symChip = chip(symNames[0], 62, 32, 10f) {
+            editorView.symmetry = (editorView.symmetry + 1) % 4
+            symChip.text = symNames[editorView.symmetry]
+            styleChip(symChip, editorView.symmetry != 0)
+        }
+        toolCols[0].addView(symChip)
         editorView.onPick = {
             refreshTabs()
             refreshPalette()
