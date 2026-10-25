@@ -1,21 +1,9 @@
 TEXTURAS DO EDITOR DE MAPAS
 ===========================
-Por padrão o jogo usa texturas de TESTE geradas por código (MapTiles.kt).
-Para usar sua própria arte, coloque um PNG quadrado (16x16, 32x32, 64x64...)
-nesta pasta com o nome abaixo. Se o arquivo existir, ele substitui o de teste.
+Todas as texturas do editor ficam nesta pasta (PNG). Se quiser trocar alguma por arte sua, basta
+substituir o arquivo mantendo o nome e o formato:
 
-CHÃO              PAREDES (topo + frente são gerados do mesmo PNG)
-floor_void.png    wall_stone.png
-floor_stone.png   wall_brick.png
-floor_brick.png   wall_dark.png
-floor_dark.png    wall_moss.png
-floor_moss.png    wall_wood.png
-floor_grass.png   wall_sand.png
-floor_dirt.png
-floor_sand.png
-floor_planks.png
-floor_carpet.png
-floor_water.png
-floor_lava.png
-
-Objetos (prop_*.png) ainda são desenhados por código.
+floor_*.png  : chão, quadrado (32x32). Animados (floor_water, floor_lava, floor_slime) são uma tira
+               horizontal com 8 quadros (256x32).
+wall_*.png   : parede, 32x52 = topo 32x32 + face frontal 32x20 embaixo.
+prop_*.png   : objetos, 32x48 por quadro. Animados são tiras horizontais (ex.: 6 quadros = 192x48).

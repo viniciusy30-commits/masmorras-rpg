@@ -657,14 +657,17 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.L_FLOOR to "Chão",
             MapEditorView.L_WALL to "Paredes",
             MapEditorView.L_PROP to "Objetos",
-            MapEditorView.L_ENT to "Entidades"
+            MapEditorView.L_ENT to "Entidades",
+            MapEditorView.L_HOUSE to "Casas"
         )
         for (rowIdx in 0..1) {
             val row = LinearLayout(this)
             row.orientation = LinearLayout.HORIZONTAL
-            for (colIdx in 0..1) {
-                val (l, name) = tabs[rowIdx * 2 + colIdx]
-                val c = chip(name, 74, 32, 11f) {
+            for (colIdx in 0..2) {
+                val k = rowIdx * 3 + colIdx
+                if (k >= tabs.size) break
+                val (l, name) = tabs[k]
+                val c = chip(name, 66, 32, 10f) {
                     editorView.layer = l
                     refreshTabs()
                     refreshPalette()
@@ -732,6 +735,7 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.L_FLOOR -> MT.floors.map { it.id to it.name }
             MapEditorView.L_WALL -> MT.walls.map { it.id to it.name }
             MapEditorView.L_PROP -> MT.props.map { it.id to it.name }
+            MapEditorView.L_HOUSE -> Houses.list.map { it.id to it.name }
             else -> (0..3).map { it to MapEditorView.entNames[it] }
         }
         for ((id, name) in items) {

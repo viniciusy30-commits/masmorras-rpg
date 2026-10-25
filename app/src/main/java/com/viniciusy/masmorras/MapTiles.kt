@@ -12,7 +12,7 @@ import kotlin.math.abs
 
 /**
  * Definição de todos os blocos que o editor oferece.
- * Camada "chão" (floor): ids 0..19.  Camada "objetos" (obj): paredes 1..19, props 20+.
+ * Camada "chão" (floor): ids 0..30.  Camada "objetos" (obj): paredes 1..19, props 20+.
  */
 object MT {
     // chão
@@ -28,14 +28,36 @@ object MT {
     const val F_CARPET = 9
     const val F_WATER = 10
     const val F_LAVA = 11
+    const val F_COBBLE = 12
+    const val F_MARBLE = 13
+    const val F_SNOW = 14
+    const val F_ICE = 15
+    const val F_MUD = 16
+    const val F_PARQUET = 17
+    const val F_BASALT = 18
+    const val F_GRAVEL = 19
+    const val F_FLOWERY = 20
+    const val F_TILES = 21
+    const val F_SLIME = 22
 
-    // paredes (altas, sólidas)
+    // paredes (altas, sólidas — a porta é atravessável)
     const val W_STONE = 1
     const val W_BRICK = 2
     const val W_DARK = 3
     const val W_MOSS = 4
     const val W_WOOD = 5
     const val W_SAND = 6
+    const val W_HOUSE = 7
+    const val W_LOG = 8
+    const val W_ROOF_RED = 9
+    const val W_ROOF_SLATE = 10
+    const val W_THATCH = 11
+    const val W_WINDOW = 12
+    const val W_DOOR = 13
+    const val W_GATE = 14
+    const val W_OBSIDIAN = 15
+    const val W_ICE = 16
+    const val W_HEDGE = 17
 
     // props
     const val P_CRATE = 20
@@ -47,23 +69,68 @@ object MT {
     const val P_BONES = 26
     const val P_TUFT = 27
     const val P_CHEST = 28
+    const val P_TORCH = 29
+    const val P_CAMPFIRE = 30
+    const val P_FOUNTAIN = 31
+    const val P_BANNER = 32
+    const val P_CRYSTAL_B = 33
+    const val P_CRYSTAL_R = 34
+    const val P_MUSHROOM = 35
+    const val P_CAULDRON = 36
+    const val P_CANDLES = 37
+    const val P_LAMP = 38
+    const val P_PORTAL = 39
+    const val P_ALTAR = 40
+    const val P_STATUE = 41
+    const val P_TOMB = 42
+    const val P_WELL = 43
+    const val P_SIGN = 44
+    const val P_HAY = 45
+    const val P_BUSH = 46
+    const val P_PINE = 47
+    const val P_DEADTREE = 48
+    const val P_FENCE = 49
+    const val P_ANVIL = 50
+    const val P_FORGE = 51
+    const val P_BED = 52
+    const val P_TABLE = 53
+    const val P_CHAIR = 54
+    const val P_SHELF = 55
+    const val P_WARDROBE = 56
+    const val P_FIREPLACE = 57
+    const val P_WEB = 58
+    const val P_SKULLS = 59
+    const val P_FIREWOOD = 60
+    const val P_SACKS = 61
+    const val P_VASE = 62
 
-    /** file = nome do arquivo opcional em assets/tiles/<file>.png (se existir, substitui a textura de teste). */
-    class Def(val id: Int, val name: String, val file: String, val vary: Boolean = false)
+    /** file = nome em assets/tiles/<file>.png. Texturas animadas são tiras horizontais com `frames` quadros. */
+    class Def(val id: Int, val name: String, val file: String, val vary: Boolean = false, val frames: Int = 1, val fps: Float = 8f)
 
     val floors = listOf(
-        Def(F_VOID, "Vazio", "floor_void", true),
+        Def(F_VOID, "Vazio", "floor_void"),
         Def(F_STONE, "Laje", "floor_stone"),
         Def(F_BRICK, "Tijolo", "floor_brick"),
         Def(F_DARK, "Pedra escura", "floor_dark"),
-        Def(F_MOSS, "Pedra musgo", "floor_moss", true),
+        Def(F_MOSS, "Pedra musgo", "floor_moss"),
         Def(F_GRASS, "Grama", "floor_grass", true),
+        Def(F_FLOWERY, "Grama florida", "floor_flowery", true),
         Def(F_DIRT, "Terra", "floor_dirt", true),
         Def(F_SAND, "Areia", "floor_sand", true),
+        Def(F_GRAVEL, "Cascalho", "floor_gravel", true),
+        Def(F_COBBLE, "Pedregulho", "floor_cobble"),
         Def(F_PLANKS, "Tábuas", "floor_planks"),
+        Def(F_PARQUET, "Parquet", "floor_parquet"),
+        Def(F_TILES, "Ladrilho", "floor_ladrilho"),
+        Def(F_MARBLE, "Mármore", "floor_marble"),
         Def(F_CARPET, "Tapete", "floor_carpet"),
-        Def(F_WATER, "Água", "floor_water", true),
-        Def(F_LAVA, "Lava", "floor_lava", true)
+        Def(F_SNOW, "Neve", "floor_snow", true),
+        Def(F_ICE, "Gelo", "floor_ice"),
+        Def(F_MUD, "Lama", "floor_mud", true),
+        Def(F_BASALT, "Basalto", "floor_basalt"),
+        Def(F_WATER, "Água", "floor_water", false, 8, 6f),
+        Def(F_LAVA, "Lava", "floor_lava", false, 8, 5f),
+        Def(F_SLIME, "Lodo tóxico", "floor_slime", false, 8, 5f)
     )
 
     val walls = listOf(
@@ -72,19 +139,64 @@ object MT {
         Def(W_DARK, "Parede escura", "wall_dark"),
         Def(W_MOSS, "Parede musgo", "wall_moss"),
         Def(W_WOOD, "Parede madeira", "wall_wood"),
-        Def(W_SAND, "Arenito", "wall_sand")
+        Def(W_SAND, "Arenito", "wall_sand"),
+        Def(W_HOUSE, "Parede casa", "wall_house"),
+        Def(W_LOG, "Toras", "wall_log"),
+        Def(W_WINDOW, "Janela", "wall_window"),
+        Def(W_DOOR, "Porta", "wall_door"),
+        Def(W_ROOF_RED, "Telhado vermelho", "wall_roof_red"),
+        Def(W_ROOF_SLATE, "Telhado ardósia", "wall_roof_slate"),
+        Def(W_THATCH, "Telhado palha", "wall_thatch"),
+        Def(W_GATE, "Grade", "wall_gate"),
+        Def(W_OBSIDIAN, "Obsidiana", "wall_obsidian"),
+        Def(W_ICE, "Parede gelo", "wall_ice"),
+        Def(W_HEDGE, "Sebe", "wall_hedge")
     )
 
     val props = listOf(
+        Def(P_TREE, "Árvore", "prop_tree", false, 4, 2.5f),
+        Def(P_PINE, "Pinheiro", "prop_pine", false, 4, 2.5f),
+        Def(P_DEADTREE, "Árvore seca", "prop_deadtree", false, 4, 2f),
+        Def(P_BUSH, "Arbusto", "prop_bush", false, 4, 2.5f),
+        Def(P_TUFT, "Flores", "prop_tuft", false, 4, 2.5f),
+        Def(P_ROCK, "Pedra", "prop_rock"),
+        Def(P_FENCE, "Cerca", "prop_fence"),
+        Def(P_HAY, "Feno", "prop_hay"),
+        Def(P_WELL, "Poço", "prop_well", false, 4, 3f),
+        Def(P_FOUNTAIN, "Fonte", "prop_fountain", false, 6, 8f),
+        Def(P_SIGN, "Placa", "prop_sign"),
+        Def(P_VASE, "Vaso", "prop_vase", false, 4, 2.5f),
+        Def(P_TORCH, "Tocha", "prop_torch", false, 6, 10f),
+        Def(P_LAMP, "Lampião", "prop_lamp", false, 6, 9f),
+        Def(P_BRAZIER, "Braseiro", "prop_brazier", false, 6, 10f),
+        Def(P_CAMPFIRE, "Fogueira", "prop_campfire", false, 6, 10f),
+        Def(P_CANDLES, "Candelabro", "prop_candelabra", false, 6, 9f),
+        Def(P_BANNER, "Estandarte", "prop_banner", false, 6, 6f),
+        Def(P_CRYSTAL_B, "Cristal azul", "prop_crystal_blue", false, 6, 5f),
+        Def(P_CRYSTAL_R, "Cristal rubi", "prop_crystal_red", false, 6, 5f),
+        Def(P_MUSHROOM, "Cogumelos", "prop_mushrooms", false, 6, 5f),
+        Def(P_PORTAL, "Portal", "prop_portal", false, 8, 9f),
+        Def(P_ALTAR, "Altar rúnico", "prop_altar", false, 6, 5f),
+        Def(P_CAULDRON, "Caldeirão", "prop_cauldron", false, 6, 8f),
+        Def(P_STATUE, "Estátua", "prop_statue"),
+        Def(P_PILLAR, "Pilar", "prop_pillar"),
+        Def(P_TOMB, "Lápide", "prop_tomb"),
+        Def(P_BONES, "Ossos", "prop_bones"),
+        Def(P_SKULLS, "Caveiras", "prop_skulls"),
+        Def(P_WEB, "Teia", "prop_web"),
+        Def(P_CHEST, "Baú", "prop_chest", false, 6, 5f),
         Def(P_CRATE, "Caixote", "prop_crate"),
         Def(P_BARREL, "Barril", "prop_barrel"),
-        Def(P_PILLAR, "Pilar", "prop_pillar"),
-        Def(P_BRAZIER, "Braseiro", "prop_brazier"),
-        Def(P_ROCK, "Pedra", "prop_rock"),
-        Def(P_TREE, "Árvore", "prop_tree"),
-        Def(P_BONES, "Ossos", "prop_bones"),
-        Def(P_TUFT, "Flores", "prop_tuft"),
-        Def(P_CHEST, "Baú", "prop_chest")
+        Def(P_SACKS, "Sacos", "prop_sacks"),
+        Def(P_FIREWOOD, "Lenha", "prop_firewood"),
+        Def(P_ANVIL, "Bigorna", "prop_anvil", false, 4, 3f),
+        Def(P_FORGE, "Forja", "prop_forge", false, 6, 10f),
+        Def(P_BED, "Cama", "prop_bed"),
+        Def(P_TABLE, "Mesa", "prop_table", false, 6, 9f),
+        Def(P_CHAIR, "Cadeira", "prop_chair"),
+        Def(P_SHELF, "Estante", "prop_bookshelf"),
+        Def(P_WARDROBE, "Armário", "prop_wardrobe"),
+        Def(P_FIREPLACE, "Lareira", "prop_fireplace", false, 6, 10f)
     )
 
     fun floorDef(id: Int): Def = floors.firstOrNull { it.id == id } ?: floors[0]
@@ -93,8 +205,18 @@ object MT {
 
     fun isWall(o: Int) = o in 1..19
     fun isProp(o: Int) = o >= 20
-    fun solidFloor(f: Int) = f == F_VOID || f == F_WATER || f == F_LAVA
-    fun solidObj(o: Int) = o != 0 && o != P_BONES && o != P_TUFT
+    fun solidFloor(f: Int) = f == F_VOID || f == F_WATER || f == F_LAVA || f == F_SLIME
+    fun solidObj(o: Int) = o != 0 && o != P_BONES && o != P_TUFT && o != P_WEB && o != P_SKULLS && o != W_DOOR
+
+    /** Luz colorida de props que brilham: cor, raio (px de tela), quanto tremula e altura do foco no sprite (0..96). */
+    class Glow(val color: Int, val radius: Float, val flicker: Float, val cy: Float)
+    val glows: Map<Int, Glow> = mapOf(
+        P_BRAZIER to Glow(0xFFA040, 110f, 1f, 52f), P_TORCH to Glow(0xFFA040, 100f, 1f, 34f), P_CAMPFIRE to Glow(0xFF9030, 130f, 1f, 66f),
+        P_CANDLES to Glow(0xFFC060, 90f, 0.8f, 36f), P_LAMP to Glow(0xFFC060, 120f, 0.5f, 34f), P_FORGE to Glow(0xFF8030, 110f, 1f, 76f),
+        P_FIREPLACE to Glow(0xFF8030, 110f, 1f, 76f), P_CRYSTAL_B to Glow(0x40A8FF, 100f, 0.3f, 60f), P_CRYSTAL_R to Glow(0xFF4070, 100f, 0.3f, 60f),
+        P_MUSHROOM to Glow(0x40E8D8, 80f, 0.3f, 72f), P_CAULDRON to Glow(0x60FF50, 80f, 0.4f, 58f), P_PORTAL to Glow(0xA060FF, 130f, 0.4f, 52f),
+        P_ALTAR to Glow(0x60E0FF, 90f, 0.4f, 58f)
+    )
 }
 
 /**
@@ -108,8 +230,13 @@ object MapTex {
 
     private var assets: AssetManager? = null
     private val raw = HashMap<String, Bitmap>()
-    private val tiles = HashMap<String, Array<Bitmap>>()
+    private val tiles = HashMap<String, Array<Array<Bitmap>>>()
     private val wallSprites = HashMap<String, Bitmap>()
+
+    private val t0 = System.nanoTime()
+
+    /** Relógio em segundos para animar tiles no editor. */
+    fun clock(): Float = ((System.nanoTime() - t0) / 1_000_000L) / 1000f
 
     fun init(ctx: Context) {
         assets = ctx.applicationContext.assets
@@ -222,56 +349,96 @@ object MapTex {
         var bmp: Bitmap? = null
         try {
             val am = assets
-            if (am != null) am.open("tiles/$file.png").use { bmp = BitmapFactory.decodeStream(it) }
+            if (am != null) am.open("tiles/$file.png").use {
+                val o = BitmapFactory.Options()
+                o.inScaled = false
+                bmp = BitmapFactory.decodeStream(it, null, o)
+            }
         } catch (e: Exception) {
             bmp = null
         }
         bmp ?: gen(file)
     }
 
-    /** Bloco 64x64 (nearest). variant 0..3 = rotações (só para texturas "naturais"). */
-    fun tile(def: MT.Def, variant: Int): Bitmap {
-        val arr = tiles.getOrPut(def.file) {
+    private fun frameCountOf(src: Bitmap, def: MT.Def): Int =
+        if (def.frames > 1 && src.width % def.frames == 0 && src.width / def.frames >= 8) def.frames else 1
+
+    /** Bloco 64x64 (nearest). variant 0..3 = rotações (só texturas "naturais"). time = segundos (texturas animadas). */
+    fun tile(def: MT.Def, variant: Int, time: Float = 0f): Bitmap {
+        val frames = tiles.getOrPut(def.file) {
             val src = base(def.file)
-            val s = Bitmap.createScaledBitmap(src, TS, TS, false)
-            Array(4) { k ->
-                if (k == 0 || !def.vary) s else {
-                    val m = Matrix()
-                    m.postRotate(90f * k, TS / 2f, TS / 2f)
-                    Bitmap.createBitmap(s, 0, 0, TS, TS, m, false)
+            val n = frameCountOf(src, def)
+            val fw = src.width / n
+            Array(n) { fi ->
+                val cut = if (n == 1) src else Bitmap.createBitmap(src, fi * fw, 0, fw, src.height)
+                val s = Bitmap.createScaledBitmap(cut, TS, TS, false)
+                Array(4) { k ->
+                    if (k == 0 || !def.vary) s else {
+                        val m = Matrix()
+                        m.postRotate(90f * k, TS / 2f, TS / 2f)
+                        Bitmap.createBitmap(s, 0, 0, TS, TS, m, false)
+                    }
                 }
             }
         }
-        return arr[if (def.vary) variant and 3 else 0]
+        val fi = if (frames.size > 1) ((time * def.fps).toInt() % frames.size + frames.size) % frames.size else 0
+        return frames[fi][if (def.vary) variant and 3 else 0]
     }
 
-    /** Sprite de parede: topo (64x64) + face frontal (64xWALL_H) embaixo. Altura total = TS + WALL_H. */
-    fun wall(def: MT.Def): Bitmap = wallSprites.getOrPut(def.file) {
+    fun isAnimated(def: MT.Def) = def.frames > 1
+
+    /** máscara de vizinhos que são parede: N=1, L=2, S=4, O=8 */
+    const val M_N = 1
+    const val M_E = 2
+    const val M_S = 4
+    const val M_W = 8
+
+    /**
+     * Sprite de parede: topo (64x64) + face frontal (64xWALL_H) embaixo. Altura total = TS + WALL_H.
+     * A máscara diz quais lados têm outra parede: nesses lados NÃO há borda/contorno, então as paredes se emendam.
+     * A face frontal só existe quando não há parede ao sul (senão o topo da parede de baixo a cobre).
+     */
+    fun wall(def: MT.Def, mask: Int = 0): Bitmap = wallSprites.getOrPut(def.file + "#" + mask) {
         val src = base(def.file)
         val bmp = Bitmap.createBitmap(TS, TS + WALL_H, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val p = Paint()
         p.isFilterBitmap = false
         p.isAntiAlias = false
-        // topo (mais claro)
-        c.drawBitmap(src, null, Rect(0, 0, TS, TS), p)
-        p.color = 0x30FFFFFF
-        c.drawRect(0f, 0f, TS.toFloat(), TS.toFloat(), p)
-        // frente (mais escura, escurece para baixo)
-        c.drawBitmap(src, null, Rect(0, TS, TS, TS + WALL_H), p)
-        p.color = 0x50000000
-        c.drawRect(0f, TS.toFloat(), TS.toFloat(), (TS + WALL_H).toFloat(), p)
-        p.color = 0x38000000
-        c.drawRect(0f, (TS + WALL_H - 12).toFloat(), TS.toFloat(), (TS + WALL_H).toFloat(), p)
-        // contornos (estilo bloco)
-        p.color = 0x70000000
-        c.drawRect(0f, (TS - 2).toFloat(), TS.toFloat(), (TS + 2).toFloat(), p)
-        p.color = 0x40000000
-        c.drawRect(0f, 0f, TS.toFloat(), 2f, p)
-        c.drawRect(0f, 0f, 2f, TS.toFloat(), p)
-        c.drawRect((TS - 2).toFloat(), 0f, TS.toFloat(), TS.toFloat(), p)
-        c.drawRect(0f, TS.toFloat(), 2f, (TS + WALL_H).toFloat(), p)
-        c.drawRect((TS - 2).toFloat(), TS.toFloat(), TS.toFloat(), (TS + WALL_H).toFloat(), p)
+        val tw = src.width
+        val split = src.height > tw // PNG novo: topo quadrado + frente embaixo
+        val topSrc = Rect(0, 0, tw, if (split) tw else src.height)
+        val frontSrc = if (split) Rect(0, tw, tw, src.height) else Rect(0, 0, tw, src.height)
+        val T = TS.toFloat()
+        fun rect(x0: Float, y0: Float, x1: Float, y1: Float, color: Int) {
+            p.color = color
+            c.drawRect(x0, y0, x1, y1, p)
+        }
+        // topo
+        c.drawBitmap(src, topSrc, Rect(0, 0, TS, TS), p)
+        if (!split) rect(0f, 0f, T, T, 0x30FFFFFF)
+        val exN = (mask and M_N) == 0
+        val exE = (mask and M_E) == 0
+        val exS = (mask and M_S) == 0
+        val exW = (mask and M_W) == 0
+        // bordas só nos lados expostos (iluminação vinda do alto-esquerda)
+        if (exN) { rect(0f, 0f, T, 2f, 0x80000000.toInt()); rect(0f, 2f, T, 5f, 0x30FFFFFF) }
+        if (exW) { rect(0f, 0f, 2f, T, 0x80000000.toInt()); rect(2f, 0f, 5f, T, 0x26FFFFFF) }
+        if (exE) { rect(T - 2f, 0f, T, T, 0x80000000.toInt()); rect(T - 5f, 0f, T - 2f, T, 0x26000000) }
+        if (exS) { rect(0f, T - 6f, T, T - 2f, 0x22FFFFFF); rect(0f, T - 2f, T, T, 0x70000000) }
+        if (exS) {
+            // face frontal
+            val fr = Rect(0, TS, TS, TS + WALL_H)
+            c.drawBitmap(src, frontSrc, fr, p)
+            if (!split) {
+                rect(0f, T, T, T + WALL_H, 0x50000000)
+                rect(0f, T + WALL_H - 12f, T, T + WALL_H, 0x38000000)
+            }
+            rect(0f, T, T, T + 3f, 0x55000000) // sombra do beiral sob o topo
+            if (exW) rect(0f, T, 2f, T + WALL_H, 0x80000000.toInt())
+            if (exE) rect(T - 2f, T, T, T + WALL_H, 0x80000000.toInt())
+            rect(0f, T + WALL_H - 2f, T, T + WALL_H, 0x66000000)
+        }
         bmp
     }
 }
@@ -289,7 +456,30 @@ object PropArt {
         cv.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), p)
     }
 
-    fun get(id: Int): Bitmap = cache.getOrPut(id) {
+    private val strips = HashMap<Int, Array<Bitmap>>()
+
+    /** Quadros do sprite (PNG em assets/tiles/prop_*.png, tira horizontal). Sem arquivo, usa o desenho antigo. */
+    private fun frames(id: Int): Array<Bitmap> = strips.getOrPut(id) {
+        val def = MT.propDef(id)
+        var out: Array<Bitmap>? = null
+        if (def != null) {
+            val src = MapTex.base(def.file)
+            if (src.height == 48 && src.width % 32 == 0) {
+                val n = src.width / 32
+                out = Array(n) { fi -> Bitmap.createScaledBitmap(Bitmap.createBitmap(src, fi * 32, 0, 32, 48), W, H, false) }
+            }
+        }
+        out ?: arrayOf(legacy(id))
+    }
+
+    fun get(id: Int, time: Float = 0f): Bitmap {
+        val fr = frames(id)
+        if (fr.size == 1) return fr[0]
+        val fps = MT.propDef(id)?.fps ?: 8f
+        return fr[((time * fps).toInt() % fr.size + fr.size) % fr.size]
+    }
+
+    private fun legacy(id: Int): Bitmap = cache.getOrPut(id) {
         val bmp = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888)
         val cv = Canvas(bmp)
         val p = Paint()
