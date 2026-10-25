@@ -7,6 +7,7 @@ import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
@@ -59,7 +60,7 @@ class Player(
 ) : Entity(x, y, 24f, classe.maxHp, classe.maxHp) {
 
     companion object {
-        const val ROLL_TIME = 0.42f
+        const val ROLL_TIME = 0.46f
     }
 
     var mp = classe.maxMp
@@ -194,9 +195,9 @@ class Player(
     override fun update(dt: Float) {
         if (rollT > 0f) {
             rollT -= dt
-            if (rollT < 0f) rollT = 0f
+            if (rollT <= 0f) { rollT = 0f; landSquash = max(landSquash, 0.3f) }
             val q = 1f - rollT / ROLL_TIME
-            val spd = 330f * (1.35f - 0.7f * q)
+            val spd = 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
         } else {

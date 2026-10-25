@@ -1039,11 +1039,34 @@ object Warrior3D {
         }
     }
 
+    /** Ombreira acompanha o braço: gira (em parte) do braço caído até a direção do úmero, em torno do eixo perpendicular. */
+    private fun pauldronFollow(side: Float, ux: Float, uy: Float, uz: Float) {
+        push()
+        val c0 = (-uy).coerceIn(-1f, 1f)
+        val ang = acos(c0) * 0.8f
+        var ax = -uz
+        var az = ux
+        val al = sqrt(ax * ax + az * az)
+        if (al > 0.0001f && ang > 0.001f) {
+            ax /= al; az /= al
+            val c = cos(ang)
+            val sn = sin(ang)
+            val k = 1f - c
+            // Rodrigues, eixo (ax, 0, az): imagens dos eixos X, Y, Z
+            applyBasis(
+                c + ax * ax * k, az * sn, ax * az * k,
+                -az * sn, c, ax * sn,
+                ax * az * k, -ax * sn, c + az * az * k
+            )
+        }
+        pauldron(side)
+        pop()
+    }
+
     /** Braço de dois ossos até a mão, com o cotovelo apontando para baixo e para fora (vetor-polo). */
     private fun spearArm(side: Float, hx: Float, hy: Float, hz: Float) {
         push()
         translate(side * 8.4f, 13.2f, 0f)
-        pauldron(side)
         val l1 = 5.7f
         val l2 = 6.1f
         val rx = hx - side * 8.4f
@@ -1070,6 +1093,7 @@ object Warrior3D {
         val ux = ex / l1
         val uy = ey / l1
         val uz = ez / l1
+        pauldronFollow(side, ux, uy, uz)
         val fx = (nx * d - ex) / l2
         val fy = (ny * d - ey) / l2
         val fz = (nz * d - ez) / l2
@@ -1224,6 +1248,8 @@ object Warrior3D {
     private var prevPhase = 0f
     private var spd = 0f
     private var wasAir = false
+    private var wasRolling = false
+    private var landDip = 0f
     private var airTimer = 0f
     private var prevFlash = 0f
     private var hitKick = 0f
@@ -1363,14 +1389,21 @@ object Warrior3D {
             rollW += (rollTgt - rollW) * min(1f, dt * 26f)
         }
         var landPuff = false
+        var takeoffPuff = false
         if (wasAir && airW < 0.4f) {
             // aterrissagem: capa sobe, corpo amortece
             sv[2] -= 3f; sv[3] -= 4f; sv[4] -= 5f; sv[0] += 2.2f; sv[7] -= 3f
             wasAir = false
             landPuff = true
+            landDip = 1f
         } else if (airW > 0.7f) {
+            if (!wasAir) takeoffPuff = true
             wasAir = true
         }
+        // rolamento: poeira ao começar e agachada ao levantar
+        if (rolling && !wasRolling) takeoffPuff = true
+        if (!rolling && wasRolling) landDip = max(landDip, 0.65f)
+        wasRolling = rolling
         // reação ao tomar dano: corpo recua, cabeça e capa chicoteiam
         val fl = V.flash
         if (!first && fl > prevFlash + 0.25f) {
@@ -1379,11 +1412,12 @@ object Warrior3D {
         }
         prevFlash = fl
         hitKick = max(0f, hitKick - dt * 4.5f)
+        landDip = max(0f, landDip - dt * 5.5f)
         // piscar de olhos
         val bp = clock % 3.6f
         eyeOpen = if (bp < 0.14f) max(0.12f, abs(bp - 0.07f) / 0.07f) else 1f
         val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
-        val tuck = max(rollW, airW * (0.28f + 0.32f * max(0f, vzN)))
+        val tuck = max(rollW, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(rollW, airW)
         val mvs = still * (if (attacking) blend * 0.35f else blend)
 
@@ -1496,7 +1530,9 @@ object Warrior3D {
         val bob = (0.5f + 0.5f * cos(phase * 2f)) * 1.3f * mvs + sin(clock * 2.2f) * 0.35f * (1f - mvs)
         val breath = sin(clock * 2.2f) * 0.28f * (1f - mvs * 0.6f)
         val sway = sin(phase) * 0.9f * mvs + sin(clock * 0.9f) * 0.35f * (1f - mvs)
-        val lean = sp[0] + leanAtk * 0.5f - hitKick * 0.3f
+        // rolamento e aterrissagem: quadril baixo e joelhos dobrados
+        crouch = max(crouch, max(rollW * 0.9f, landDip * 0.9f))
+        val lean = sp[0] + leanAtk * 0.5f - hitKick * 0.3f + rollW * 0.25f + landDip * 0.2f
         val hipY = 12.6f + bob - crouch * 3.2f - hitKick * 0.9f
         val wob = sin(phase) * 0.14f * mvs
         val chestTw = tw - hipTw * 0.5f - wob - sin(phase) * 0.22f * mvs
@@ -1522,9 +1558,11 @@ object Warrior3D {
         rotZ(sp[1])
         translate(sway * 0.5f, 0f, lunge - hitKick * 1.6f)
         if (rolling) {
-            val ang = (rollP * 0.55f + ease(rollP) * 0.45f) * TWO_PI
-            val lift = 7f * sin(rollP * PI.toFloat())
-            translate(0f, 11f + lift, 0f)
+            // 10% agacha, 80% gira (começa e termina suave), 10% levanta
+            val r = ((rollP - 0.10f) / 0.80f).coerceIn(0f, 1f)
+            val ang = (r * 0.6f + r * r * (3f - 2f * r) * 0.4f) * TWO_PI
+            val lift = 4.5f * sin(r * PI.toFloat())
+            translate(0f, 10f + lift, 0f)
             rotX(ang)
             translate(0f, -11f, 0f)
         }
@@ -1535,7 +1573,7 @@ object Warrior3D {
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
             var a = sin(pp) * 0.85f * mvs
             var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.10f + crouch * 0.9f
-            val ft = max(0f, cos(pp)) * 0.35f * mvs
+            val ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             if (attacking) {
                 val front = (combo % 2 == 0) == (sd > 0f)
                 val lk = lunge / KL[sw]
@@ -1546,8 +1584,9 @@ object Warrior3D {
                     kn += 0.35f * lk
                 }
             }
-            a = a * (1f - airW) - tuck
-            leg(sd, a, kn + tuck * 1.5f, hipY, ft)
+            a = a * (1f - airW) - tuck + sd * 0.3f * airW
+            kn = (kn + tuck * 1.5f + (if (sd > 0f) 0.5f else -0.1f) * airW).coerceAtLeast(0f)
+            leg(sd, a, kn, hipY, ft)
         }
 
         // quadril → peito (contra-rotação) → cabeça e braços
@@ -1582,6 +1621,12 @@ object Warrior3D {
             )
         }
         prevSin = sph
+        if (takeoffPuff) {
+            for (i in 0..4) {
+                val a = i * 1.25f
+                emitDust(fx + cos(a) * 2.5f * rs, fy + sin(a) * 1.2f * rs, cos(a) * rs * 20f, sin(a) * rs * 7f - rs * 2f, rs * 1.8f)
+            }
+        }
         if (landPuff) {
             for (i in 0..6) {
                 val a = i * 0.9f

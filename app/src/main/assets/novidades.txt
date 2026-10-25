@@ -1,3 +1,10 @@
+#id 2026-10-26-e
+#titulo Rolar e pular melhorados, ombreira e HUD pixel art
+- Ao segurar a lança para arremessar, a ombreira agora gira junto com o braço e ele não atravessa mais a ombreira
+- Rolamento: agacha, gira em volta do corpo todo com começo e fim suaves, levanta amortecendo e solta poeira ao iniciar
+- Pulo: poeira na decolagem, pernas assimétricas no ar, pés esticados na subida e preparados na descida, e agachada mais funda ao aterrissar
+- HUD com visual pixel art (botões, orbes de vida e mana, joystick e ícones), mantendo o mesmo layout
+
 #id 2026-10-26-d
 #titulo Lança: mira no botão de ataque e arremesso fluido
 - Para mirar a lança, segure o botão de ataque e arraste o dedo na direção desejada (o joystick de movimento não mira mais); solte para arremessar
