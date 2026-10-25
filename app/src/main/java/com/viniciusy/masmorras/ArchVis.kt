@@ -12,10 +12,12 @@ package com.viniciusy.masmorras
  * Limite conhecido: cômodo com vão aberto (sem porta) vaza para fora e conta como "por fora".
  */
 class ArchVis(private val d: MapData, private val ts: Int) {
-    /** 0 = automático, 1 = desligado (tudo opaco). */
-    var mode = 0
-    var minWall = 0.30f          // opacidade mínima de parede bloqueando a visão
-    var speed = 5f               // velocidade da transição (1/s)
+    /** 0 = automático, 1 = normal (tudo opaco), 2 = interior (telhados fora e paredes da frente translúcidas
+     *  perto do herói), 3 = corte (some a metade sul das construções perto do herói), 4 = isolamento (automático + some as outras construções). Vem de [ArchPrefs]. */
+    val mode get() = ArchPrefs.mode
+    val minWall get() = ArchPrefs.minWall   // opacidade mínima de parede bloqueando a visão
+    val speed get() = ArchPrefs.speed       // velocidade da transição (1/s)
+    val reach get() = ArchPrefs.reach       // alcance (em células) dos modos interior/corte
     var maxRoomCells = 500       // acima disso a área não conta como cômodo fechado
 
     private val w = d.w
@@ -61,6 +63,7 @@ class ArchVis(private val d: MapData, private val ts: Int) {
         cur.clear()
         inside = false
         if (mode == 1) return
+        if (mode == 2 || mode == 3) { forced(tx, ty); return }
         inside = floodRoom(tx, ty)
         // quem enxerga: o herói e, dentro de cômodo, todas as células do cômodo
         occluders(tx, ty, if (inside) 2 else 1)
@@ -78,6 +81,67 @@ class ArchVis(private val d: MapData, private val ts: Int) {
                 }
             }
         }
+        if (mode == 4) isolate(tx, ty)
+    }
+
+    private val comp = IntArray(w * h)
+    private var compStamp = 0
+    private val cq = IntArray(3000)
+
+    /** Isolamento: some (de verdade, só na tela) com as paredes de OUTRAS construções ao redor. */
+    private fun isolate(tx: Int, ty: Int) {
+        compStamp++
+        var n = 0
+        fun seed(x: Int, y: Int) {
+            if (x !in 0 until w || y !in 0 until h || d.wallH(x, y) <= 0) return
+            val i = y * w + x
+            if (comp[i] == compStamp || n >= cq.size) return
+            comp[i] = compStamp; cq[n++] = i
+        }
+        if (inside) {
+            for (k in 0 until qn) {
+                val x = queue[k] % w; val y = queue[k] / w
+                for (dy in -1..1) for (dx in -1..1) seed(x + dx, y + dy)
+            }
+        } else {
+            var best = Int.MAX_VALUE; var bx = -1; var by = -1
+            for (y in ty - 3..ty + 3) for (x in tx - 3..tx + 3) {
+                if (x !in 0 until w || y !in 0 until h || d.wallH(x, y) <= 0) continue
+                val dd = (x - tx) * (x - tx) + (y - ty) * (y - ty)
+                if (dd < best) { best = dd; bx = x; by = y }
+            }
+            if (bx < 0) return          // longe de qualquer construção: nada a isolar
+            seed(bx, by)
+        }
+        var head = 0
+        while (head < n) {
+            val c = cq[head++]
+            val x = c % w; val y = c / w
+            for (dy in -1..1) for (dx in -1..1) seed(x + dx, y + dy)
+        }
+        val r = reach * 2
+        for (y in ty - r..ty + r) for (x in tx - r..tx + r) {
+            if (x !in 0 until w || y !in 0 until h || d.wallH(x, y) <= 0) continue
+            val i = y * w + x
+            if (comp[i] != compStamp) mark(i, 0f, 0f)
+        }
+    }
+
+    /** Modos manuais: age em todas as construções num raio ao redor do herói. */
+    private fun forced(tx: Int, ty: Int) {
+        val r = reach
+        val cut = mode == 3
+        val wt = if (cut) minOf(minWall, 0.12f) else minWall
+        for (y in ty - r..ty + r) for (x in tx - r..tx + r) {
+            if (x !in 0 until w || y !in 0 until h) continue
+            if (d.wallH(x, y) > 0) {
+                if (cut) { if (y > ty) mark(y * w + x, wt, 0f) else mark(y * w + x, 1f, 0f) }
+                else mark(y * w + x, 1f, 0f)    // interior: só o telhado some
+            } else if (!cut) {
+                occluders(x, y, 0)
+            }
+        }
+        inside = true
     }
 
     /** Paredes ao sul da célula (x,y) cujo sprite alto cobre quem está em (x,y). */
