@@ -100,6 +100,7 @@ object Warrior3D {
 
     // modo de render: true = z-buffer por pixel (herói), false = ordenação por cubo (esqueletos)
     private var zMode = false
+    private var depthBias = 0f // somado à profundidade dos cubos (positivo = mais perto da câmera)
     private var lYc = 1f
     private var lYs = 0f
 
@@ -238,7 +239,7 @@ object Warrior3D {
             val wz = m[6] * x + m[7] * y + m[8] * z + m[11]
             scrX[o + i] = ox + wx * rs
             scrY[o + i] = oy + (wz * SINP - wy * COSP) * rs
-            scrD[o + i] = wy * SINP + wz * COSP
+            scrD[o + i] = wy * SINP + wz * COSP + depthBias
             scrH[o + i] = wy
         }
         val cwy = m[3] * cx + m[4] * cy + m[5] * cz + m[10]
@@ -1063,7 +1064,9 @@ object Warrior3D {
         val zy = xz * yx - xx * yz
         val zz = xx * yy - xy * yx
         applyBasis(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+        depthBias = -1.5f
         pauldron(side)
+        depthBias = 0f
         pop()
     }
 
@@ -1127,7 +1130,10 @@ object Warrior3D {
         val fzL = fx * zx + fy * zy + fz * zz
         val elb = atan2(-fzL, -fyL)
         applyBasis(xx, xy, xz, yx, yy, yz, zx, zy, zz)
+        // o braço sempre aparece na frente da ombreira
+        depthBias = 3f
         armBase(elb)
+        depthBias = 0f
         pop()
     }
 
