@@ -60,6 +60,10 @@ class GameView @JvmOverloads constructor(
     private var throwRange = 0f
     private var throwPower = 0f
     private var aimTarget: Enemy? = null
+    // mira feita arrastando o dedo no botão de ataque (lança)
+    private var aimOn = false
+    private var aimX = 0f
+    private var aimY = 1f
     private var hintCd = 0f
     private var heldT = 0f
     private var queuedAt = 0L
@@ -139,6 +143,7 @@ class GameView @JvmOverloads constructor(
         pendingHitT = -1f
         pendingThrow = false
         aimTarget = null
+        aimOn = false
         particles.clear()
         texts.clear()
         enemies.addAll(map.createEnemies())
@@ -178,7 +183,7 @@ class GameView @JvmOverloads constructor(
             val ny = dy / len
             p.inX = nx
             p.inY = ny
-            if (!p.rolling) {
+            if (!p.rolling && !pendingThrow && !(aimOn && attackHeld)) {
                 p.facingX = nx
                 p.facingY = ny
             }
@@ -186,6 +191,21 @@ class GameView @JvmOverloads constructor(
             p.inX = 0f
             p.inY = 0f
         }
+    }
+
+    /** Mira da lança: direção do arrasto do dedo no botão de ataque (já normalizada na tela). */
+    fun setAim(dx: Float, dy: Float) {
+        val p = player ?: return
+        if (p.classe != Classe.GUERREIRO || p.weapon != 1) return
+        val l = hypot(dx, dy)
+        if (l < 0.001f) return
+        aimX = dx / l
+        aimY = dy / l
+        aimOn = true
+    }
+
+    fun clearAim() {
+        aimOn = false
     }
 
     var onWeapon: ((Int) -> Unit)? = null
@@ -305,6 +325,7 @@ class GameView @JvmOverloads constructor(
         attackHeld = false
         if (!p.alive || gameOver) {
             p.charging = false
+            aimOn = false
             return
         }
         if (p.charging && !p.rolling) {
@@ -314,6 +335,7 @@ class GameView @JvmOverloads constructor(
             p.chargeT = 0f
             tryAttack()
         }
+        aimOn = false
     }
 
     private fun spearHint(p: Player) {
@@ -373,8 +395,8 @@ class GameView @JvmOverloads constructor(
 
     /** Direção da mira (com leve ímã em inimigos próximos da linha) e alcance do arremesso. */
     private fun aimInfo(p: Player, power: Float): Triple<Float, Float, Float> {
-        var ax = p.facingX
-        var ay = p.facingY
+        var ax = if (aimOn) aimX else p.facingX
+        var ay = if (aimOn) aimY else p.facingY
         val l = hypot(ax, ay).coerceAtLeast(0.001f)
         ax /= l
         ay /= l
@@ -420,13 +442,15 @@ class GameView @JvmOverloads constructor(
 
     private fun releaseSpear() {
         val p = player ?: return
-        var sx = p.x + throwDX * 26f
-        var sy = p.y + throwDY * 26f
+        // a lança sai exatamente de onde está na mão do herói (lado direito, braço esticado) e tem o mesmo tamanho dela
+        val rs = p.radius / 24f * 1.6f
+        var sx = p.x + throwDX * 42f * rs - throwDY * 7f * rs
+        var sy = p.y + throwDY * 42f * rs * 0.8f + throwDX * 7f * rs
         if (map.isWall(sx, sy)) {
             sx = p.x
             sy = p.y
         }
-        thrown = ThrownSpear(sx, sy, throwDX, throwDY, throwRange, p.classe.danoBase * (2.4f + 1.8f * throwPower))
+        thrown = ThrownSpear(sx, sy, throwDX, throwDY, throwRange, p.classe.danoBase * (2.4f + 1.8f * throwPower), rs * 0.603f)
         p.spearOut = true
         burst(sx, sy - 18f, 8, 0xFFFFE08A.toInt())
         shake = max(shake, 0.12f)
@@ -439,7 +463,7 @@ class GameView @JvmOverloads constructor(
             if (map.isWall(ts.x, ts.y)) {
                 ts.x -= ts.dx * 12f
                 ts.y -= ts.dy * 12f
-                ts.land()
+                ts.land(true)
                 burst(ts.x + ts.dx * 10f, ts.y - 14f, 8, 0xFFB0BEC5.toInt())
                 shake = max(shake, 0.12f)
             } else {
@@ -604,13 +628,17 @@ class GameView @JvmOverloads constructor(
                 spearStrike(pendingHitSwing)
             }
         }
-        if (pendingThrow && p.attackAnim <= 0.78f) {
+        if (pendingThrow && p.attackAnim <= 0.70f) {
             pendingThrow = false
             releaseSpear()
         }
         updateThrown(dt, p)
 
         // segurar o ataque (guerreiro): levanta a espada; soltar = golpe forte
+        if (aimOn && attackHeld && !p.rolling && p.weapon == 1) {
+            p.facingX = aimX
+            p.facingY = aimY
+        }
         if (attackHeld) {
             if (p.rolling) {
                 attackHeld = false

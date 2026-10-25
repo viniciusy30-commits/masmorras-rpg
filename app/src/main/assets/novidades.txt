@@ -1,3 +1,21 @@
+#id 2026-10-26-d
+#titulo Lança: mira no botão de ataque e arremesso fluido
+- Para mirar a lança, segure o botão de ataque e arraste o dedo na direção desejada (o joystick de movimento não mira mais); solte para arremessar
+- A lança arremessada agora tem exatamente o mesmo tamanho da lança da mão, voando e fincada
+- Se acertar a parede, fica fincada na parede; se acabar o alcance, cai e fica fincada no chão
+- O arremesso sai da mão do herói: a lança parte do braço esticado e acelera suave, sem tranco, e o movimento ficou mais lento e fluido
+- Corrigido: ao segurar para arremessar, a lança não atravessa mais a cabeça (fica ao lado do elmo, sobre o ombro)
+
+#id 2026-10-26-c
+#titulo Guerreiro novo: armadura de herói de verdade!
+- Elmo com asas douradas, viseira, protetores de bochecha, gema na testa e penacho vermelho em mola
+- Ombreiras em camadas com ponteiras, peitoral com placas e detalhes dourados, gola de pele, cinto com bolsas e saiote de malha
+- Capa maior e mais pesada, com 3 segmentos que balançam, e tabardo com brasão
+- Espada nova com guarda dourada, lâmina com friso, runas brilhantes e gema que pulsa
+- Escudo redesenhado com brasão em cruz, rebites e borda dourada
+- Lança com flâmula, guarda de aço e runas brilhando na lâmina
+- Gemas e runas agora pulsam, e brilham mais ao atacar e carregar o golpe
+
 #id 2026-10-26-b
 #titulo Câmera centralizada no personagem
 - A câmera agora fica sempre travada no centro da tela, sem atraso, sem olhar à frente e sem deslocar o herói para baixo (só para nas bordas do mapa)

@@ -126,7 +126,7 @@ class Player(
     fun doHeavy(now: Long) {
         comboStep = -1
         swing = 3
-        attackRate = if (weapon == 1) 1.2f else 1.15f
+        attackRate = if (weapon == 1) 0.95f else 1.15f
         charging = false
         chargeT = 0f
         lastAttack = now
@@ -139,7 +139,7 @@ class Player(
         0 -> 0.30f / 2.0f
         1 -> 0.38f / 1.7f
         2 -> 0.42f / 1.4f
-        else -> 0.22f / 1.2f
+        else -> 0.30f / 0.95f
     }
 
     fun jump(): Boolean {
@@ -469,36 +469,49 @@ class Particle(var x: Float, var y: Float, var vx: Float, var vy: Float, var lif
 class DmgText(var x: Float, var y: Float, val text: String, var life: Float, val color: Int)
 
 
-/** Lança arremessada: voa reta, atravessa inimigos, finca no chão ou na parede e espera o herói passar perto. */
-class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val range: Float, val damage: Float) {
+/**
+ * Lança arremessada: sai da mão do herói com o mesmo tamanho da lança que ele segura, acelera suave,
+ * atravessa inimigos e fica fincada na parede (se bateu nela) ou no chão (se acabou o alcance).
+ * [sc] = escala do sprite, calculada para ter o mesmo tamanho da lança 3D da mão.
+ */
+class ThrownSpear(
+    var x: Float, var y: Float, val dx: Float, val dy: Float,
+    val range: Float, val damage: Float, val sc: Float
+) {
     var flying = true
     var travelled = 0f
     var age = 0f
     var stuckT = 0f
     var wobble = 0f
+    var wall = false
     val hit = HashSet<Enemy>()
 
     fun update(dt: Float) {
         age += dt
         if (flying) {
-            val step = 800f * min(dt, 0.04f)
+            // sai da mão devagar e acelera até a velocidade máxima (sem tranco)
+            val u = (age / 0.16f).coerceIn(0f, 1f)
+            val speed = 360f + 500f * (u * u * (3f - 2f * u))
+            val step = speed * min(dt, 0.04f)
             x += dx * step
             y += dy * step
             travelled += step
-            if (travelled >= range) land()
+            if (travelled >= range) land(false)
         } else {
             stuckT += dt
             wobble = (wobble - dt * 2.4f).coerceAtLeast(0f)
         }
     }
 
-    fun land() {
+    fun land(intoWall: Boolean) {
         flying = false
+        wall = intoWall
         wobble = 1f
     }
 
-    // desenha com a ponta na origem e o corpo para trás (-x)
+    // desenha com a ponta na origem e o corpo para trás (-x); o comprimento total (94) = lança de 56,7 unidades do herói
     private fun shape(canvas: Canvas, paint: Paint) {
+        canvas.translate(-14f, 0f)
         paint.style = Paint.Style.FILL
         paint.color = 0xFF6D4C2F.toInt()
         canvas.drawRect(-76f, -2f, -6f, 2f, paint)
@@ -510,7 +523,7 @@ class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val 
         canvas.drawRect(-80f, -3f, -76f, 3f, paint)
         canvas.drawRect(-14f, -3.2f, -9f, 3.2f, paint)
         // flâmula vermelha
-        val fl = sin(age * 22f) * 1.6f
+        val fl = sin(age * 22f) * 1.6f * (if (flying) 1f else wobble)
         paint.color = 0xFFD83A4A.toInt()
         val pn = android.graphics.Path()
         pn.moveTo(-16f, 0f); pn.lineTo(-34f, -8f + fl); pn.lineTo(-30f, -3f); pn.lineTo(-40f, -3f + fl); pn.lineTo(-16f, 1.5f)
@@ -528,17 +541,28 @@ class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val 
         canvas.drawRect(-8f, 1.4f, 4f, 3f, paint)
     }
 
+    private fun shortest(from: Float, to: Float): Float {
+        var d = to - from
+        while (d > 180f) d -= 360f
+        while (d < -180f) d += 360f
+        return from + d
+    }
+
     fun draw(canvas: Canvas, paint: Paint, camX: Float, camY: Float, time: Float) {
         val sx = x - camX
         val gy = y - camY
         paint.style = Paint.Style.FILL
+        // direção na tela (o mapa é visto de cima inclinado: o eixo y encurta)
+        val vx = dx
+        val vy = dy * 0.717f
+        val fl = hypot(vx, vy).coerceAtLeast(0.001f)
+        val flightAng = atan2(vy, vx) * 57.29578f
         if (flying) {
             // sombra no chão + rastro
             paint.color = 0x33000000
-            canvas.drawOval(sx - 20f, gy - 3f, sx + 20f, gy + 4f, paint)
-            val len = hypot(dx, dy * 0.85f).coerceAtLeast(0.001f)
-            val ux = dx / len
-            val uy = dy * 0.85f / len
+            canvas.drawOval(sx - 20f * sc / 0.8f, gy - 3f, sx + 20f * sc / 0.8f, gy + 4f, paint)
+            val ux = vx / fl
+            val uy = vy / fl
             for (i in 1..6) {
                 paint.color = ((0.30f * (1f - i / 7f) * 255f).toInt() shl 24) or 0x00FFF2C0
                 paint.strokeWidth = 5f - i * 0.6f
@@ -549,7 +573,8 @@ class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val 
             paint.style = Paint.Style.FILL
             canvas.save()
             canvas.translate(sx, gy - 22f)
-            canvas.rotate(atan2(uy, ux) * 57.29578f)
+            canvas.rotate(flightAng)
+            canvas.scale(sc * fl, sc)
             shape(canvas, paint)
             canvas.restore()
         } else {
@@ -563,16 +588,36 @@ class ThrownSpear(var x: Float, var y: Float, val dx: Float, val dy: Float, val 
             paint.color = ((0.55f + 0.3f * pul) * 255f).toInt() shl 24 or 0x00FFE08A
             canvas.drawOval(sx - r, gy - r * 0.55f, sx + r, gy + r * 0.55f, paint)
             paint.style = Paint.Style.FILL
-            paint.color = 0x44000000
-            canvas.drawOval(sx - 14f, gy - 3f, sx + 14f, gy + 5f, paint)
-            // lança cravada, inclinada, balançando
-            val lean = if (dx >= 0f) 1f else -1f
-            val ang = atan2(1f, 0.32f * lean) * 57.29578f + sin(stuckT * 38f) * wobble * 7f * lean
-            canvas.save()
-            canvas.translate(sx, gy + 3f)
-            canvas.rotate(ang)
-            shape(canvas, paint)
-            canvas.restore()
+            if (wall) {
+                // fincada na parede: continua na altura do voo, mesma direção, ponta dentro da parede e vibrando
+                val tx = sx + dx * 9f
+                val ty = gy - 22f + dy * 7f
+                val shake = sin(stuckT * 46f) * wobble * 3.2f
+                canvas.save()
+                canvas.translate(tx, ty)
+                canvas.rotate(flightAng + shake)
+                canvas.scale(sc * fl, sc)
+                shape(canvas, paint)
+                canvas.restore()
+            } else {
+                // caiu no chão: a ponta desce da altura do voo e a lança tomba e finca inclinada
+                val lean = if (dx >= 0f) 1f else -1f
+                val groundAng = atan2(1f, 0.32f * lean) * 57.29578f
+                val k0 = (stuckT / 0.18f).coerceIn(0f, 1f)
+                val k = k0 * k0 * (3f - 2f * k0)
+                val ang = flightAng + (shortest(flightAng, groundAng) - flightAng) * k +
+                    sin(stuckT * 38f) * wobble * 7f * lean
+                val oy = -22f * (1f - k) + 3f * k
+                val stretch = fl * (1f - k) + 0.85f * k
+                paint.color = 0x44000000
+                canvas.drawOval(sx - 14f, gy - 3f, sx + 14f, gy + 5f, paint)
+                canvas.save()
+                canvas.translate(sx, gy + oy)
+                canvas.rotate(ang)
+                canvas.scale(sc * stretch, sc)
+                shape(canvas, paint)
+                canvas.restore()
+            }
             // setinha pulando acima
             val by = gy - 96f + sin(time * 5f) * 4f
             paint.color = 0xFFFFD54F.toInt()

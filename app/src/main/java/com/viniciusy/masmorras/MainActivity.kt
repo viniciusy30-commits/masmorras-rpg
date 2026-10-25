@@ -1,5 +1,6 @@
 package com.viniciusy.masmorras
 
+import kotlin.math.hypot
 import android.annotation.SuppressLint
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -247,9 +248,16 @@ class MainActivity : AppCompatActivity() {
                     v.isPressed = true
                     gameView.attackDown()
                 }
+                MotionEvent.ACTION_MOVE -> {
+                    // lança: arraste o dedo a partir do botão para mirar (solte para arremessar)
+                    val ax = ev.x - v.width * 0.5f
+                    val ay = ev.y - v.height * 0.5f
+                    if (hypot(ax, ay) > v.width * 0.2f) gameView.setAim(ax, ay) else gameView.clearAim()
+                }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     v.isPressed = false
                     gameView.attackUp()
+                    gameView.clearAim()
                 }
             }
             true
