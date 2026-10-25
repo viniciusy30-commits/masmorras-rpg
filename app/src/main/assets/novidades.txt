@@ -1,3 +1,11 @@
+#id 2026-10-24-n
+#titulo Combo de 3 golpes e golpe forte do Guerreiro
+- Combo encadeado: corte diagonal de cima para baixo, corte vertical voltando e estocada final (um golpe começa de onde o outro terminou)
+- Estocada com mais alcance e dano
+- Segure o botão de ataque: o guerreiro ergue a espada, agacha e acumula energia; solte para o golpe forte com onda de choque
+- Quanto mais segura, mais forte o golpe
+- Apertar o ataque um pouco antes do fim do golpe anterior já entra no combo (sem perder o toque)
+
 #id 2026-10-24-m
 #titulo Zoom da câmera e correção das bordas pretas
 - Zoom com gesto de pinça: aproxima até 1.9x; o mais longe é a visão padrão de antes

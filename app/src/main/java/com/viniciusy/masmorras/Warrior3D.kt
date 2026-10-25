@@ -72,6 +72,8 @@ object Warrior3D {
     var rollP = -1f
     var inAir = false
     var airVz = 0f
+    var swing = 0       // 0 corte diagonal, 1 corte vertical (volta), 2 estocada, 3 golpe forte
+    var charge = -1f    // 0..1 enquanto segura o ataque; <0 = sem carga
 
     // estado de animação
     private var yaw = 0f
@@ -480,6 +482,32 @@ object Warrior3D {
     private val sp = FloatArray(10)
     private val sv = FloatArray(10)
     private var combo = 0
+    private var chargeW = 0f
+    private var sparkT = 0f
+    private val lastPose = FloatArray(8)
+    private val kS = FloatArray(8)
+
+    // keyframes por golpe: sh, z, el, tw, wrist, crouch, lean, hip
+    private val K_W = arrayOf(
+        floatArrayOf(-2.9f, 0.75f, -1.0f, -0.75f, -0.45f, 0.15f, -0.18f, 0.35f),
+        floatArrayOf(-0.15f, -0.45f, -0.25f, 0.95f, 0.65f, 0.55f, 0.32f, -0.45f),
+        floatArrayOf(-1.0f, 0.20f, -1.7f, 0.75f, 0.9f, 0.40f, -0.12f, -0.55f),
+        floatArrayOf(-2.6f, 0.35f, -0.5f, -0.4f, 1.2f, 0.3f, -0.2f, 0.3f)
+    )
+    private val K_E = arrayOf(
+        floatArrayOf(-0.35f, -0.30f, -0.30f, 0.80f, 0.55f, 0.50f, 0.28f, -0.40f),
+        floatArrayOf(-2.7f, 0.10f, -0.45f, -0.20f, -0.10f, 0.15f, 0.0f, 0.15f),
+        floatArrayOf(-1.45f, 0.0f, -0.15f, -0.50f, 1.15f, 0.60f, 0.30f, 0.45f),
+        floatArrayOf(-0.1f, -0.1f, -0.2f, 0.45f, 0.6f, 0.85f, 0.5f, -0.3f)
+    )
+    // fim da preparação, fim do impacto, fim do segurar
+    private val K_T = arrayOf(
+        floatArrayOf(0.26f, 0.42f, 0.56f),
+        floatArrayOf(0.14f, 0.34f, 0.52f),
+        floatArrayOf(0.30f, 0.46f, 0.62f),
+        floatArrayOf(0.08f, 0.24f, 0.60f)
+    )
+    private val K_L = floatArrayOf(3.0f, 2.2f, 5.5f, 5.0f)
     private var prevAtk = 0f
     private var prevPhase = 0f
     private var spd = 0f
@@ -569,11 +597,14 @@ object Warrior3D {
         // fase do golpe: 0..1 (negativo = sem ataque)
         val t = if (attack > 0.001f) 1f - attack else -1f
         val attacking = t >= 0f
+        val sw = swing.coerceIn(0, 3)
         if (attack > prevAtk + 0.3f) {
-            // golpe novo: alterna o combo e chacoalha capa/penacho
-            combo = 1 - combo
+            // golpe novo: começa a partir da pose atual (é isso que encadeia o combo)
+            combo = sw
+            System.arraycopy(lastPose, 0, kS, 0, 8)
             sv[2] += 2.5f; sv[3] += 3.5f; sv[4] += 4.5f
             sv[5] += 2.0f; sv[6] += 3.0f; sv[7] += 2.0f
+            if (sw == 3) { sv[2] += 3f; sv[3] += 4f; sv[4] += 5f }
         }
         prevAtk = attack
 
@@ -612,34 +643,44 @@ object Warrior3D {
         var crouch = 0f
         var leanAtk = 0f
         var hipTw = 0f
+        chargeW += ((if (charge >= 0f && !attacking) 1f else 0f) - chargeW) * min(1f, dt * 9f)
+        val tW = K_T[sw][0]
+        val tS = K_T[sw][1]
+        val tH = K_T[sw][2]
         if (attacking) {
-            if (combo == 0) {
-                setK(kW, -2.9f, 0.75f, -1.0f, -0.75f, -0.45f, 0.15f, -0.18f, 0.35f)
-                setK(kE, -0.35f, -0.30f, -0.30f, 0.80f, 0.55f, 0.50f, 0.28f, -0.40f)
-            } else {
-                setK(kW, -1.35f, -0.95f, -0.55f, 0.80f, 0.20f, 0.20f, 0.05f, -0.35f)
-                setK(kE, -1.55f, 1.25f, -0.25f, -0.95f, -0.15f, 0.45f, 0.22f, 0.45f)
-            }
             setK(kI, idleSh, idleZ, idleEl, 0f, 0f, 0f, 0f, 0f)
-            if (t < 0.24f) {
-                mixK(kI, kW, ease(t / 0.24f))
-            } else if (t < 0.40f) {
-                var u = (t - 0.24f) / 0.16f
+            if (t < tW) {
+                mixK(kS, K_W[sw], ease(t / tW))
+            } else if (t < tS) {
+                var u = (t - tW) / (tS - tW)
                 u = 1f - (1f - u) * (1f - u) * (1f - u)
-                mixK(kW, kE, u)
-            } else if (t < 0.55f) {
-                val u = (t - 0.40f) / 0.15f
+                mixK(K_W[sw], K_E[sw], u)
+            } else if (t < tH) {
+                val u = (t - tS) / (tH - tS)
                 val o = 0.06f * sin(u * PI.toFloat())
-                for (i in 0..7) kO[i] = kE[i] + (kE[i] - kW[i]) * o
+                for (i in 0..7) kO[i] = K_E[sw][i] + (K_E[sw][i] - K_W[sw][i]) * o
             } else {
-                mixK(kE, kI, ease((t - 0.55f) / 0.45f))
+                mixK(K_E[sw], kI, ease((t - tH) / (1f - tH)))
             }
             sh = kO[0]; shZ = kO[1]; el = kO[2]; tw = kO[3]
             wrist = kO[4]; crouch = kO[5]; leanAtk = kO[6]; hipTw = kO[7]
-            if (t in 0.18f..0.62f) {
-                lunge = sin(((t - 0.18f) / 0.44f) * PI.toFloat()) * 3.6f
+            val la = tW - 0.04f
+            val lb = tH + 0.05f
+            if (t > la && t < lb) {
+                lunge = sin(((t - la) / (lb - la)) * PI.toFloat()) * K_L[sw]
             }
+        } else if (chargeW > 0.01f) {
+            // segurando: espada erguida, corpo agachado e tremendo de energia
+            setK(kI, idleSh, idleZ, idleEl, 0f, 0f, 0f, 0f, 0f)
+            mixK(kI, K_W[3], ease(chargeW))
+            val ch = max(0f, charge)
+            sh = kO[0] + sin(clock * 47f) * 0.025f * ch
+            shZ = kO[1]; el = kO[2]
+            tw = kO[3] + sin(clock * 39f) * 0.03f * ch
+            wrist = kO[4]; crouch = kO[5] + 0.12f * ch; leanAtk = kO[6]; hipTw = kO[7]
         }
+        lastPose[0] = sh; lastPose[1] = shZ; lastPose[2] = el; lastPose[3] = tw
+        lastPose[4] = wrist; lastPose[5] = crouch; lastPose[6] = leanAtk; lastPose[7] = hipTw
         if (rollW > 0.001f) {
             sh = lerp(sh, -1.2f, rollW)
             shZ = lerp(shZ, 0.2f, rollW)
@@ -676,7 +717,8 @@ object Warrior3D {
         val hipY = 12.6f + bob - crouch * 3.2f
         val wob = sin(phase) * 0.14f * mvs
         val chestTw = tw - hipTw * 0.5f - wob - sin(phase) * 0.22f * mvs
-        val glow = 0.35f + 0.15f * sin(clock * 4f) + (if (attacking) 0.5f else 0f)
+        val glow = 0.35f + 0.15f * sin(clock * 4f) + (if (attacking) 0.5f else 0f) +
+            chargeW * (0.5f + 0.4f * sin(clock * 18f))
 
         rs = s * PX
         ox = fx
@@ -703,8 +745,8 @@ object Warrior3D {
             var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.10f + crouch * 0.9f
             val ft = max(0f, cos(pp)) * 0.35f * mvs
             if (attacking) {
-                val front = (combo == 0) == (sd > 0f)
-                val lk = lunge / 3.6f
+                val front = (combo % 2 == 0) == (sd > 0f)
+                val lk = lunge / K_L[sw]
                 if (front) {
                     a -= 0.55f * lk
                 } else {
@@ -739,7 +781,7 @@ object Warrior3D {
         if (!attacking) {
             trN = 0
         } else {
-            if (t in 0.22f..0.66f) {
+            if (t >= tW && t <= tH + 0.05f) {
                 if (trN == 24) {
                     System.arraycopy(trX, 1, trX, 0, 23)
                     System.arraycopy(trY, 1, trY, 0, 23)
@@ -752,9 +794,13 @@ object Warrior3D {
                 trMx[trN] = midX
                 trMy[trN] = midY
                 trN++
-                if (t in 0.26f..0.44f) {
+                if (t >= tS - 0.04f && t <= tS + 0.14f) {
                     emitSpark(tipX, tipY)
                     emitSpark(tipX, tipY)
+                    if (sw == 3) {
+                        emitSpark(tipX, tipY)
+                        emitSpark(tipX, tipY)
+                    }
                 }
             }
             val fade = min(1f, attack * 3f)
@@ -780,6 +826,40 @@ object Warrior3D {
             }
             p.style = Paint.Style.FILL
             p.strokeCap = Paint.Cap.BUTT
+        }
+
+        // ── anel de carga no chão ──
+        if (chargeW > 0.05f && !attacking) {
+            val ch = max(0f, charge)
+            val rr = (10f + 16f * ch) * rs
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(2f, rs * (1.2f + 1.5f * ch))
+            p.color = (((chargeW * (0.35f + 0.5f * ch) * 255f).toInt()) shl 24) or 0x00FFB74D
+            c.drawOval(fx - rr, fy - rr * SINP, fx + rr, fy + rr * SINP, p)
+            p.style = Paint.Style.FILL
+            if (ch > 0.15f) {
+                sparkT -= dt
+                if (sparkT <= 0f) {
+                    sparkT = 0.07f
+                    emitSpark(fx + (kotlin.random.Random.nextFloat() - 0.5f) * rr * 1.6f, fy)
+                }
+            }
+        }
+        // ── onda de choque do golpe forte ──
+        if (attacking && sw == 3 && t >= tS) {
+            val u = ((t - tS) / (1f - tS)).coerceIn(0f, 1f)
+            val cxw = fx + sin(yaw) * 14f * rs
+            val cyw = fy + cos(yaw) * 14f * SINP * rs
+            val rr = (6f + 38f * (1f - (1f - u) * (1f - u))) * rs
+            val al = (1f - u)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(3f, rs * 3.2f * al)
+            p.color = (((al * 0.9f * 255f).toInt()) shl 24) or 0x00FFE9A8
+            c.drawOval(cxw - rr, cyw - rr * SINP, cxw + rr, cyw + rr * SINP, p)
+            p.strokeWidth = max(2f, rs * 1.4f)
+            p.color = (((al * 0.7f * 255f).toInt()) shl 24) or 0x00FF8F00
+            c.drawOval(cxw - rr * 0.75f, cyw - rr * 0.75f * SINP, cxw + rr * 0.75f, cyw + rr * 0.75f * SINP, p)
+            p.style = Paint.Style.FILL
         }
 
         // ── faíscas ──

@@ -45,6 +45,9 @@ class GameView @JvmOverloads constructor(
     private val MIN_ZOOM = 1.0f
     private val MAX_ZOOM = 1.9f
     private var userZoom = 1f
+    private var attackHeld = false
+    private var heldT = 0f
+    private var queuedAt = 0L
     private var pinching = false
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
@@ -123,6 +126,8 @@ class GameView @JvmOverloads constructor(
         victory = false
         running = true
         shake = 0f
+        attackHeld = false
+        queuedAt = 0L
         camVX = 0f
         camVY = 0f
         lookAheadX = 0f
@@ -190,7 +195,10 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         if (!p.alive || gameOver) return
         val now = System.currentTimeMillis()
-        if (!p.canAttack(now)) return
+        if (!p.canAttack(now)) {
+            if (p.classe == Classe.GUERREIRO && !p.rolling) queuedAt = now
+            return
+        }
 
         if (p.classe.isRanged) {
             if (p.classe == Classe.MAGO && p.mp < 12f) return
@@ -209,7 +217,10 @@ class GameView @JvmOverloads constructor(
             )
         } else {
             p.doAttack(now)
-            val reach = p.classe.alcance
+            // estocada (3º golpe do combo): alcança mais longe, cone estreito, dano maior
+            val thrust = p.classe == Classe.GUERREIRO && p.swing == 2
+            val reach = p.classe.alcance * (if (thrust) 1.3f else 1f)
+            val dmg = p.classe.danoBase * (if (thrust) 1.3f else 1f)
             enemies.forEach { e ->
                 if (!e.alive) return@forEach
                 val dist = hypot(e.x - p.x, e.y - p.y)
@@ -217,12 +228,61 @@ class GameView @JvmOverloads constructor(
                     val dx = e.x - p.x
                     val dy = e.y - p.y
                     val dot = dx * p.facingX + dy * p.facingY
-                    if (dot > 0 || dist < 40f) {
-                        damageEnemy(e, p.classe.danoBase, p.x, p.y)
-                    }
+                    val inArc = if (thrust) dot > 0.5f * dist else (dot > 0 || dist < 40f)
+                    if (inArc) damageEnemy(e, dmg, p.x, p.y)
                 }
             }
+            if (thrust) shake = max(shake, 0.1f)
         }
+    }
+
+    /** Botão de ataque apertado. Guerreiro espera para saber se é toque (combo) ou segurar (golpe forte). */
+    fun attackDown() {
+        val p = player ?: return
+        if (!p.alive || gameOver) return
+        if (p.classe == Classe.GUERREIRO) {
+            attackHeld = true
+            heldT = 0f
+        } else {
+            tryAttack()
+        }
+    }
+
+    fun attackUp() {
+        val p = player ?: return
+        if (!attackHeld) return
+        attackHeld = false
+        if (!p.alive || gameOver) {
+            p.charging = false
+            return
+        }
+        if (p.charging && !p.rolling) {
+            heavyAttack(p.chargeT)
+        } else {
+            p.charging = false
+            p.chargeT = 0f
+            tryAttack()
+        }
+    }
+
+    private fun heavyAttack(power: Float) {
+        val p = player ?: return
+        val now = System.currentTimeMillis()
+        p.doHeavy(now)
+        val reach = p.classe.alcance * 1.35f
+        val dmg = p.classe.danoBase * (1.7f + 1.3f * power)
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (dist < reach + e.radius) {
+                val dx = e.x - p.x
+                val dy = e.y - p.y
+                val dot = dx * p.facingX + dy * p.facingY
+                if (dot > -0.35f * dist) damageEnemy(e, dmg, p.x, p.y)
+            }
+        }
+        shake = max(shake, 0.3f)
+        burst(p.x + p.facingX * 40f, p.y + p.facingY * 40f, 14, 0xFFFFD54F.toInt())
     }
 
     private fun blockedAt(x: Float, y: Float, r: Float): Boolean =
@@ -291,6 +351,31 @@ class GameView @JvmOverloads constructor(
                 onGameOver?.invoke(false)
             }
             return
+        }
+
+        // segurar o ataque (guerreiro): levanta a espada; soltar = golpe forte
+        if (attackHeld) {
+            if (p.rolling) {
+                attackHeld = false
+                p.charging = false
+                p.chargeT = 0f
+            } else {
+                heldT += dt
+                if (heldT > 0.22f) {
+                    p.charging = true
+                    p.chargeT = ((heldT - 0.22f) / 0.8f).coerceIn(0f, 1f)
+                }
+            }
+        }
+        // buffer de input: aperta um pouco antes de poder atacar e o golpe sai assim que liberar
+        if (queuedAt != 0L) {
+            val nowQ = System.currentTimeMillis()
+            if (nowQ - queuedAt > 280L) {
+                queuedAt = 0L
+            } else if (p.canAttack(nowQ)) {
+                queuedAt = 0L
+                tryAttack()
+            }
         }
 
         val oldX = p.x

@@ -232,8 +232,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<View>(R.id.btnAttack).setOnClickListener {
-            gameView.tryAttack()
+        // toque = combo de 3 golpes; segurar = levanta a espada, soltar = golpe forte
+        findViewById<View>(R.id.btnAttack).setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    gameView.attackDown()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    gameView.attackUp()
+                }
+            }
+            true
         }
         findViewById<View>(R.id.btnJump).setOnClickListener {
             gameView.jump()

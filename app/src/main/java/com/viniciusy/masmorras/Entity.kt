@@ -84,12 +84,46 @@ class Player(
     val rolling: Boolean get() = rollT > 0f
     val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
 
-    fun canAttack(now: Long): Boolean = !rolling && now - lastAttack >= classe.cooldownAtaque
+    // combo do guerreiro: 0 corte diagonal, 1 corte vertical (volta), 2 estocada; 3 = golpe forte
+    var comboStep = -1
+    var swing = 0
+    private var attackRate = 2.5f
+    var charging = false
+    var chargeT = 0f
+
+    fun canAttack(now: Long): Boolean {
+        if (rolling) return false
+        val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 560L else 300L)
+        else classe.cooldownAtaque
+        return now - lastAttack >= cd
+    }
 
     fun doAttack(now: Long) {
+        if (classe == Classe.GUERREIRO) {
+            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = when (swing) {
+                0 -> 2.6f
+                1 -> 3.1f
+                else -> 2.4f
+            }
+        }
         lastAttack = now
         attackAnim = 1f
         attackPunch = 1f
+    }
+
+    /** Golpe forte (solta o botão depois de segurar). */
+    fun doHeavy(now: Long) {
+        comboStep = -1
+        swing = 3
+        attackRate = 1.8f
+        charging = false
+        chargeT = 0f
+        lastAttack = now
+        attackAnim = 1f
+        attackPunch = 1.6f
     }
 
     fun jump(): Boolean {
@@ -115,6 +149,8 @@ class Player(
         rollT = ROLL_TIME
         lastRoll = now
         attackAnim = 0f
+        charging = false
+        chargeT = 0f
         return true
     }
 
@@ -148,8 +184,9 @@ class Player(
             vx = rollDX * spd
             vy = rollDY * spd
         } else {
-            vx = inX * classe.velocidade * 60f
-            vy = inY * classe.velocidade * 60f
+            val slow = if (charging) 0.45f else 1f
+            vx = inX * classe.velocidade * 60f * slow
+            vy = inY * classe.velocidade * 60f * slow
         }
         x += vx * dt
         y += vy * dt
@@ -157,7 +194,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) 2.5f else 4f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) attackRate else 4f)).coerceAtLeast(0f)
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
@@ -202,6 +239,8 @@ class Player(
         Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Warrior3D.inAir = up > 1f
         Warrior3D.airVz = vz
+        Warrior3D.swing = swing
+        Warrior3D.charge = if (charging) chargeT else -1f
         canvas.save()
         canvas.scale(squashX, squashY, drawX, drawY)
         Sprites.drawHero(canvas, paint, classe, drawX, drawY, s / ((squashX + squashY) * 0.5f), walkPhase, moving, facingX, facingY, attackAnim)
