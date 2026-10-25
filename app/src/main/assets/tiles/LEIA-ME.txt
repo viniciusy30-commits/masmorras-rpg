@@ -7,3 +7,7 @@ floor_*.png  : chão, quadrado (32x32). Animados (floor_water, floor_lava, floor
                horizontal com 8 quadros (256x32).
 wall_*.png   : parede, 32x52 = topo 32x32 + face frontal 32x20 embaixo.
 prop_*.png   : objetos, 32x48 por quadro. Animados são tiras horizontais (ex.: 6 quadros = 192x48).
+
+wall_door*.png / wall_gate_castle.png : portas animadas = topo 32x32 + 4 faces 32x20 empilhadas
+               (fechada, 35%, 70%, aberta) = 32x112.
+Paredes empilhadas usam a mesma textura em cada andar; o botão "Topo" do editor escolhe outra parede para os andares de cima.

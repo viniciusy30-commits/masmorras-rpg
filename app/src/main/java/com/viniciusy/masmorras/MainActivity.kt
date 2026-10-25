@@ -641,15 +641,31 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.T_RECT to "Retâng.",
             MapEditorView.T_FILL to "Balde",
             MapEditorView.T_ERASE to "Borracha",
+            MapEditorView.T_LINE to "Linha",
+            MapEditorView.T_PICK to "Conta-gotas",
+            MapEditorView.T_COPY to "Copiar",
             MapEditorView.T_PAN to "Mover"
         )
-        for ((t, name) in tools) {
-            val c = chip(name, 68, 34, 11f) {
+        // duas colunas de ferramentas
+        edTools.orientation = LinearLayout.HORIZONTAL
+        val toolCols = listOf(LinearLayout(this), LinearLayout(this))
+        for (col in toolCols) {
+            col.orientation = LinearLayout.VERTICAL
+            edTools.addView(col)
+        }
+        for ((idx, pair) in tools.withIndex()) {
+            val (t, name) = pair
+            val c = chip(name, 62, 32, 10f) {
                 editorView.tool = t
                 refreshTools()
             }
             toolChips.add(t to c)
-            edTools.addView(c)
+            toolCols[idx % 2].addView(c)
+        }
+        editorView.onPick = {
+            refreshTabs()
+            refreshPalette()
+            refreshTools()
         }
 
         // abas (2x2)
@@ -738,7 +754,39 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.L_HOUSE -> Houses.list.map { it.id to it.name }
             else -> (0..3).map { it to MapEditorView.entNames[it] }
         }
-        for ((id, name) in items) {
+        if (layer == MapEditorView.L_WALL) {
+            // controles de empilhar: altura e material dos andares de cima
+            val ctrl = LinearLayout(this)
+            ctrl.orientation = LinearLayout.VERTICAL
+            ctrl.gravity = Gravity.CENTER_VERTICAL
+            val capIds = MT.capChoices
+            lateinit var hChip: TextView
+            lateinit var cChip: TextView
+            fun upd() {
+                hChip.text = "Andares: " + editorView.wallHeight
+                val cn = if (editorView.wallCap == 0) "igual" else (MT.wallDef(editorView.wallCap)?.name ?: "?")
+                cChip.text = "Topo: " + cn
+                cChip.alpha = if (editorView.wallHeight > 1) 1f else 0.4f
+            }
+            hChip = chip("", 104, 32, 10f) {
+                editorView.wallHeight = editorView.wallHeight % 4 + 1
+                upd()
+            }
+            cChip = chip("", 104, 32, 10f) {
+                val i = capIds.indexOf(editorView.wallCap)
+                editorView.wallCap = capIds[(i + 1) % capIds.size]
+                if (editorView.wallHeight < 2) editorView.wallHeight = 2
+                upd()
+            }
+            styleChip(hChip, true)
+            styleChip(cChip, true)
+            upd()
+            ctrl.addView(hChip)
+            ctrl.addView(cChip)
+            edPalette.addView(ctrl, LinearLayout.LayoutParams(dp(112), ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        val allItems = if (layer == MapEditorView.L_HOUSE && Houses.clipboard != null) items + listOf(Houses.CLIP_ID to "Cópia") else items
+        for ((id, name) in allItems) {
             val box = LinearLayout(this)
             box.orientation = LinearLayout.VERTICAL
             box.gravity = Gravity.CENTER_HORIZONTAL

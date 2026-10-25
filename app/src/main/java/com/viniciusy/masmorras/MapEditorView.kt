@@ -33,6 +33,9 @@ class MapEditorView @JvmOverloads constructor(
         const val T_FILL = 2
         const val T_ERASE = 3
         const val T_PAN = 4
+        const val T_LINE = 5
+        const val T_PICK = 6
+        const val T_COPY = 7
 
         private const val MODE_NONE = 0
         private const val MODE_DRAW = 1
@@ -45,14 +48,18 @@ class MapEditorView @JvmOverloads constructor(
         /** valor de entidade: 0 = início do jogador, 1 = inimigo, 2 = inimigo forte, 3 = chefe */
         val entNames = arrayOf("Início", "Inimigo", "Inimigo forte", "Chefe")
 
-        private fun drawWallFlat(c: Canvas, p: Paint, def: MT.Def?, mask: Int, l: Float, t: Float, r: Float, b: Float) {
+        /** Parede vista de cima, com andares: o topo sobe um pouco por andar e a face aparece embaixo. */
+        private fun drawWallFlat(c: Canvas, p: Paint, def: MT.Def?, capDef: MT.Def?, hgt: Int, geom: Int, l: Float, t: Float, r: Float, b: Float) {
             if (def == null) return
-            val spr = MapTex.wall(def, mask)
-            val rf = RectF(l, t, r, b)
-            c.drawBitmap(spr, srcTop, rf, p)
-            if ((mask and MapTex.M_S) == 0) {
-                val fh = (b - t) * 0.28f
-                c.drawBitmap(spr, srcFront, RectF(l, b - fh, r, b), p)
+            val mask = geom and 15
+            val lo = geom shr 4
+            val spr = MapTex.wall(def, mask, hgt, lo, capDef, 0)
+            val e = (b - t) * 0.28f
+            val up = (hgt - 1) * e
+            c.drawBitmap(spr, srcTop, RectF(l, t - up, r, b - up), p)
+            val n = hgt - lo
+            if (n > 0 && (mask and MapTex.M_S) == 0) {
+                c.drawBitmap(spr, Rect(0, MapTex.TS, MapTex.TS, MapTex.TS + n * MapTex.WALL_H), RectF(l, b - n * e, r, b), p)
             }
         }
 
@@ -71,13 +78,12 @@ class MapEditorView @JvmOverloads constructor(
                 val cl = l + x * cell
                 val ct = t + y * cell
                 if (MT.isWall(o)) {
-                    fun wl(xx: Int, yy: Int): Boolean = xx in 0 until tp.w && yy in 0 until tp.h && MT.isWall(tp.obj[yy * tp.w + xx])
-                    var m = 0
-                    if (y == 0 || wl(x, y - 1)) m = m or MapTex.M_N
-                    if (x == tp.w - 1 || wl(x + 1, y)) m = m or MapTex.M_E
-                    if (y < tp.h - 1 && wl(x, y + 1)) m = m or MapTex.M_S
-                    if (x == 0 || wl(x - 1, y)) m = m or MapTex.M_W
-                    drawWallFlat(c, p, MT.wallDef(o), m, cl, ct, cl + cell + 1f, ct + cell + 1f)
+                    val wh = { xx: Int, yy: Int ->
+                        if (xx in 0 until tp.w && yy in 0 until tp.h && MT.isWall(tp.obj[yy * tp.w + xx])) tp.hgt[yy * tp.w + xx].coerceIn(1, 4) else 0
+                    }
+                    val geom = wallGeomOf(tp.w, tp.h, x, y, wh)
+                    val cp = tp.cap[y * tp.w + x]
+                    drawWallFlat(c, p, MT.wallDef(o), if (cp != 0) MT.wallDef(cp) else null, wh(x, y).coerceAtLeast(1), geom, cl, ct, cl + cell + 1f, ct + cell + 1f)
                 } else drawPropFlat(c, p, o, cl, ct + cell, cell, time)
             }
         }
@@ -117,7 +123,7 @@ class MapEditorView @JvmOverloads constructor(
             p.isAntiAlias = false
             when (layer) {
                 L_FLOOR -> c.drawBitmap(MapTex.tile(MT.floorDef(v), 0), 0f, 0f, p)
-                L_WALL -> drawWallFlat(c, p, MT.wallDef(v), 0, 0f, 0f, 64f, 64f)
+                L_WALL -> drawWallFlat(c, p, MT.wallDef(v), null, 1, 0, 0f, 0f, 64f, 64f)
                 L_PROP -> {
                     c.drawBitmap(MapTex.tile(MT.floorDef(MT.F_STONE), 0), 0f, 0f, p)
                     drawPropFlat(c, p, v, 0f, 64f, 64f)
@@ -151,6 +157,11 @@ class MapEditorView @JvmOverloads constructor(
     var dirty = false
     var onHistoryChanged: (() -> Unit)? = null
     var onMessage: ((String) -> Unit)? = null
+    /** Avisa a tela quando o editor mudou aba/ferramenta/seleção sozinho (conta-gotas, copiar). */
+    var onPick: (() -> Unit)? = null
+    /** Andares da parede que será pintada (1..4) e material dos andares de cima (0 = igual). */
+    var wallHeight = 1
+    var wallCap = 0
 
     private var cell = 48f
     private var offX = 0f
@@ -247,7 +258,16 @@ class MapEditorView @JvmOverloads constructor(
         val i = y * m.w + x
         when (layer) {
             L_FLOOR -> m.floor[i] = if (erase) MT.F_VOID else selected[L_FLOOR]
-            L_WALL, L_PROP -> m.obj[i] = if (erase) 0 else selected[layer]
+            L_WALL -> {
+                m.obj[i] = if (erase) 0 else selected[L_WALL]
+                m.hgt[i] = if (erase) 0 else wallHeight
+                m.cap[i] = if (erase || wallHeight <= 1) 0 else wallCap
+            }
+            L_PROP -> {
+                m.obj[i] = if (erase) 0 else selected[L_PROP]
+                m.hgt[i] = 0
+                m.cap[i] = 0
+            }
             else -> {
                 if (erase) {
                     m.ents.removeAll { it.x == x && it.y == y }
@@ -283,6 +303,26 @@ class MapEditorView @JvmOverloads constructor(
         }
     }
 
+    private fun lineCells(x0: Int, y0: Int, x1: Int, y1: Int): List<Pair<Int, Int>> {
+        val out = ArrayList<Pair<Int, Int>>()
+        var x = x0
+        var y = y0
+        val dx = abs(x1 - x0)
+        val dy = -abs(y1 - y0)
+        val sx = if (x0 < x1) 1 else -1
+        val sy = if (y0 < y1) 1 else -1
+        var err = dx + dy
+        var guard = 0
+        while (guard++ < 4000) {
+            out.add(x to y)
+            if (x == x1 && y == y1) break
+            val e2 = 2 * err
+            if (e2 >= dy) { err += dy; x += sx }
+            if (e2 <= dx) { err += dx; y += sy }
+        }
+        return out
+    }
+
     private fun floodFill(m: MapData, sx: Int, sy: Int) {
         if (!m.inB(sx, sy)) return
         val arr = if (layer == L_FLOOR) m.floor else m.obj
@@ -298,6 +338,7 @@ class MapEditorView @JvmOverloads constructor(
         while (head < tail) {
             val cur = queue[head++]
             arr[cur] = repl
+            if (layer == L_WALL) { m.hgt[cur] = wallHeight; m.cap[cur] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[cur] = 0; m.cap[cur] = 0 }
             val cx = cur % m.w
             val cy = cur / m.w
             if (cx > 0) { val n = cur - 1; if (!seen[n] && arr[n] == target) { seen[n] = true; queue[tail++] = n } }
@@ -315,17 +356,18 @@ class MapEditorView @JvmOverloads constructor(
         val (cx, cy) = cellAt(x, y)
         lastCx = cx
         lastCy = cy
-        if (layer == L_HOUSE) {
+        if (layer == L_HOUSE && tool != T_COPY && tool != T_PICK) {
             if (tool == T_ERASE) onMessage?.invoke("Para apagar, use a borracha nas abas Chão, Paredes ou Objetos")
             invalidate()
             return
         }
         when (tool) {
             T_BRUSH, T_ERASE -> applyCell(m, cx, cy, tool == T_ERASE)
-            T_RECT -> {
-                if (layer == L_ENT) onMessage?.invoke("Para entidades use o pincel")
+            T_RECT, T_LINE, T_COPY -> {
+                if (layer == L_ENT && tool != T_COPY) onMessage?.invoke("Para entidades use o pincel")
                 rectSx = cx; rectSy = cy; rectEx = cx; rectEy = cy
             }
+            T_PICK -> pick(m, cx, cy)
             T_FILL -> {
                 if (layer == L_ENT) onMessage?.invoke("Para entidades use o pincel")
                 else floodFill(m, cx, cy)
@@ -337,7 +379,7 @@ class MapEditorView @JvmOverloads constructor(
     private fun moveStroke(m: MapData, x: Float, y: Float) {
         val (cx, cy) = cellAt(x, y)
         if (cx == lastCx && cy == lastCy) return
-        if (layer == L_HOUSE) {
+        if (layer == L_HOUSE && tool != T_COPY && tool != T_PICK) {
             lastCx = cx
             lastCy = cy
             invalidate()
@@ -345,7 +387,7 @@ class MapEditorView @JvmOverloads constructor(
         }
         when (tool) {
             T_BRUSH, T_ERASE -> line(m, lastCx, lastCy, cx, cy, tool == T_ERASE)
-            T_RECT -> { rectEx = cx; rectEy = cy }
+            T_RECT, T_LINE, T_COPY -> { rectEx = cx; rectEy = cy }
         }
         lastCx = cx
         lastCy = cy
@@ -365,14 +407,71 @@ class MapEditorView @JvmOverloads constructor(
             val f = tp.floor[y * tp.w + x]
             val o = tp.obj[y * tp.w + x]
             if (f >= 0) m.floor[i] = f
-            if (o >= 0) m.obj[i] = o
+            if (o >= 0) { m.obj[i] = o; m.hgt[i] = tp.hgt[y * tp.w + x]; m.cap[i] = tp.cap[y * tp.w + x] }
         }
         // apaga inimigos que ficaram dentro de paredes
         m.ents.removeAll { e -> m.inB(e.x, e.y) && MT.solidObj(m.obj[e.y * m.w + e.x]) }
     }
 
+    /** Conta-gotas: pega o bloco tocado (e a altura da parede) e volta para o pincel. */
+    private fun pick(m: MapData, cx: Int, cy: Int) {
+        if (!m.inB(cx, cy)) return
+        val i = cy * m.w + cx
+        val o = m.obj[i]
+        when {
+            layer == L_FLOOR || o == 0 -> {
+                layer = L_FLOOR
+                selected[L_FLOOR] = m.floor[i]
+            }
+            MT.isWall(o) -> {
+                layer = L_WALL
+                selected[L_WALL] = o
+                wallHeight = m.hgt[i].coerceIn(1, 4)
+                wallCap = m.cap[i]
+            }
+            MT.isProp(o) -> {
+                layer = L_PROP
+                selected[L_PROP] = o
+            }
+            else -> {
+                layer = L_FLOOR
+                selected[L_FLOOR] = m.floor[i]
+            }
+        }
+        tool = T_BRUSH
+        onPick?.invoke()
+    }
+
+    /** Copia a área marcada para a lista de Casas ("Cópia"), pronta para carimbar em outro lugar. */
+    private fun copyArea(m: MapData) {
+        val x0 = max(0, min(rectSx, rectEx))
+        val x1 = min(m.w - 1, max(rectSx, rectEx))
+        val y0 = max(0, min(rectSy, rectEy))
+        val y1 = min(m.h - 1, max(rectSy, rectEy))
+        if (x1 < x0 || y1 < y0) return
+        val tp = Template(x1 - x0 + 1, y1 - y0 + 1)
+        for (yy in y0..y1) for (xx in x0..x1) {
+            val si = yy * m.w + xx
+            val ti = (yy - y0) * tp.w + (xx - x0)
+            tp.floor[ti] = m.floor[si]
+            tp.obj[ti] = m.obj[si]
+            tp.hgt[ti] = m.hgt[si]
+            tp.cap[ti] = m.cap[si]
+        }
+        Houses.clipboard = tp
+        layer = L_HOUSE
+        selected[L_HOUSE] = Houses.CLIP_ID
+        tool = T_BRUSH
+        onMessage?.invoke("Área copiada (${tp.w}×${tp.h}). Toque no mapa para carimbar")
+        onPick?.invoke()
+    }
+
     private fun endStroke(m: MapData) {
-        if (layer == L_HOUSE && tool != T_ERASE) stampHouse(m, lastCx, lastCy)
+        if (layer == L_HOUSE && tool != T_ERASE && tool != T_COPY && tool != T_PICK) stampHouse(m, lastCx, lastCy)
+        if (tool == T_LINE && layer != L_ENT && layer != L_HOUSE) {
+            line(m, rectSx, rectSy, rectEx, rectEy, false)
+        }
+        if (tool == T_COPY) copyArea(m)
         if (tool == T_RECT && layer != L_ENT && layer != L_HOUSE) {
             val x0 = max(0, min(rectSx, rectEx))
             val x1 = min(m.w - 1, max(rectSx, rectEx))
@@ -483,7 +582,16 @@ class MapEditorView @JvmOverloads constructor(
             if (o == 0) continue
             val l = offX + x * cell
             val t = offY + y * cell
-            if (MT.isWall(o)) drawWallFlat(canvas, bmpPaint, MT.wallDef(o), wallMask(m, x, y), l, t, l + cell + 1f, t + cell + 1f)
+            if (MT.isWall(o)) {
+                val cpId = m.cap[y * m.w + x]
+                drawWallFlat(canvas, bmpPaint, MT.wallDef(o), if (cpId != 0) MT.wallDef(cpId) else null, m.wallH(x, y).coerceAtLeast(1), m.wallGeom(x, y), l, t, l + cell + 1f, t + cell + 1f)
+                val hh = m.wallH(x, y)
+                if (hh > 1 && cell >= 22f) {
+                    textPaint.textSize = cell * 0.3f
+                    textPaint.color = 0xFFFFFFFF.toInt()
+                    canvas.drawText("" + hh, l + cell * 0.22f, t + cell * 0.95f, textPaint)
+                }
+            }
             else drawPropFlat(canvas, bmpPaint, o, l, t + cell, cell, time + ((x * 7 + y * 13) % 7) * 0.13f)
         }
         // grade
@@ -509,7 +617,14 @@ class MapEditorView @JvmOverloads constructor(
             drawEntMarker(canvas, paint, textPaint, 0, offX + (m.spawnX + 0.5f) * cell, offY + (m.spawnY + 0.5f) * cell, cell * 0.34f)
         }
         // pré-visualização do retângulo
-        if (mode == MODE_DRAW && tool == T_RECT && layer != L_ENT && layer != L_HOUSE) {
+        if (mode == MODE_DRAW && tool == T_LINE && layer != L_ENT && layer != L_HOUSE) {
+            paint.style = Paint.Style.FILL
+            paint.color = 0x55FFC107
+            for ((lx, ly) in lineCells(rectSx, rectSy, rectEx, rectEy)) {
+                rf.set(offX + lx * cell, offY + ly * cell, offX + (lx + 1) * cell, offY + (ly + 1) * cell)
+                canvas.drawRect(rf, paint)
+            }
+        } else if (mode == MODE_DRAW && (tool == T_RECT && layer != L_ENT && layer != L_HOUSE || tool == T_COPY)) {
             val ax = min(rectSx, rectEx)
             val bx = max(rectSx, rectEx)
             val ay = min(rectSy, rectEy)
@@ -531,7 +646,7 @@ class MapEditorView @JvmOverloads constructor(
             paint.strokeWidth = 3f
             paint.color = 0xFFFFC107.toInt()
             canvas.drawRect(gx, gy, gx + tp.w * cell, gy + tp.h * cell, paint)
-        } else if (mode == MODE_DRAW && tool != T_RECT && layer != L_HOUSE) {
+        } else if (mode == MODE_DRAW && tool != T_RECT && tool != T_LINE && layer != L_HOUSE) {
             rf.set(offX + lastCx * cell, offY + lastCy * cell, offX + (lastCx + 1) * cell, offY + (lastCy + 1) * cell)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2f
@@ -545,15 +660,5 @@ class MapEditorView @JvmOverloads constructor(
         canvas.drawRect(offX, offY, offX + m.w * cell, offY + m.h * cell, paint)
         // mantém a água, a lava e o fogo animados
         postInvalidateDelayed(70)
-    }
-
-    private fun wallMask(m: MapData, x: Int, y: Int): Int {
-        fun wl(xx: Int, yy: Int) = m.inB(xx, yy) && MT.isWall(m.obj[yy * m.w + xx])
-        var k = 0
-        if (y == 0 || wl(x, y - 1)) k = k or MapTex.M_N
-        if (x == m.w - 1 || wl(x + 1, y)) k = k or MapTex.M_E
-        if (y < m.h - 1 && wl(x, y + 1)) k = k or MapTex.M_S
-        if (x == 0 || wl(x - 1, y)) k = k or MapTex.M_W
-        return k
     }
 }

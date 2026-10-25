@@ -1,3 +1,15 @@
+#id 2026-10-26-h
+#titulo Editor de mapas: construções de verdade
+- Paredes empilháveis: escolha "Andares" (1 a 4) na aba Paredes e o botão "Topo" para trocar o material dos andares de cima (ex.: casa de pedra com telhado por cima)
+- Portas animadas que abrem quando o herói chega perto: porta de madeira, porta de ferro e portão levadiço de castelo (ferro e portão só deixam passar abertos)
+- Novas paredes: enxaimel, adobe, muralha, mármore, janela redonda, vitral, janela com grade, arco e chaminé com fumaça animada
+- Telhados novos: verde, azul, madeira e ameixa
+- 39 objetos novos: árvores (bétula, outono, cerejeira, palmeira), cacto, juncos, cogumelo gigante, tenda, barraca, carroça, trono, lustre, jaula, sarcófago, gárgula, tesouro, alquimia, círculo mágico, espantalho e mais, vários animados e com luz
+- 8 pisos novos: ponte, terra arada, cinzas, capim seco, xadrez, tapetes azul e verde e piso rúnico animado
+- Ferramentas novas: Linha, Conta-gotas (pega o bloco tocado) e Copiar (copia uma área e carimba onde quiser)
+- 7 casas novas na aba Casas: casas de 2 andares com telhado e chaminé, castelo pequeno, portão de muralha e mausoléu
+- Mapas antigos continuam funcionando
+
 #id 2026-10-26-g
 #titulo Upgrade do editor de mapas
 - Todas as texturas refeitas com muito mais detalhe (chão, paredes e objetos)

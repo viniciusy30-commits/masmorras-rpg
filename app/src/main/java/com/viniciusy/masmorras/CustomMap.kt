@@ -21,9 +21,14 @@ class CustomMap(private val data: MapData) : GameMap {
     private val src = Rect(0, 0, MapTex.TS, MapTex.TS)
     private val dst = RectF()
 
+    /** Portas animadas: abertura 0..1 por célula. Só portas de ferro/portão bloqueiam enquanto fechadas. */
+    private val doorOpen = FloatArray(width * height)
+    private val doorCells = ArrayList<Int>()
+
     init {
         for (i in solid.indices) {
             solid[i] = MT.solidFloor(data.floor[i]) || MT.solidObj(data.obj[i])
+            if (MT.isDoor(data.obj[i])) doorCells.add(i)
         }
         spawnCell = findFree(data.spawnX, data.spawnY)
     }
@@ -58,7 +63,20 @@ class CustomMap(private val data: MapData) : GameMap {
         val tx = (wx / ts).toInt()
         val ty = (wy / ts).toInt()
         if (tx >= width || ty >= height) return true
-        return solid[ty * width + tx]
+        val i = ty * width + tx
+        if (MT.isLockedDoor(data.obj[i]) && !MT.solidFloor(data.floor[i])) return doorOpen[i] < 0.8f
+        return solid[i]
+    }
+
+    override fun update(px: Float, py: Float, dt: Float) {
+        for (i in doorCells) {
+            val cx = (i % width + 0.5f) * ts
+            val cy = (i / width + 0.5f) * ts
+            val near = abs(cx - px) < ts * 1.7f && abs(cy - py) < ts * 1.7f
+            val tgt = if (near) 1f else 0f
+            val cur = doorOpen[i]
+            doorOpen[i] = if (tgt > cur) minOf(tgt, cur + dt * 4f) else maxOf(tgt, cur - dt * 2.2f)
+        }
     }
 
     override fun inSafeZone(wx: Float, wy: Float): Boolean = false
@@ -94,16 +112,6 @@ class CustomMap(private val data: MapData) : GameMap {
 
     private fun isWallCell(x: Int, y: Int): Boolean =
         x in 0 until width && y in 0 until height && MT.isWall(data.obj[y * width + x])
-
-    /** Parede (ou borda do mapa) nesse lado => a parede se emenda, sem contorno. Ao sul, fora do mapa conta como aberto. */
-    private fun wallMask(x: Int, y: Int): Int {
-        var m = 0
-        if (y - 1 < 0 || isWallCell(x, y - 1)) m = m or MapTex.M_N
-        if (x + 1 >= width || isWallCell(x + 1, y)) m = m or MapTex.M_E
-        if (y + 1 < height && isWallCell(x, y + 1)) m = m or MapTex.M_S
-        if (x - 1 < 0 || isWallCell(x - 1, y)) m = m or MapTex.M_W
-        return m
-    }
 
     private fun floorAt(x: Int, y: Int): Int =
         if (x in 0 until width && y in 0 until height) data.floor[y * width + x] else -1
@@ -212,8 +220,14 @@ class CustomMap(private val data: MapData) : GameMap {
             val x = Math.round(tx * ts - camX).toFloat()
             if (MT.isWall(o)) {
                 val def = MT.wallDef(o) ?: continue
-                val bmp = MapTex.wall(def, wallMask(tx, ty))
-                canvas.drawBitmap(bmp, x, Math.round(ty * ts - MapTex.WALL_H - camY).toFloat(), bmpPaint)
+                val gm = data.wallGeom(tx, ty)
+                val hg = data.wallH(tx, ty).coerceAtLeast(1)
+                val capDef = if (data.cap[ty * width + tx] != 0) MT.wallDef(data.cap[ty * width + tx]) else null
+                val frame = if (MT.isDoor(o)) Math.round(doorOpen[ty * width + tx] * 3f).coerceIn(0, 3) else 0
+                val bmp = MapTex.wall(def, gm and 15, hg, gm shr 4, capDef, frame)
+                val wy = Math.round(ty * ts - hg * MapTex.WALL_H - camY).toFloat()
+                canvas.drawBitmap(bmp, x, wy, bmpPaint)
+                if (o == MT.W_CHIMNEY) smoke(canvas, paint, x + 32f, wy + 30f, t, tx * 7 + ty)
             } else {
                 val bmp = PropArt.get(o, t + hash(tx, ty) % 7 * 0.13f)
                 val y = Math.round((ty + 1) * ts - PropArt.H - camY).toFloat()
@@ -233,6 +247,20 @@ class CustomMap(private val data: MapData) : GameMap {
                     canvas.drawCircle(cx, cy, r * 0.3f, paint)
                 }
             }
+        }
+    }
+
+    /** Fumaça subindo da chaminé. */
+    private fun smoke(canvas: Canvas, paint: Paint, cx: Float, cy: Float, t: Float, seed: Int) {
+        paint.style = Paint.Style.FILL
+        for (k in 0 until 5) {
+            val ph = (t * 0.45f + k * 0.2f + (seed % 5) * 0.13f) % 1f
+            val px = cx + sin(t * 1.3f + k * 1.7f + seed) * 5f + ph * 14f
+            val py = cy - ph * 70f
+            val r = 5f + ph * 13f
+            val a = ((1f - ph) * 0x58).toInt().coerceIn(0, 255)
+            paint.color = (a shl 24) or 0xC8C8CC
+            canvas.drawCircle(px, py, r, paint)
         }
     }
 }

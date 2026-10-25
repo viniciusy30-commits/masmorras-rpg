@@ -9,23 +9,29 @@ import java.io.File
 data class MapEnt(val x: Int, val y: Int, val type: Int)
 
 /** Cópia do estado do mapa (usada pelo desfazer/refazer). */
-class MapSnap(val floor: IntArray, val obj: IntArray, val ents: List<MapEnt>, val sx: Int, val sy: Int)
+class MapSnap(val floor: IntArray, val obj: IntArray, val hgt: IntArray, val cap: IntArray, val ents: List<MapEnt>, val sx: Int, val sy: Int)
 
 /** Mapa montado pelo jogador. Duas camadas de células (chão e objetos) + entidades. */
 class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
     val floor = IntArray(w * h) { MT.F_STONE }
     val obj = IntArray(w * h)
+    /** Altura das paredes em andares (0 = 1 andar). */
+    val hgt = IntArray(w * h)
+    /** Material dos andares de cima (0 = igual ao de baixo). */
+    val cap = IntArray(w * h)
     val ents = ArrayList<MapEnt>()
     var spawnX = 2
     var spawnY = 2
 
     fun inB(x: Int, y: Int) = x in 0 until w && y in 0 until h
 
-    fun snapshot() = MapSnap(floor.copyOf(), obj.copyOf(), ents.toList(), spawnX, spawnY)
+    fun snapshot() = MapSnap(floor.copyOf(), obj.copyOf(), hgt.copyOf(), cap.copyOf(), ents.toList(), spawnX, spawnY)
 
     fun restore(s: MapSnap) {
         s.floor.copyInto(floor)
         s.obj.copyInto(obj)
+        s.hgt.copyInto(hgt)
+        s.cap.copyInto(cap)
         ents.clear()
         ents.addAll(s.ents)
         spawnX = s.sx
@@ -33,7 +39,7 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
     }
 
     fun sameAs(s: MapSnap): Boolean =
-        floor.contentEquals(s.floor) && obj.contentEquals(s.obj) && ents == s.ents && spawnX == s.sx && spawnY == s.sy
+        floor.contentEquals(s.floor) && obj.contentEquals(s.obj) && hgt.contentEquals(s.hgt) && cap.contentEquals(s.cap) && ents == s.ents && spawnX == s.sx && spawnY == s.sy
 
     /** Mapa novo: chão de pedra com paredes na borda. */
     fun fillDefault() {
@@ -44,19 +50,38 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         spawnY = h / 2
     }
 
+    /** Formato v2: 2 caracteres hexadecimais por célula (valores 0..255). */
     private fun encode(a: IntArray): String {
-        val sb = StringBuilder(a.size)
-        for (v in a) sb.append((48 + v.coerceIn(0, 78)).toChar())
+        val sb = StringBuilder(a.size * 2)
+        val hex = "0123456789abcdef"
+        for (v in a) {
+            val x = v.coerceIn(0, 255)
+            sb.append(hex[x shr 4]).append(hex[x and 15])
+        }
         return sb.toString()
     }
 
-    private fun decode(s: String, a: IntArray) {
-        for (i in a.indices) if (i < s.length) a[i] = (s[i].code - 48).coerceIn(0, 78)
+    private fun decode(s: String, a: IntArray, v2: Boolean) {
+        if (v2) {
+            for (i in a.indices) if (i * 2 + 1 < s.length) a[i] = s.substring(i * 2, i * 2 + 2).toIntOrNull(16) ?: 0
+        } else {
+            for (i in a.indices) if (i < s.length) a[i] = (s[i].code - 48).coerceIn(0, 78)
+        }
     }
+
+    /** Altura (andares) da parede na célula; 0 se não for parede. */
+    fun wallH(x: Int, y: Int): Int {
+        if (!inB(x, y)) return 0
+        val i = y * w + x
+        return if (MT.isWall(obj[i])) hgt[i].coerceIn(1, 4) else 0
+    }
+
+    /** Máscara de vizinhos que emendam (bits 0..3) + andares escondidos pela parede da frente (bits 4..6). */
+    fun wallGeom(x: Int, y: Int): Int = wallGeomOf(w, h, x, y) { xx, yy -> wallH(xx, yy) }
 
     fun toJson(): JSONObject {
         val o = JSONObject()
-        o.put("v", 1)
+        o.put("v", 2)
         o.put("name", name)
         o.put("w", w)
         o.put("h", h)
@@ -64,6 +89,8 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         o.put("sy", spawnY)
         o.put("floor", encode(floor))
         o.put("obj", encode(obj))
+        o.put("hgt", encode(hgt))
+        o.put("cap", encode(cap))
         val arr = JSONArray()
         for (e in ents) arr.put(JSONArray().put(e.x).put(e.y).put(e.type))
         o.put("ents", arr)
@@ -75,7 +102,7 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
             val m = MapData(o.optString("name", "Mapa"), o.getInt("w"), o.getInt("h"), id)
             m.spawnX = o.optInt("sx", 1)
             m.spawnY = o.optInt("sy", 1)
-            m.decodeInto(o.optString("floor", ""), o.optString("obj", ""))
+            m.decodeInto(o.optInt("v", 1) >= 2, o.optString("floor", ""), o.optString("obj", ""), o.optString("hgt", ""), o.optString("cap", ""))
             val arr = o.optJSONArray("ents")
             if (arr != null) for (i in 0 until arr.length()) {
                 val e = arr.getJSONArray(i)
@@ -85,9 +112,11 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         }
     }
 
-    private fun decodeInto(f: String, o: String) {
-        decode(f, floor)
-        decode(o, obj)
+    private fun decodeInto(v2: Boolean, f: String, o: String, hg: String, cp: String) {
+        decode(f, floor, v2)
+        decode(o, obj, v2)
+        decode(hg, hgt, true)
+        decode(cp, cap, true)
     }
 }
 
@@ -138,4 +167,16 @@ object MapStore {
         save(ctx, m)
         return m
     }
+}
+
+/** Geometria de uma parede empilhada: wh(x,y) = andares da parede na célula (0 = não é parede). */
+fun wallGeomOf(w: Int, h: Int, x: Int, y: Int, wh: (Int, Int) -> Int): Int {
+    val hg = wh(x, y).coerceAtLeast(1)
+    var m = 0
+    if (y - 1 < 0 || wh(x, y - 1) >= hg) m = m or MapTex.M_N
+    if (x + 1 >= w || wh(x + 1, y) >= hg) m = m or MapTex.M_E
+    if (y + 1 < h && wh(x, y + 1) >= hg) m = m or MapTex.M_S
+    if (x - 1 < 0 || wh(x - 1, y) >= hg) m = m or MapTex.M_W
+    val lo = if (y + 1 < h) minOf(wh(x, y + 1), hg) else 0
+    return m or (lo shl 4)
 }

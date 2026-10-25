@@ -601,6 +601,7 @@ class GameView @JvmOverloads constructor(
     private fun update(dt: Float) {
         time += dt
         VoxelArt.time = time
+        player?.let { map.update(it.x, it.y, dt) }
         if (shake > 0f) shake = (shake - dt).coerceAtLeast(0f)
         particles.forEach { it.update(dt) }
         particles.removeAll { it.life <= 0f }
