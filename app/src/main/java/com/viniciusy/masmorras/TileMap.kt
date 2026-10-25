@@ -13,7 +13,7 @@ import kotlin.random.Random
  * Mundo aberto: vilarejo no centro, floresta ao redor, rio com ponte e ruínas do chefe.
  * O chão é pré-renderizado em blocos (chunks) de bitmap -> quase zero custo por frame.
  */
-class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 64f) {
+class TileMap(override val width: Int = 96, override val height: Int = 72, override val tileSize: Float = 64f) : GameMap {
 
     // 0 = livre, 1 = floresta densa (sólido), 2 = água rasa (andável),
     // 6 = caixote/barril (sólido), 7 = objeto sólido (casa, árvore, pedra...), 8 = água funda (sólida)
@@ -415,9 +415,9 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         }
     }
 
-    fun heightAt(wx: Float, wy: Float): Float = 0f
+    override fun heightAt(wx: Float, wy: Float): Float = 0f
 
-    fun isWall(wx: Float, wy: Float): Boolean {
+    override fun isWall(wx: Float, wy: Float): Boolean {
         val tx = (wx / tileSize).toInt()
         val ty = (wy / tileSize).toInt()
         if (wx < 0f || wy < 0f || tx >= width || ty >= height) return true
@@ -425,17 +425,17 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         return t == 1 || t == 6 || t == 7 || t == 8
     }
 
-    fun inSafeZone(wx: Float, wy: Float): Boolean =
+    override fun inSafeZone(wx: Float, wy: Float): Boolean =
         hypot(wx / tileSize - vcx, wy / tileSize - vcy) < 11.5f
 
-    fun worldWidth() = width * tileSize
-    fun worldHeight() = height * tileSize
+    override fun worldWidth() = width * tileSize
+    override fun worldHeight() = height * tileSize
 
-    fun getPlayerSpawn(): Pair<Float, Float> = Pair(48.5f * tileSize, 39.5f * tileSize)
+    override fun getPlayerSpawn(): Pair<Float, Float> = Pair(48.5f * tileSize, 39.5f * tileSize)
 
-    fun getBossSpawn(): Pair<Float, Float> = Pair((bossTx + 0.5f) * tileSize, (bossTy + 0.5f) * tileSize)
+    override fun getBossSpawn(): Pair<Float, Float> = Pair((bossTx + 0.5f) * tileSize, (bossTy + 0.5f) * tileSize)
 
-    fun getEnemySpawns(count: Int): List<Pair<Float, Float>> {
+    override fun getEnemySpawns(count: Int): List<Pair<Float, Float>> {
         val list = mutableListOf<Pair<Float, Float>>()
         var tries = 0
         while (list.size < count && tries < 3000) {
@@ -458,7 +458,16 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         return list
     }
 
-    fun prewarm(wx: Float, wy: Float) {
+    override fun createEnemies(): List<Enemy> {
+        val list = ArrayList<Enemy>()
+        getEnemySpawns(26).forEachIndexed { i, (ex, ey) -> list.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0)) }
+        val (bx, by) = getBossSpawn()
+        list.add(Enemy(bx, by, 2))
+        for ((ox, oy) in listOf(-90f to 0f, 90f to 0f, 0f to 90f, 0f to -90f)) list.add(Enemy(bx + ox, by + oy, 1))
+        return list
+    }
+
+    override fun prewarm(wx: Float, wy: Float) {
         val cpx = CH * tileSize
         val ccx = (wx / cpx).toInt()
         val ccy = (wy / cpx).toInt()
@@ -520,7 +529,7 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         return bmp
     }
 
-    fun drawFloor(canvas: Canvas, paint: Paint, camX: Float, camY: Float, viewW: Float, viewH: Float) {
+    override fun drawFloor(canvas: Canvas, paint: Paint, camX: Float, camY: Float, viewW: Float, viewH: Float) {
         val ts = tileSize
         val cpx = CH * ts
         val c0x = (camX / cpx).toInt().coerceAtLeast(0)
@@ -732,7 +741,7 @@ class TileMap(val width: Int = 96, val height: Int = 72, val tileSize: Float = 6
         )
     }
 
-    fun drawRow(canvas: Canvas, paint: Paint, ty: Int, camX: Float, camY: Float, viewW: Float) {
+    override fun drawRow(canvas: Canvas, paint: Paint, ty: Int, camX: Float, camY: Float, viewW: Float) {
         if (ty < 0 || ty >= height) return
         val ts = tileSize
         val sx = (camX / ts).toInt().coerceAtLeast(0)

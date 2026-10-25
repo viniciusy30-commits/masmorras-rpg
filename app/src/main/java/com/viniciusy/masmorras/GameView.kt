@@ -20,7 +20,8 @@ class GameView @JvmOverloads constructor(
 ) : View(context, attrs) {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private var map = TileMap()
+    private var map: GameMap = TileMap()
+    private var hadEnemies = true
     private var player: Player? = null
     private val enemies = mutableListOf<Enemy>()
     private val projectiles = mutableListOf<Projectile>()
@@ -75,8 +76,12 @@ class GameView @JvmOverloads constructor(
         )
     }
 
-    fun startGame(classe: Classe) {
-        map = TileMap()
+    /** Centraliza a câmera quando o mapa é menor que a tela; senão limita às bordas. */
+    private fun camClamp(v: Float, world: Float, view: Float): Float =
+        if (world <= view) (world - view) / 2f else v.coerceIn(0f, world - view)
+
+    fun startGame(classe: Classe, custom: MapData? = null) {
+        map = if (custom != null) CustomMap(custom) else TileMap()
         val (sx, sy) = map.getPlayerSpawn()
         map.prewarm(sx, sy)
         player = Player(sx, sy, classe)
@@ -84,13 +89,8 @@ class GameView @JvmOverloads constructor(
         projectiles.clear()
         particles.clear()
         texts.clear()
-        val spawns = map.getEnemySpawns(26)
-        spawns.forEachIndexed { i, (ex, ey) ->
-            enemies.add(Enemy(ex, ey, if (i % 4 == 0) 1 else 0))
-        }
-        val (bx, by) = map.getBossSpawn()
-        enemies.add(Enemy(bx, by, 2))
-        for ((ox, oy) in listOf(-90f to 0f, 90f to 0f, 0f to 90f, 0f to -90f)) enemies.add(Enemy(bx + ox, by + oy, 1))
+        enemies.addAll(map.createEnemies())
+        hadEnemies = enemies.isNotEmpty()
         gameOver = false
         victory = false
         running = true
@@ -101,8 +101,8 @@ class GameView @JvmOverloads constructor(
         lookAheadY = 0f
         camZoom = 1f
         targetZoom = 1f
-        val desiredX = (sx - width * FRAME_X).coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        val desiredY = (sy - height * FRAME_Y).coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        val desiredX = camClamp(sx - width * FRAME_X, map.worldWidth(), width.toFloat())
+        val desiredY = camClamp(sy - height * FRAME_Y, map.worldHeight(), height.toFloat())
         camX = desiredX
         camY = desiredY
         lastTime = System.nanoTime()
@@ -362,7 +362,7 @@ class GameView @JvmOverloads constructor(
         projectiles.removeAll { !it.alive }
         enemies.removeAll { !it.alive }
 
-        if (enemies.isEmpty() && !gameOver) {
+        if (hadEnemies && enemies.isEmpty() && !gameOver) {
             gameOver = true
             victory = true
             onGameOver?.invoke(true)
@@ -375,10 +375,8 @@ class GameView @JvmOverloads constructor(
         lookAheadX += (laTargetX - lookAheadX) * (1f - kotlin.math.exp(-dt * 4.5f))
         lookAheadY += (laTargetY - lookAheadY) * (1f - kotlin.math.exp(-dt * 4.5f))
 
-        val desiredX = (p.x + lookAheadX - width * FRAME_X)
-            .coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        val desiredY = (p.y + lookAheadY - height * FRAME_Y)
-            .coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        val desiredX = camClamp(p.x + lookAheadX - width * FRAME_X, map.worldWidth(), width.toFloat())
+        val desiredY = camClamp(p.y + lookAheadY - height * FRAME_Y, map.worldHeight(), height.toFloat())
 
         // Spring damping (mais cinematográfico que lerp linear)
         val ax = (desiredX - camX) * CAM_SMOOTH
@@ -389,8 +387,8 @@ class GameView @JvmOverloads constructor(
         camVY *= (1f - 6.2f * dt).coerceIn(0.5f, 1f)
         camX += camVX * dt
         camY += camVY * dt
-        camX = camX.coerceIn(0f, (map.worldWidth() - width).coerceAtLeast(0f))
-        camY = camY.coerceIn(0f, (map.worldHeight() - height).coerceAtLeast(0f))
+        camX = camClamp(camX, map.worldWidth(), width.toFloat())
+        camY = camClamp(camY, map.worldHeight(), height.toFloat())
 
         // Zoom leve: afasta um pouco quando corre / em combate perto de vários inimigos
         var nearEnemies = 0

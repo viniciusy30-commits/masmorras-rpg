@@ -15,6 +15,16 @@ import android.widget.ProgressBar
 import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import android.graphics.Bitmap
+import android.text.InputType
+import android.text.TextUtils
+import android.view.Gravity
+import android.widget.EditText
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -38,9 +48,35 @@ class MainActivity : AppCompatActivity() {
     private var joyCenterY = 0f
     private var knob: View? = null
 
+    // mapas / editor
+    private lateinit var mapListLayout: View
+    private lateinit var editorLayout: View
+    private lateinit var editorView: MapEditorView
+    private lateinit var rvMaps: RecyclerView
+    private lateinit var tvMapListTitle: TextView
+    private lateinit var tvMapListHint: TextView
+    private lateinit var btnNovoMapa: View
+    private lateinit var edTopBar: LinearLayout
+    private lateinit var edTools: LinearLayout
+    private lateinit var edTabs: LinearLayout
+    private lateinit var edPalette: LinearLayout
+    private lateinit var tvEdName: TextView
+    private lateinit var btnUndo: TextView
+    private lateinit var btnRedo: TextView
+    private lateinit var btnGrid: TextView
+    private val toolChips = ArrayList<Pair<Int, TextView>>()
+    private val tabChips = ArrayList<Pair<Int, TextView>>()
+    private val paletteViews = ArrayList<Pair<Int, View>>()
+    private var mapListEdit = false
+    private var selectedMapId: String? = null
+    private var currentCustom: MapData? = null
+    private var editingMap: MapData? = null
+    private var testingFromEditor = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        MapTex.init(this)
 
         menuLayout = findViewById(R.id.menuLayout)
         classLayout = findViewById(R.id.classLayout)
@@ -56,12 +92,26 @@ class MainActivity : AppCompatActivity() {
         tvUpdateStatus = findViewById(R.id.tvUpdateStatus)
         tvNovidades = findViewById(R.id.tvNovidades)
         knob = findViewById(R.id.joystickKnob)
+        mapListLayout = findViewById(R.id.mapListLayout)
+        editorLayout = findViewById(R.id.editorLayout)
+        editorView = findViewById(R.id.editorView)
+        rvMaps = findViewById(R.id.rvMaps)
+        tvMapListTitle = findViewById(R.id.tvMapListTitle)
+        tvMapListHint = findViewById(R.id.tvMapListHint)
+        btnNovoMapa = findViewById(R.id.btnNovoMapa)
+        edTopBar = findViewById(R.id.edTopBar)
+        edTools = findViewById(R.id.edTools)
+        edTabs = findViewById(R.id.edTabs)
+        edPalette = findViewById(R.id.edPalette)
 
         setupMenu()
         setupClassSelect()
+        setupMapList()
+        setupEditor()
         setupGameControls()
         setupConfig()
         setupNovidades()
+        setupBack()
 
         // Auto check update
         Updater.autoCheck(this)
@@ -72,7 +122,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMenu() {
         findViewById<MaterialButton>(R.id.btnJogar).setOnClickListener {
-            show(classLayout)
+            openMapList(false)
+        }
+        findViewById<MaterialButton>(R.id.btnEditor).setOnClickListener {
+            openMapList(true)
         }
         findViewById<MaterialButton>(R.id.btnConfig).setOnClickListener {
             show(configLayout)
@@ -84,10 +137,10 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = LinearLayoutManager(this)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            startGame(classe)
+            onClassPicked(classe)
         }
         findViewById<MaterialButton>(R.id.btnVoltarClasse).setOnClickListener {
-            show(menuLayout)
+            openMapList(false)
         }
     }
 
@@ -146,12 +199,13 @@ class MainActivity : AppCompatActivity() {
 
         findViewById<MaterialButton>(R.id.btnTentar).setOnClickListener {
             overlayFim.visibility = View.GONE
-            startGame(selectedClasse)
+            startGame(selectedClasse, currentCustom)
         }
         findViewById<MaterialButton>(R.id.btnMenu).setOnClickListener {
-            gameView.stopGame()
-            overlayFim.visibility = View.GONE
-            show(menuLayout)
+            leaveGame()
+        }
+        findViewById<MaterialButton>(R.id.btnSairJogo).setOnClickListener {
+            leaveGame()
         }
 
         // Atualiza HUD
@@ -231,13 +285,384 @@ class MainActivity : AppCompatActivity() {
         return sb.toString().trim()
     }
 
-    private fun startGame(classe: Classe) {
+    private fun onClassPicked(classe: Classe) {
+        val id = selectedMapId
+        var custom: MapData? = null
+        if (id != null) {
+            custom = MapStore.load(this, id)
+            if (custom == null) {
+                Toast.makeText(this, "Não consegui abrir esse mapa", Toast.LENGTH_SHORT).show()
+                return
+            }
+        }
+        testingFromEditor = false
+        startGame(classe, custom)
+    }
+
+    private fun startGame(classe: Classe, custom: MapData?) {
         selectedClasse = classe
+        currentCustom = custom
         tvClasseHud.text = classe.nome
         tvClasseHud.setTextColor(classe.cor)
         overlayFim.visibility = View.GONE
         show(gameContainer)
-        gameView.startGame(classe)
+        gameView.startGame(classe, custom)
+    }
+
+    private fun leaveGame() {
+        gameView.stopGame()
+        overlayFim.visibility = View.GONE
+        if (testingFromEditor && editingMap != null) {
+            show(editorLayout)
+        } else {
+            testingFromEditor = false
+            show(menuLayout)
+        }
+    }
+
+    private fun setupBack() {
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                when {
+                    novidadesLayout.visibility == View.VISIBLE -> findViewById<View>(R.id.btnFecharNovidades).performClick()
+                    editorLayout.visibility == View.VISIBLE -> exitEditor()
+                    gameContainer.visibility == View.VISIBLE -> leaveGame()
+                    classLayout.visibility == View.VISIBLE -> openMapList(false)
+                    mapListLayout.visibility == View.VISIBLE || configLayout.visibility == View.VISIBLE -> show(menuLayout)
+                    else -> {
+                        isEnabled = false
+                        onBackPressedDispatcher.onBackPressed()
+                    }
+                }
+            }
+        })
+    }
+
+    // ───────────────────────── lista de mapas ─────────────────────────
+
+    private fun setupMapList() {
+        rvMaps.layoutManager = LinearLayoutManager(this)
+        findViewById<MaterialButton>(R.id.btnVoltarMapas).setOnClickListener { show(menuLayout) }
+        btnNovoMapa.setOnClickListener { promptNewMap() }
+    }
+
+    private fun openMapList(edit: Boolean) {
+        mapListEdit = edit
+        tvMapListTitle.text = if (edit) "Editor de mapas" else "Escolha o mapa"
+        btnNovoMapa.visibility = if (edit) View.VISIBLE else View.GONE
+        refreshMapList()
+        show(mapListLayout)
+    }
+
+    private fun refreshMapList() {
+        val maps = MapStore.list(this)
+        val items = ArrayList<ListItem>()
+        if (!mapListEdit) {
+            items.add(ListItem(null, "Mundo aberto", "Vilarejo, floresta e ruínas do chefe (gerado a cada partida)", 0xFF2E7D32.toInt()))
+        }
+        for (m in maps) items.add(ListItem(m.id, m.name, "${m.w}×${m.h} tiles", 0xFFFFC107.toInt()))
+        tvMapListHint.text = when {
+            mapListEdit && maps.isEmpty() -> "Você ainda não tem mapas. Toque em \"+ Novo mapa\"."
+            mapListEdit -> "Toque para editar • segure para renomear, duplicar ou excluir"
+            else -> "Jogue o mundo aberto ou um mapa criado por você"
+        }
+        rvMaps.adapter = MapListAdapter(items, { item -> onMapPicked(item) }, { item ->
+            if (mapListEdit && item.id != null) showMapOptions(item)
+        })
+    }
+
+    private fun onMapPicked(item: ListItem) {
+        if (mapListEdit) {
+            val id = item.id ?: return
+            val m = MapStore.load(this, id)
+            if (m == null) {
+                Toast.makeText(this, "Não consegui abrir esse mapa", Toast.LENGTH_SHORT).show()
+                return
+            }
+            openEditor(m)
+        } else {
+            selectedMapId = item.id
+            show(classLayout)
+        }
+    }
+
+    private fun showMapOptions(item: ListItem) {
+        val id = item.id ?: return
+        AlertDialog.Builder(this)
+            .setTitle(item.nome)
+            .setItems(arrayOf("Renomear", "Duplicar", "Excluir")) { _, which ->
+                when (which) {
+                    0 -> promptName("Renomear mapa", item.nome) { name ->
+                        val m = MapStore.load(this, id)
+                        if (m != null) {
+                            m.name = name
+                            MapStore.save(this, m)
+                        }
+                        refreshMapList()
+                    }
+                    1 -> {
+                        MapStore.duplicate(this, id)
+                        refreshMapList()
+                    }
+                    else -> AlertDialog.Builder(this)
+                        .setTitle("Excluir \"${item.nome}\"?")
+                        .setMessage("Isso não pode ser desfeito.")
+                        .setPositiveButton("Excluir") { _, _ ->
+                            MapStore.delete(this, id)
+                            refreshMapList()
+                        }
+                        .setNegativeButton("Cancelar", null)
+                        .show()
+                }
+            }
+            .show()
+    }
+
+    private fun promptName(title: String, initial: String, onOk: (String) -> Unit) {
+        val input = EditText(this)
+        input.inputType = InputType.TYPE_CLASS_TEXT
+        input.isSingleLine = true
+        input.setText(initial)
+        input.selectAll()
+        val box = FrameLayout(this)
+        box.setPadding(dp(20), dp(8), dp(20), 0)
+        box.addView(input)
+        AlertDialog.Builder(this)
+            .setTitle(title)
+            .setView(box)
+            .setPositiveButton("OK") { _, _ ->
+                val n = input.text.toString().trim()
+                onOk(if (n.isEmpty()) "Meu mapa" else n.take(40))
+            }
+            .setNegativeButton("Cancelar", null)
+            .show()
+    }
+
+    private fun promptNewMap() {
+        val input = EditText(this)
+        input.inputType = InputType.TYPE_CLASS_TEXT
+        input.isSingleLine = true
+        input.setText("Meu mapa")
+        input.selectAll()
+        val box = FrameLayout(this)
+        box.setPadding(dp(20), dp(8), dp(20), 0)
+        box.addView(input)
+        fun create(w: Int, h: Int) {
+            val n = input.text.toString().trim().ifEmpty { "Meu mapa" }.take(40)
+            val m = MapData(n, w, h)
+            m.fillDefault()
+            MapStore.save(this, m)
+            openEditor(m)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Novo mapa")
+            .setMessage("Dê um nome e escolha o tamanho:")
+            .setView(box)
+            .setNegativeButton("Pequeno 24×18") { _, _ -> create(24, 18) }
+            .setNeutralButton("Médio 40×30") { _, _ -> create(40, 30) }
+            .setPositiveButton("Grande 64×48") { _, _ -> create(64, 48) }
+            .show()
+    }
+
+    // ───────────────────────── editor ─────────────────────────
+
+    private fun dp(v: Int): Int = (v * resources.displayMetrics.density + 0.5f).toInt()
+
+    private fun styleChip(tv: TextView, selected: Boolean) {
+        val bg = GradientDrawable()
+        bg.cornerRadius = dp(8).toFloat()
+        bg.setColor(if (selected) 0xFFFFC107.toInt() else 0xFF2A2F36.toInt())
+        tv.background = bg
+        tv.setTextColor(if (selected) 0xFF111111.toInt() else 0xFFFFFFFF.toInt())
+    }
+
+    private fun chip(text: String, w: Int, h: Int, size: Float, onClick: () -> Unit): TextView {
+        val tv = TextView(this)
+        tv.text = text
+        tv.textSize = size
+        tv.gravity = Gravity.CENTER
+        tv.setTypeface(tv.typeface, android.graphics.Typeface.BOLD)
+        tv.setPadding(dp(8), 0, dp(8), 0)
+        tv.isClickable = true
+        tv.setOnClickListener { onClick() }
+        styleChip(tv, false)
+        val lp = LinearLayout.LayoutParams(if (w > 0) dp(w) else ViewGroup.LayoutParams.WRAP_CONTENT, dp(h))
+        lp.setMargins(dp(2), dp(2), dp(2), dp(2))
+        tv.layoutParams = lp
+        return tv
+    }
+
+    private fun setupEditor() {
+        editorView.onHistoryChanged = { refreshHistory() }
+        editorView.onMessage = { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
+
+        // barra superior
+        edTopBar.addView(chip("‹ Salvar e sair", 0, 36, 13f) { exitEditor() })
+        tvEdName = TextView(this)
+        tvEdName.setTextColor(0xFFFFFFFF.toInt())
+        tvEdName.textSize = 14f
+        tvEdName.gravity = Gravity.CENTER
+        tvEdName.maxLines = 1
+        tvEdName.ellipsize = TextUtils.TruncateAt.END
+        tvEdName.setOnClickListener {
+            val m = editingMap ?: return@setOnClickListener
+            promptName("Nome do mapa", m.name) { n ->
+                m.name = n
+                tvEdName.text = n
+                editorView.dirty = true
+            }
+        }
+        edTopBar.addView(tvEdName, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
+        btnUndo = chip("↶", 40, 36, 16f) { editorView.undo() }
+        btnRedo = chip("↷", 40, 36, 16f) { editorView.redo() }
+        btnGrid = chip("Grade", 0, 36, 12f) {
+            editorView.showGrid = !editorView.showGrid
+            refreshHistory()
+        }
+        edTopBar.addView(btnUndo)
+        edTopBar.addView(btnRedo)
+        edTopBar.addView(btnGrid)
+        edTopBar.addView(chip("▶ Testar", 0, 36, 13f) { testMap() })
+
+        // ferramentas
+        val tools = listOf(
+            MapEditorView.T_BRUSH to "Pincel",
+            MapEditorView.T_RECT to "Retâng.",
+            MapEditorView.T_FILL to "Balde",
+            MapEditorView.T_ERASE to "Borracha",
+            MapEditorView.T_PAN to "Mover"
+        )
+        for ((t, name) in tools) {
+            val c = chip(name, 68, 34, 11f) {
+                editorView.tool = t
+                refreshTools()
+            }
+            toolChips.add(t to c)
+            edTools.addView(c)
+        }
+
+        // abas (2x2)
+        val tabs = listOf(
+            MapEditorView.L_FLOOR to "Chão",
+            MapEditorView.L_WALL to "Paredes",
+            MapEditorView.L_PROP to "Objetos",
+            MapEditorView.L_ENT to "Entidades"
+        )
+        for (rowIdx in 0..1) {
+            val row = LinearLayout(this)
+            row.orientation = LinearLayout.HORIZONTAL
+            for (colIdx in 0..1) {
+                val (l, name) = tabs[rowIdx * 2 + colIdx]
+                val c = chip(name, 74, 32, 11f) {
+                    editorView.layer = l
+                    refreshTabs()
+                    refreshPalette()
+                }
+                tabChips.add(l to c)
+                row.addView(c)
+            }
+            edTabs.addView(row)
+        }
+    }
+
+    private fun openEditor(m: MapData) {
+        editingMap = m
+        editorView.setMap(m)
+        editorView.layer = MapEditorView.L_FLOOR
+        editorView.tool = MapEditorView.T_BRUSH
+        tvEdName.text = m.name
+        refreshTabs()
+        refreshPalette()
+        refreshTools()
+        refreshHistory()
+        show(editorLayout)
+    }
+
+    private fun saveEditing() {
+        val m = editingMap ?: return
+        MapStore.save(this, m)
+        editorView.dirty = false
+    }
+
+    private fun exitEditor() {
+        saveEditing()
+        editingMap = null
+        Toast.makeText(this, "Mapa salvo", Toast.LENGTH_SHORT).show()
+        openMapList(true)
+    }
+
+    private fun testMap() {
+        val m = editingMap ?: return
+        saveEditing()
+        val copy = MapData.fromJson(m.id, m.toJson())
+        testingFromEditor = true
+        startGame(selectedClasse, copy)
+    }
+
+    private fun refreshTools() {
+        for ((t, c) in toolChips) styleChip(c, t == editorView.tool)
+    }
+
+    private fun refreshTabs() {
+        for ((l, c) in tabChips) styleChip(c, l == editorView.layer)
+    }
+
+    private fun refreshHistory() {
+        btnUndo.alpha = if (editorView.canUndo) 1f else 0.35f
+        btnRedo.alpha = if (editorView.canRedo) 1f else 0.35f
+        styleChip(btnGrid, editorView.showGrid)
+    }
+
+    private fun refreshPalette() {
+        edPalette.removeAllViews()
+        paletteViews.clear()
+        val layer = editorView.layer
+        val items: List<Pair<Int, String>> = when (layer) {
+            MapEditorView.L_FLOOR -> MT.floors.map { it.id to it.name }
+            MapEditorView.L_WALL -> MT.walls.map { it.id to it.name }
+            MapEditorView.L_PROP -> MT.props.map { it.id to it.name }
+            else -> (0..3).map { it to MapEditorView.entNames[it] }
+        }
+        for ((id, name) in items) {
+            val box = LinearLayout(this)
+            box.orientation = LinearLayout.VERTICAL
+            box.gravity = Gravity.CENTER_HORIZONTAL
+            box.setPadding(dp(3), dp(3), dp(3), dp(3))
+            val iv = ImageView(this)
+            iv.setImageBitmap(Bitmap.createScaledBitmap(MapEditorView.preview(layer, id), dp(40), dp(40), false))
+            val tv = TextView(this)
+            tv.text = name
+            tv.textSize = 9f
+            tv.maxLines = 2
+            tv.gravity = Gravity.CENTER
+            tv.setTextColor(0xFFDDDDDD.toInt())
+            box.addView(iv, LinearLayout.LayoutParams(dp(40), dp(40)))
+            box.addView(tv, LinearLayout.LayoutParams(dp(58), ViewGroup.LayoutParams.WRAP_CONTENT))
+            box.setOnClickListener {
+                editorView.selected[layer] = id
+                refreshPaletteSelection()
+            }
+            val lp = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT)
+            lp.setMargins(dp(2), 0, dp(2), 0)
+            edPalette.addView(box, lp)
+            paletteViews.add(id to box)
+        }
+        refreshPaletteSelection()
+    }
+
+    private fun refreshPaletteSelection() {
+        val cur = editorView.selected[editorView.layer]
+        for ((id, v) in paletteViews) {
+            if (id == cur) {
+                val bg = GradientDrawable()
+                bg.cornerRadius = dp(8).toFloat()
+                bg.setColor(0x33FFC107)
+                bg.setStroke(dp(2), 0xFFFFC107.toInt())
+                v.background = bg
+            } else {
+                v.background = null
+            }
+        }
     }
 
     private fun show(target: View) {
@@ -245,6 +670,8 @@ class MainActivity : AppCompatActivity() {
         classLayout.visibility = View.GONE
         gameContainer.visibility = View.GONE
         configLayout.visibility = View.GONE
+        mapListLayout.visibility = View.GONE
+        editorLayout.visibility = View.GONE
         // novidades fica por cima se necessário
         target.visibility = View.VISIBLE
         if (target != gameContainer) {
@@ -255,6 +682,7 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         gameView.stopGame()
+        if (editorLayout.visibility == View.VISIBLE) saveEditing()
     }
 
     override fun onResume() {
@@ -288,6 +716,43 @@ class ClasseAdapter(
         bg.setColor(c.cor)
         holder.cor.background = bg
         holder.itemView.setOnClickListener { onClick(c) }
+    }
+
+    override fun getItemCount() = list.size
+}
+
+class ListItem(val id: String?, val nome: String, val desc: String, val cor: Int)
+
+class MapListAdapter(
+    private val list: List<ListItem>,
+    private val onClick: (ListItem) -> Unit,
+    private val onLong: (ListItem) -> Unit
+) : RecyclerView.Adapter<MapListAdapter.VH>() {
+
+    class VH(view: View) : RecyclerView.ViewHolder(view) {
+        val cor: View = view.findViewById(R.id.corClasse)
+        val nome: TextView = view.findViewById(R.id.tvNomeClasse)
+        val desc: TextView = view.findViewById(R.id.tvDescClasse)
+    }
+
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_classe, parent, false)
+        return VH(v)
+    }
+
+    override fun onBindViewHolder(holder: VH, position: Int) {
+        val item = list[position]
+        holder.nome.text = item.nome
+        holder.desc.text = item.desc
+        val bg = GradientDrawable()
+        bg.shape = GradientDrawable.OVAL
+        bg.setColor(item.cor)
+        holder.cor.background = bg
+        holder.itemView.setOnClickListener { onClick(item) }
+        holder.itemView.setOnLongClickListener {
+            onLong(item)
+            true
+        }
     }
 
     override fun getItemCount() = list.size

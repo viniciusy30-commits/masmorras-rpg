@@ -1,4 +1,13 @@
-#id 2026-10-24-i
+#id 2026-10-24-j
+#titulo Editor de mapas
+- Novo botão "Editor de mapas" no menu: monte seus próprios mapas dentro do jogo
+- Pincel, retângulo, balde, borracha, desfazer/refazer, zoom com dois dedos
+- Chão, paredes, objetos (caixote, barril, pilar, braseiro...) e entidades (início, inimigos, chefe)
+- Botão "Testar" joga o mapa na hora; depois volta para o editor
+- Em "Jogar" agora você escolhe entre o mundo aberto e seus mapas
+- Texturas de teste no estilo Minecraft Dungeons (troque por PNGs em assets/tiles)
+- Botão ✕ para sair da partida
+
 #titulo Câmera e animações estilo Minecraft Dungeons
 - Câmera com look-ahead na direção do movimento (como em Dungeons)
 - Framing do herói mais baixo na tela e spring suave (não trava no personagem)
