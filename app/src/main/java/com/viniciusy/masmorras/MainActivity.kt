@@ -587,13 +587,13 @@ class MainActivity : AppCompatActivity() {
         tv.setTextColor(if (selected) Ui.INK else 0xFFFFFFFF.toInt())
     }
 
-    private fun chip(text: String, w: Int, h: Int, size: Float, onClick: () -> Unit): TextView {
+    private fun chip(text: String, w: Int, h: Int, size: Float, pad: Int = 8, onClick: () -> Unit): TextView {
         val tv = TextView(this)
         tv.text = text
         tv.textSize = size
         tv.gravity = Gravity.CENTER
         tv.setTypeface(tv.typeface, android.graphics.Typeface.BOLD)
-        tv.setPadding(dp(8), 0, dp(8), 0)
+        tv.setPadding(dp(pad), 0, dp(pad), 0)
         tv.isClickable = true
         tv.setOnClickListener { onClick() }
         styleChip(tv, false)
@@ -673,20 +673,32 @@ class MainActivity : AppCompatActivity() {
             MapEditorView.L_FLOOR to "Chão",
             MapEditorView.L_WALL to "Paredes",
             MapEditorView.L_PROP to "Objetos",
-            MapEditorView.L_ENT to "Entidades",
-            MapEditorView.L_HOUSE to "Casas"
+            MapEditorView.L_ENT to "Entid.",
+            MapEditorView.L_HOUSE to "Casas",
+            MapEditorView.L_TERRAIN to "Relevo",
+            MapEditorView.L_BRIDGE to "Pontes",
+            MapEditorView.L_BUILD to "Obra"
         )
         for (rowIdx in 0..1) {
             val row = LinearLayout(this)
             row.orientation = LinearLayout.HORIZONTAL
-            for (colIdx in 0..2) {
-                val k = rowIdx * 3 + colIdx
+            for (colIdx in 0..3) {
+                val k = rowIdx * 4 + colIdx
                 if (k >= tabs.size) break
                 val (l, name) = tabs[k]
-                val c = chip(name, 66, 32, 10f) {
+                val c = chip(name, 58, 32, 9.5f, 4) {
                     editorView.layer = l
+                    if (l == MapEditorView.L_BUILD && (editorView.tool == MapEditorView.T_BRUSH || editorView.tool == MapEditorView.T_LINE || editorView.tool == MapEditorView.T_FILL)) {
+                        editorView.tool = MapEditorView.T_RECT
+                    }
+                    when (l) {
+                        MapEditorView.L_BUILD -> Toast.makeText(this, "Arraste uma área no mapa para construir o cômodo", Toast.LENGTH_SHORT).show()
+                        MapEditorView.L_TERRAIN -> Toast.makeText(this, "Rampa: pincel (arraste na direção) ou retângulo (rampa comprida)", Toast.LENGTH_SHORT).show()
+                        MapEditorView.L_BRIDGE -> Toast.makeText(this, "Use a Linha para esticar a ponte sobre a água", Toast.LENGTH_SHORT).show()
+                    }
                     refreshTabs()
                     refreshPalette()
+                    refreshTools()
                 }
                 tabChips.add(l to c)
                 row.addView(c)
@@ -750,10 +762,34 @@ class MainActivity : AppCompatActivity() {
         val items: List<Pair<Int, String>> = when (layer) {
             MapEditorView.L_FLOOR -> MT.floors.map { it.id to it.name }
             MapEditorView.L_WALL -> MT.walls.map { it.id to it.name }
-            MapEditorView.L_PROP -> MT.props.map { it.id to it.name }
+            MapEditorView.L_PROP -> MT.props.filter { propCatIdx == 0 || MT.propCat(it.id) == propCatIdx }.map { it.id to it.name }
             MapEditorView.L_HOUSE -> Houses.list.map { it.id to it.name }
+            MapEditorView.L_TERRAIN -> MapEditorView.terrainItems
+            MapEditorView.L_BRIDGE -> MT.bridgeNames
+            MapEditorView.L_BUILD -> emptyList()
             else -> (0..3).map { it to MapEditorView.entNames[it] }
         }
+        if (layer == MapEditorView.L_PROP) {
+            val ctrl = LinearLayout(this)
+            ctrl.orientation = LinearLayout.VERTICAL
+            ctrl.gravity = Gravity.CENTER_VERTICAL
+            val cc = ctrlChip(112, { "Tipo: " + MT.propCats[propCatIdx] }) {
+                propCatIdx = (propCatIdx + 1) % MT.propCats.size
+                refreshPalette()
+            }
+            ctrl.addView(cc)
+            edPalette.addView(ctrl, LinearLayout.LayoutParams(dp(116), ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        if (layer == MapEditorView.L_TERRAIN) {
+            val ctrl = LinearLayout(this)
+            ctrl.orientation = LinearLayout.VERTICAL
+            ctrl.gravity = Gravity.CENTER_VERTICAL
+            ctrl.addView(ctrlChip(112, { "Colina: altura " + editorView.hillPeak }) {
+                editorView.hillPeak = editorView.hillPeak % 4 + 1
+            })
+            edPalette.addView(ctrl, LinearLayout.LayoutParams(dp(116), ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        if (layer == MapEditorView.L_BUILD) addBuildControls()
         if (layer == MapEditorView.L_WALL) {
             // controles de empilhar: altura e material dos andares de cima
             val ctrl = LinearLayout(this)
@@ -811,6 +847,81 @@ class MainActivity : AppCompatActivity() {
             paletteViews.add(id to box)
         }
         refreshPaletteSelection()
+    }
+
+    private var propCatIdx = 0
+
+
+    /** Botão de controle que muda de valor a cada toque; o texto vem de label(). */
+    private fun ctrlChip(w: Int, label: () -> String, onTap: () -> Unit): TextView {
+        lateinit var c: TextView
+        c = chip(label(), w, 32, 10f, 4) {
+            onTap()
+            c.text = label()
+        }
+        styleChip(c, true)
+        return c
+    }
+
+    /** Controles da aba Obra: arraste uma área no mapa e o cômodo é construído com estas opções. */
+    private fun addBuildControls() {
+        val o = editorView.buildOpts
+        val w = 138
+        fun col(a: TextView, b: TextView) {
+            val ctrl = LinearLayout(this)
+            ctrl.orientation = LinearLayout.VERTICAL
+            ctrl.gravity = Gravity.CENTER_VERTICAL
+            ctrl.addView(a)
+            ctrl.addView(b)
+            edPalette.addView(ctrl, LinearLayout.LayoutParams(dp(w + 6), ViewGroup.LayoutParams.WRAP_CONTENT))
+        }
+        val capIds = MT.capChoices
+        lateinit var capChip: TextView
+        lateinit var storeyChip: TextView
+        val wallChip = ctrlChip(w, { "Parede: " + (MT.wallDef(o.wall)?.name ?: "?") }) {
+            val i = RoomBuilder.wallChoices.indexOf(o.wall)
+            o.wall = RoomBuilder.wallChoices[(i + 1) % RoomBuilder.wallChoices.size]
+        }
+        val floorChip = ctrlChip(w, { "Piso: " + MT.floorDef(o.floor).name }) {
+
+            val i = RoomBuilder.floorChoices.indexOf(o.floor)
+            o.floor = RoomBuilder.floorChoices[(i + 1) % RoomBuilder.floorChoices.size]
+        }
+        storeyChip = ctrlChip(w, { "Andares: " + o.storeys }) {
+            o.storeys = o.storeys % 4 + 1
+            if (o.storeys < 2) o.cap = 0
+            capChip.text = "Topo: " + (if (o.cap == 0) "nenhum" else (MT.wallDef(o.cap)?.name ?: "?"))
+        }
+        capChip = ctrlChip(w, { "Topo: " + (if (o.cap == 0) "nenhum" else (MT.wallDef(o.cap)?.name ?: "?")) }) {
+            val i = capIds.indexOf(o.cap)
+            o.cap = capIds[(i + 1) % capIds.size]
+            if (o.cap != 0 && o.storeys < 2) o.storeys = 2
+            storeyChip.text = "Andares: " + o.storeys
+        }
+        val doorChip = ctrlChip(w, { "Porta: " + RoomBuilder.doorNames[o.door] }) {
+            o.door = (o.door + 1) % RoomBuilder.doorNames.size
+        }
+        val winChip = ctrlChip(w, { "Janelas: " + RoomBuilder.windowNames[o.window] }) {
+            o.window = (o.window + 1) % RoomBuilder.windowNames.size
+        }
+        val sideChip = ctrlChip(w, { "Lado da porta: " + RoomBuilder.sideNames[o.side] }) {
+            o.side = (o.side + 1) % RoomBuilder.sideNames.size
+        }
+        val furnChip = ctrlChip(w, { "Móveis: " + RoomBuilder.furnNames[o.furn] }) {
+            o.furn = (o.furn + 1) % RoomBuilder.furnNames.size
+        }
+        val kindChip = ctrlChip(w, { "Tipo: " + (if (o.solid) "maciça (cenário)" else "aberta (entrar)") }) {
+            o.solid = !o.solid
+        }
+        val porchChip = ctrlChip(w, { "Entrada: " + (if (o.porch) "caminho e lampião" else "simples") }) {
+            o.porch = !o.porch
+        }
+
+        col(wallChip, floorChip)
+        col(storeyChip, capChip)
+        col(doorChip, winChip)
+        col(sideChip, furnChip)
+        col(kindChip, porchChip)
     }
 
     private fun refreshPaletteSelection() {

@@ -20,6 +20,7 @@ class CustomMap(private val data: MapData) : GameMap {
     private val bmpPaint = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
     private val src = Rect(0, 0, MapTex.TS, MapTex.TS)
     private val dst = RectF()
+    private val srcR = Rect()
 
     /** Portas animadas: abertura 0..1 por célula. Só portas de ferro/portão bloqueiam enquanto fechadas. */
     private val doorOpen = FloatArray(width * height)
@@ -27,7 +28,7 @@ class CustomMap(private val data: MapData) : GameMap {
 
     init {
         for (i in solid.indices) {
-            solid[i] = MT.solidFloor(data.floor[i]) || MT.solidObj(data.obj[i])
+            solid[i] = (MT.solidFloor(data.floor[i]) && data.bridge[i] == 0) || MT.solidObj(data.obj[i])
             if (MT.isDoor(data.obj[i])) doorCells.add(i)
         }
         spawnCell = findFree(data.spawnX, data.spawnY)
@@ -56,7 +57,34 @@ class CustomMap(private val data: MapData) : GameMap {
         return (h xor (h ushr 16)) and 0x7FFFFFFF
     }
 
-    override fun heightAt(wx: Float, wy: Float): Float = 0f
+    /** Altura do terreno (px) sob o ponto: níveis de relevo e rampas inclinadas. */
+    override fun heightAt(wx: Float, wy: Float): Float {
+        if (wx < 0f || wy < 0f) return 0f
+        val tx = (wx / ts).toInt()
+        val ty = (wy / ts).toInt()
+        if (tx >= width || ty >= height) return 0f
+        return data.surfaceZ(tx, ty, wx / ts - tx, wy / ts - ty)
+    }
+
+    /** Altura (px) em que objetos e paredes da célula ficam apoiados. */
+    private fun cellZ(i: Int): Float {
+        val e = data.elev[i]
+        return MT.level(e) * MT.EH + (if (MT.ramp(e) != 0) MT.EH * 0.5f else 0f)
+    }
+
+    private fun bridgeAt(x: Int, y: Int): Boolean = x in 0 until width && y in 0 until height && data.bridge[y * width + x] != 0
+
+    /** Ponte na vertical (norte-sul)? Segue as pontes vizinhas; sozinha, atravessa o rio. */
+    private fun bridgeVertical(x: Int, y: Int): Boolean {
+
+        val v = bridgeAt(x, y - 1) || bridgeAt(x, y + 1)
+        val hz = bridgeAt(x - 1, y) || bridgeAt(x + 1, y)
+        if (v && !hz) return true
+        if (hz) return false
+        val ns = isLiquid(floorAt(x, y - 1)) || isLiquid(floorAt(x, y + 1)) || floorAt(x, y - 1) == MT.F_VOID || floorAt(x, y + 1) == MT.F_VOID
+        val ew = isLiquid(floorAt(x - 1, y)) || isLiquid(floorAt(x + 1, y)) || floorAt(x - 1, y) == MT.F_VOID || floorAt(x + 1, y) == MT.F_VOID
+        return ew && !ns
+    }
 
     override fun isWall(wx: Float, wy: Float): Boolean {
         if (wx < 0f || wy < 0f) return true
@@ -64,7 +92,7 @@ class CustomMap(private val data: MapData) : GameMap {
         val ty = (wy / ts).toInt()
         if (tx >= width || ty >= height) return true
         val i = ty * width + tx
-        if (MT.isLockedDoor(data.obj[i]) && !MT.solidFloor(data.floor[i])) return doorOpen[i] < 0.8f
+        if (MT.isLockedDoor(data.obj[i]) && (!MT.solidFloor(data.floor[i]) || data.bridge[i] != 0)) return doorOpen[i] < 0.8f
         return solid[i]
     }
 
@@ -99,7 +127,11 @@ class CustomMap(private val data: MapData) : GameMap {
         for (e in data.ents) {
             if (!data.inB(e.x, e.y)) continue
             if (solid[e.y * width + e.x]) continue
-            list.add(Enemy((e.x + 0.5f) * ts, (e.y + 0.5f) * ts, e.type.coerceIn(0, 2)))
+            val en = Enemy((e.x + 0.5f) * ts, (e.y + 0.5f) * ts, e.type.coerceIn(0, 2))
+            en.ground = heightAt(en.x, en.y)
+            en.alt = en.ground
+
+            list.add(en)
         }
         return list
     }
@@ -206,6 +238,9 @@ class CustomMap(private val data: MapData) : GameMap {
                 paint.color = 0x22000000
                 canvas.drawRect(x, y + 8f, x + ts, y + 18f, paint)
             }
+            // pontes por cima do chão (água, lava, vazio)
+            val br = data.bridge[ty * width + tx]
+            if (br != 0) canvas.drawBitmap(MapTex.bridge(br, bridgeVertical(tx, ty)), x, y, bmpPaint)
         }
     }
 
@@ -214,9 +249,14 @@ class CustomMap(private val data: MapData) : GameMap {
         val sx = (camX / ts).toInt().coerceAtLeast(0)
         val ex = ((camX + viewW) / ts).toInt().coerceAtMost(width - 1)
         val t = VoxelArt.time
+        // terreno elevado desta fileira (topo + face do penhasco), na ordem de profundidade
+        for (tx in sx..ex) {
+            if (data.elev[ty * width + tx] != 0) drawTerrain(canvas, paint, tx, ty, camX, camY, t)
+        }
         for (tx in sx..ex) {
             val o = data.obj[ty * width + tx]
             if (o == 0) continue
+            val z = cellZ(ty * width + tx)
             val x = Math.round(tx * ts - camX).toFloat()
             if (MT.isWall(o)) {
                 val def = MT.wallDef(o) ?: continue
@@ -225,12 +265,12 @@ class CustomMap(private val data: MapData) : GameMap {
                 val capDef = if (data.cap[ty * width + tx] != 0) MT.wallDef(data.cap[ty * width + tx]) else null
                 val frame = if (MT.isDoor(o)) Math.round(doorOpen[ty * width + tx] * 3f).coerceIn(0, 3) else 0
                 val bmp = MapTex.wall(def, gm and 15, hg, gm shr 4, capDef, frame)
-                val wy = Math.round(ty * ts - hg * MapTex.WALL_H - camY).toFloat()
+                val wy = Math.round(ty * ts - hg * MapTex.WALL_H - camY - z).toFloat()
                 canvas.drawBitmap(bmp, x, wy, bmpPaint)
                 if (o == MT.W_CHIMNEY) smoke(canvas, paint, x + 32f, wy + 30f, t, tx * 7 + ty)
             } else {
                 val bmp = PropArt.get(o, t + hash(tx, ty) % 7 * 0.13f)
-                val y = Math.round((ty + 1) * ts - PropArt.H - camY).toFloat()
+                val y = Math.round((ty + 1) * ts - PropArt.H - camY - z).toFloat()
                 canvas.drawBitmap(bmp, x, y, bmpPaint)
                 val g = MT.glows[o]
                 if (g != null) {
@@ -247,6 +287,99 @@ class CustomMap(private val data: MapData) : GameMap {
                     canvas.drawCircle(cx, cy, r * 0.3f, paint)
                 }
             }
+        }
+    }
+
+    /** Topo (plano ou rampa inclinada) e face de penhasco de uma célula com relevo. */
+    private fun drawTerrain(canvas: Canvas, paint: Paint, tx: Int, ty: Int, camX: Float, camY: Float, t: Float) {
+        val i = ty * width + tx
+        val e = data.elev[i]
+        val rp = MT.ramp(e)
+        val def = MT.floorDef(data.floor[i])
+        val tile = MapTex.tile(def, hash(tx, ty) and 3, t)
+        val x = Math.round(tx * ts - camX).toFloat()
+        val y0 = ty * ts - camY
+        val base = MT.level(e) * MT.EH
+        val tsi = MapTex.TS
+
+        if (rp == 0) {
+            val top = Math.round(y0 - base).toFloat()
+            dst.set(x, top, x + ts + 1f, top + ts + 1f)
+            canvas.drawBitmap(tile, src, dst, bmpPaint)
+            paint.style = Paint.Style.FILL
+            if (data.levelAt(tx, ty - 1) < MT.level(e)) {
+                paint.color = 0x30FFFFFF
+                canvas.drawRect(x, top, x + ts, top + 2f, paint)
+            }
+            if (data.levelAt(tx - 1, ty) < MT.level(e) && data.elev[i] != 0) {
+                paint.color = 0x30000000
+                canvas.drawRect(x, top, x + 2f, top + ts, paint)
+            }
+            if (data.levelAt(tx + 1, ty) < MT.level(e)) {
+                paint.color = 0x30000000
+                canvas.drawRect(x + ts - 2f, top, x + ts, top + ts, paint)
+            }
+        } else if (rp == 1 || rp == 3) {
+            // rampa para norte/sul: faixas horizontais, cada uma mais alta que a anterior
+            val n = 8
+            val step = tsi / n
+            for (k in 0 until n) {
+                val v0 = k / n.toFloat()
+                val v1 = (k + 1) / n.toFloat()
+                val za = base + (if (rp == 1) 1f - v0 else v0) * MT.EH
+                val zb = base + (if (rp == 1) 1f - v1 else v1) * MT.EH
+                val ta = Math.round(y0 + v0 * ts - za).toFloat()
+                val tb = Math.round(y0 + v1 * ts - zb).toFloat() + 1f
+                srcR.set(0, k * step, tsi, (k + 1) * step)
+                dst.set(x, ta, x + ts + 1f, maxOf(tb, ta + 1f))
+                canvas.drawBitmap(tile, srcR, dst, bmpPaint)
+            }
+
+        } else {
+            // rampa para leste/oeste: colunas finas com alturas diferentes
+            val n = 16
+            val step = tsi / n
+            for (k in 0 until n) {
+                val uc = (k + 0.5f) / n
+                val z = base + (if (rp == 2) uc else 1f - uc) * MT.EH
+                val top = Math.round(y0 - z).toFloat()
+                srcR.set(k * step, 0, (k + 1) * step, tsi)
+                dst.set(x + k * step, top, x + (k + 1) * step + 1f, top + ts + 1f)
+                canvas.drawBitmap(tile, srcR, dst, bmpPaint)
+            }
+        }
+        // face de penhasco na borda sul, onde o vizinho é mais baixo
+        val cliff = MapTex.cliff(def)
+        val yS = (ty + 1) * ts - camY
+        paint.style = Paint.Style.FILL
+        for (k in 0 until 8) {
+            val u = (k + 0.5f) / 8f
+            val zs = data.surfaceZ(tx, ty, u, 1f)
+            val zn = data.surfaceZ(tx, ty + 1, u, 0f)
+            if (zs - zn < 0.5f) continue
+            val tp = Math.round(yS - zs)
+            val bt = Math.round(yS - zn)
+            if (bt <= tp) continue
+            val cx = x + k * 8f
+            val sxp = k * 8
+            val topPart = minOf(bt - tp, MapTex.CLIFF_TOP)
+            srcR.set(sxp, 0, sxp + 8, topPart)
+            dst.set(cx, tp.toFloat(), cx + 9f, (tp + topPart).toFloat())
+            canvas.drawBitmap(cliff, srcR, dst, bmpPaint)
+            var yy = tp + topPart
+
+            val bodyH = MapTex.CLIFF_H - MapTex.CLIFF_TOP
+            while (yy < bt) {
+                val seg = minOf(bodyH, bt - yy)
+                srcR.set(sxp, MapTex.CLIFF_TOP, sxp + 8, MapTex.CLIFF_TOP + seg)
+                dst.set(cx, yy.toFloat(), cx + 9f, (yy + seg).toFloat())
+                canvas.drawBitmap(cliff, srcR, dst, bmpPaint)
+                yy += seg
+            }
+            paint.color = 0x40000000
+            canvas.drawRect(cx, (bt - 4).toFloat(), cx + 9f, bt.toFloat(), paint)
+            paint.color = 0x30000000
+            canvas.drawRect(cx, bt.toFloat(), cx + 9f, bt + 9f, paint)
         }
     }
 

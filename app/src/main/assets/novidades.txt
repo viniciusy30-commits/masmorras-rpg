@@ -1,3 +1,14 @@
+#id 2026-10-26-i
+#titulo Editor de mapas: relevo, pontes, obras e móveis
+- Nova aba Relevo: suba e baixe o terreno em níveis (até 6), faça rampas nas 4 direções (pincel ou retângulo para rampa comprida) e colinas prontas com rampas em volta; o balde nivela áreas
+- O herói e os inimigos sobem as rampas e não atravessam penhascos. Penhascos e rampas aparecem na ordem certa, escondendo o que está atrás
+- Nova aba Pontes: ponte de madeira, de pedra e passarela de cordas sobre água, lava ou vazio (use a Linha para esticar); dá para atravessar andando
+- Nova aba Obra: arraste uma área e o cômodo é construído sozinho, com escolha de parede, piso, andares, telhado, porta, janelas, lado da porta, caminho com lampiões na entrada e construção maciça (cenário)
+- Móveis automáticos na Obra: quarto, sala, cozinha, biblioteca, banheiro, taverna, armazém, sala de música e ferraria, já arrumados conforme o lado da porta
+- 16 móveis novos, vários animados: sofá, cama de casal, balcão de cozinha, piano, escrivaninha, espelho, relógio de pé, banheira, cômoda, banquinho, abajur, planta em vaso, aquário, cavalete, harpa e pia
+- A paleta de objetos ganhou o botão Tipo para filtrar por categoria (casa, cozinha e banho, natureza, masmorra, magia e luz, cenário)
+- Mapas antigos continuam funcionando
+
 #id 2026-10-26-h
 #titulo Editor de mapas: construções de verdade
 - Paredes empilháveis: escolha "Andares" (1 a 4) na aba Paredes e o botão "Topo" para trocar o material dos andares de cima (ex.: casa de pedra com telhado por cima)

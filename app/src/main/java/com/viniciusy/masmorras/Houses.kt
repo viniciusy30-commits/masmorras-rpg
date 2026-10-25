@@ -6,6 +6,9 @@ class Template(val w: Int, val h: Int) {
     val obj = IntArray(w * h) { -1 }
     val hgt = IntArray(w * h)
     val cap = IntArray(w * h)
+    /** Relevo e ponte copiados (-1 = não mexe). Casas prontas deixam em -1. */
+    val elev = IntArray(w * h) { -1 }
+    val bridge = IntArray(w * h) { -1 }
 
     fun fl(x: Int, y: Int, v: Int) { if (x in 0 until w && y in 0 until h) floor[y * w + x] = v }
     fun ob(x: Int, y: Int, v: Int) { if (x in 0 until w && y in 0 until h) obj[y * w + x] = v }

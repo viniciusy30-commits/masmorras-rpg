@@ -137,6 +137,7 @@ class GameView @JvmOverloads constructor(
         val (sx, sy) = map.getPlayerSpawn()
         map.prewarm(sx, sy)
         player = Player(sx, sy, classe)
+        player?.let { it.ground = map.heightAt(sx, sy); it.alt = it.ground }
         enemies.clear()
         projectiles.clear()
         thrown = null
@@ -552,6 +553,10 @@ class GameView @JvmOverloads constructor(
         burst(p.x + p.facingX * 40f, p.y + p.facingY * 40f, 14, 0xFFFFD54F.toInt())
     }
 
+    /** Inimigos também não sobem penhascos: o degrau máximo é meio nível de relevo. */
+    private fun enemyBlocked(x: Float, y: Float, r: Float, alt: Float): Boolean =
+        blockedAt(x, y, r) || map.heightAt(x, y) > alt + TileMap.LEVEL_PX * 0.55f
+
     private fun blockedAt(x: Float, y: Float, r: Float): Boolean =
         map.isWall(x, y) || map.isWall(x + r, y) || map.isWall(x - r, y) ||
             map.isWall(x, y + r) || map.isWall(x, y - r)
@@ -703,11 +708,11 @@ class GameView @JvmOverloads constructor(
             val oy = e.y
             e.update(dt, p)
             val rr = e.radius * 0.55f
-            if (blockedAt(e.x, e.y, rr)) {
+            if (enemyBlocked(e.x, e.y, rr, e.alt)) {
                 val nx = e.x
                 val ny = e.y
-                e.x = if (!blockedAt(nx, oy, rr)) nx else ox
-                e.y = if (!blockedAt(e.x, ny, rr)) ny else oy
+                e.x = if (!enemyBlocked(nx, oy, rr, e.alt)) nx else ox
+                e.y = if (!enemyBlocked(e.x, ny, rr, e.alt)) ny else oy
             }
             if (map.inSafeZone(e.x, e.y) && !map.inSafeZone(ox, oy)) { e.x = ox; e.y = oy }
             e.ground = map.heightAt(e.x, e.y)
@@ -844,7 +849,7 @@ class GameView @JvmOverloads constructor(
         }
 
         player?.let { p ->
-            if (p.alive && map.isWall(p.x, p.y + map.tileSize * 0.9f)) {
+            if (p.alive && (map.isWall(p.x, p.y + map.tileSize * 0.9f) || map.heightAt(p.x, p.y + map.tileSize * 0.9f) > p.alt + 30f)) {
                 val sx = p.x - camX
                 val sy = p.y - camY
                 val layer = canvas.saveLayerAlpha(sx - 70f, sy - 100f, sx + 70f, sy + 60f, 110)

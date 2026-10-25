@@ -168,6 +168,24 @@ object MT {
     const val P_KEG = 100
     const val P_TOTEM = 101
 
+    // móveis
+    const val P_SOFA = 140
+    const val P_BIGBED = 141
+    const val P_COUNTER = 142
+    const val P_PIANO = 143
+    const val P_DESK = 144
+    const val P_MIRROR = 145
+    const val P_CLOCK = 146
+    const val P_BATHTUB = 147
+    const val P_DRESSER = 148
+    const val P_STOOL = 149
+    const val P_FLOORLAMP = 150
+    const val P_PLANTPOT = 151
+    const val P_AQUARIUM = 152
+    const val P_EASEL = 153
+    const val P_HARP = 154
+    const val P_SINK = 155
+
     /** file = nome em assets/tiles/<file>.png. Texturas animadas são tiras horizontais com `frames` quadros. */
     class Def(val id: Int, val name: String, val file: String, val vary: Boolean = false, val frames: Int = 1, val fps: Float = 8f)
 
@@ -322,11 +340,66 @@ object MT {
         Def(P_LANTERN, "Lanterna", "prop_lantern", false, 6, 9f),
         Def(P_SCARECROW, "Espantalho", "prop_scarecrow", false, 4, 3f),
         Def(P_KEG, "Tonel", "prop_keg", false, 6, 6f),
-        Def(P_TOTEM, "Totem", "prop_totem")
+        Def(P_TOTEM, "Totem", "prop_totem"),
+        Def(P_SOFA, "Sofá", "prop_sofa"),
+        Def(P_BIGBED, "Cama de casal", "prop_bigbed"),
+        Def(P_COUNTER, "Balcão de cozinha", "prop_counter"),
+        Def(P_PIANO, "Piano", "prop_piano"),
+        Def(P_DESK, "Escrivaninha", "prop_desk"),
+        Def(P_MIRROR, "Espelho", "prop_mirror", false, 6, 4f),
+        Def(P_CLOCK, "Relógio de pé", "prop_clock", false, 4, 3f),
+        Def(P_BATHTUB, "Banheira", "prop_bathtub", false, 4, 3f),
+        Def(P_DRESSER, "Cômoda", "prop_dresser"),
+        Def(P_STOOL, "Banquinho", "prop_stool"),
+        Def(P_FLOORLAMP, "Abajur", "prop_floorlamp", false, 6, 8f),
+        Def(P_PLANTPOT, "Planta em vaso", "prop_plantpot", false, 4, 3f),
+        Def(P_AQUARIUM, "Aquário", "prop_aquarium", false, 6, 5f),
+        Def(P_EASEL, "Cavalete", "prop_easel"),
+        Def(P_HARP, "Harpa", "prop_harp", false, 4, 4f),
+        Def(P_SINK, "Pia", "prop_sink", false, 4, 4f)
     )
 
     /** Materiais que o botão "Topo" do editor alterna (andares de cima das paredes). */
     val capChoices = listOf(0, W_ROOF_RED, W_ROOF_SLATE, W_THATCH, W_ROOF_GREEN, W_ROOF_BLUE, W_ROOF_SHINGLE, W_ROOF_PLUM, W_STONE, W_BRICK, W_CASTLE, W_MARBLE, W_HOUSE, W_TIMBER, W_WOOD, W_CHIMNEY)
+
+    // ---- relevo e pontes
+    /** Altura em pixels de um nível de relevo (igual ao degrau de pulo do herói). */
+
+    const val EH = 26f
+    const val MAX_LEVEL = 6
+    const val B_WOOD = 1
+    const val B_STONE = 2
+    const val B_WALK = 3
+    val bridgeNames = listOf(B_WOOD to "Ponte de madeira", B_STONE to "Ponte de pedra", B_WALK to "Passarela de cordas")
+
+    /** Valor guardado no mapa de relevo: bits 0..2 = nível (0..6), bits 3..5 = rampa (0 nenhuma, 1..4 = sobe para N, L, S, O). */
+    fun level(v: Int) = v and 7
+    fun ramp(v: Int) = v shr 3
+    fun elevOf(level: Int, ramp: Int) = (level.coerceIn(0, MAX_LEVEL)) or (ramp.coerceIn(0, 4) shl 3)
+
+    // ---- categorias da paleta de objetos
+    val propCats = listOf("Todos", "Casa", "Cozinha e banho", "Natureza", "Masmorra", "Magia e luz", "Cenário")
+
+    private val catHome = setOf(P_BED, P_TABLE, P_CHAIR, P_SHELF, P_WARDROBE, P_FIREPLACE, P_VASE, P_BENCH, P_CHANDELIER, P_CANDLES,
+        P_SOFA, P_BIGBED, P_PIANO, P_DESK, P_MIRROR, P_CLOCK, P_DRESSER, P_STOOL, P_FLOORLAMP, P_PLANTPOT, P_AQUARIUM, P_EASEL, P_HARP, P_THRONE)
+    private val catKitchen = setOf(P_COUNTER, P_SINK, P_BATHTUB, P_STOVE, P_BARREL, P_KEG, P_CRATE, P_SACKS, P_CAULDRON, P_FIREWOOD)
+    private val catNature = setOf(P_TREE, P_PINE, P_DEADTREE, P_BUSH, P_TUFT, P_ROCK, P_BIRCH, P_AUTUMN, P_CHERRY, P_PALM, P_CACTUS, P_TALLGRASS,
+        P_REEDS, P_LILYPAD, P_BIGMUSH, P_LOG, P_STUMP, P_BOULDER, P_SNOWMAN, P_SNOWPINE, P_PUMPKINS, P_SUNFLOWERS, P_WHEAT, P_MUSHROOM, P_HAY)
+    private val catDungeon = setOf(P_BONES, P_SKULLS, P_WEB, P_TOMB, P_SARCOPHAGUS, P_CAGE, P_SPIKETRAP, P_GARGOYLE, P_TREASURE, P_CHEST, P_STATUE,
+        P_PILLAR, P_WEAPONRACK, P_ARMORSTAND, P_DUMMY, P_ANVIL, P_FORGE, P_ALTAR)
+    private val catMagic = setOf(P_TORCH, P_LAMP, P_BRAZIER, P_CAMPFIRE, P_LANTERN, P_CRYSTAL_B, P_CRYSTAL_R, P_PORTAL, P_ALCHEMY, P_CRYSTALBALL,
+        P_MAGICCIRCLE, P_BANNER, P_TOTEM)
+
+    /** Categoria (1..6) de um objeto; 6 = cenário (o resto). */
+    fun propCat(id: Int): Int = when (id) {
+        in catHome -> 1
+        in catKitchen -> 2
+        in catNature -> 3
+        in catDungeon -> 4
+        in catMagic -> 5
+
+        else -> 6
+    }
 
     fun floorDef(id: Int): Def = floors.firstOrNull { it.id == id } ?: floors[0]
     fun wallDef(id: Int): Def? = walls.firstOrNull { it.id == id }
@@ -355,7 +428,7 @@ object MT {
         P_ALTAR to Glow(0x60E0FF, 90f, 0.4f, 58f),
         P_STOVE to Glow(0xFF8030, 100f, 1f, 60f), P_CHANDELIER to Glow(0xFFC060, 130f, 0.8f, 30f), P_LANTERN to Glow(0xFFC060, 100f, 0.6f, 34f),
         P_CRYSTALBALL to Glow(0xA060FF, 90f, 0.4f, 50f), P_MAGICCIRCLE to Glow(0xB060FF, 100f, 0.4f, 70f), P_ALCHEMY to Glow(0x60FF80, 80f, 0.4f, 50f),
-        P_TREASURE to Glow(0xFFD060, 80f, 0.5f, 60f)
+        P_TREASURE to Glow(0xFFD060, 80f, 0.5f, 60f), P_FLOORLAMP to Glow(0xFFD890, 110f, 0.4f, 22f)
     )
 }
 
@@ -526,6 +599,148 @@ object MapTex {
     }
 
     fun isAnimated(def: MT.Def) = def.frames > 1
+
+    // ───────────── relevo: face do penhasco e pontes ─────────────
+
+    const val CLIFF_H = 24      // altura da textura da face (8 linhas de borda + 16 que repetem)
+    const val CLIFF_TOP = 8
+
+    private val cliffs = HashMap<String, Bitmap>()
+
+    /** Face de penhasco 64x24: linhas 0..7 = borda de cima (crosta do piso), 8..23 repetem na vertical. */
+    fun cliff(def: MT.Def): Bitmap = cliffs.getOrPut(def.file) { buildCliff(def) }
+
+    private fun avgColor(b: Bitmap): Int {
+        var r = 0
+        var g = 0
+        var bl = 0
+        var n = 0
+        for (j in 0 until 8) for (i in 0 until 8) {
+            val c = b.getPixel(i * b.width / 8, j * b.height / 8)
+            r += (c shr 16) and 255
+            g += (c shr 8) and 255
+            bl += c and 255
+            n++
+        }
+        return ((r / n) shl 16) or ((g / n) shl 8) or (bl / n)
+    }
+
+    private fun buildCliff(def: MT.Def): Bitmap {
+        val avg = avgColor(tile(def, 0))
+        val f = def.file
+        val earth = f.contains("grass") || f.contains("flowery") || f.contains("dry") || f.contains("dirt") || f.contains("mud") || f.contains("farm")
+        val body = when {
+            f.contains("sand") -> 0xB89A5C
+
+            f.contains("snow") || f.contains("ice") -> 0x9DB8D4
+            earth -> 0x6E5236
+            else -> sh(avg, 0.62f)
+        }
+        val a = IntArray(TS * CLIFF_H)
+        for (j in 0 until CLIFF_H) for (i in 0 until TS) {
+            var c = sh(body, 0.94f + (h(i, j, 321) % 13) / 100f)
+            if (earth) {
+                if ((j + (h(i / 6, 0, 322) % 3)) % 7 == 0) c = sh(c, 0.84f)
+                if (h(i, j, 323) % 31 == 0) c = sh(c, 1.25f)
+            } else {
+                val row = j / 8
+                val xo = (i + (if (row % 2 == 0) 0 else 16)) % 32
+                if (j % 8 == 0 || xo == 0) c = sh(c, 0.72f)
+                else if (j % 8 == 1) c = sh(c, 1.1f)
+            }
+            a[j * TS + i] = c or (0xFF shl 24)
+        }
+        // borda de cima: crosta com a cor do piso, irregular, e sombra logo abaixo
+        for (i in 0 until TS) {
+            val lip = 2 + h(i / 2, 0, 324) % 3
+            for (j in 0 until CLIFF_TOP) {
+                if (j < lip) a[j * TS + i] = sh(avg, if (j == 0) 1.1f else 0.9f) or (0xFF shl 24)
+                else if (j == lip) a[j * TS + i] = sh(body, 0.6f) or (0xFF shl 24)
+                else if (j == lip + 1) a[j * TS + i] = sh(body, 0.78f) or (0xFF shl 24)
+            }
+        }
+        return Bitmap.createBitmap(a, TS, CLIFF_H, Bitmap.Config.ARGB_8888)
+    }
+
+    private val bridges = HashMap<String, Bitmap>()
+
+
+    /** Ponte 64x64 vista de cima. vertical = atravessa de norte a sul. Frestas ficam transparentes (a água aparece). */
+    fun bridge(type: Int, vertical: Boolean): Bitmap = bridges.getOrPut("$type#$vertical") {
+        val hb = Bitmap.createBitmap(TS, TS, Bitmap.Config.ARGB_8888)
+        val c = Canvas(hb)
+        val p = Paint()
+        p.isAntiAlias = false
+        fun r(x0: Int, y0: Int, x1: Int, y1: Int, col: Int) {
+            p.color = col or (0xFF shl 24)
+            c.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), p)
+        }
+        fun ra(x0: Int, y0: Int, x1: Int, y1: Int, argb: Int) {
+            p.color = argb
+            c.drawRect(x0.toFloat(), y0.toFloat(), x1.toFloat(), y1.toFloat(), p)
+        }
+        when (type) {
+            MT.B_STONE -> {
+                ra(0, 14, TS, 62, 0x40000000)
+                for (y in 12 until 52) for (x in 0 until TS) {
+                    val row = (y - 12) / 8
+                    val xo = (x + (if (row % 2 == 0) 0 else 8)) % 16
+                    var col = sh(0x908C82, 0.94f + (h(x, y, 410) % 12) / 100f)
+                    if ((y - 12) % 8 == 0 || xo == 0) col = sh(0x5E5A53, 1f)
+                    else if ((y - 12) % 8 == 1) col = sh(col, 1.12f)
+                    hb.setPixel(x, y, col or (0xFF shl 24))
+                }
+                // mureta de trás
+                r(0, 4, TS, 12, 0xA29E94); r(0, 4, TS, 6, 0xC4C0B6); r(0, 11, TS, 12, 0x5E5A53)
+                // mureta da frente
+                r(0, 52, TS, 56, 0xC4C0B6); r(0, 56, TS, 62, 0x8E8A80); r(0, 61, TS, 62, 0x4F4C46)
+                for (x in 0 until TS step 16) {
+                    r(x, 2, x + 5, 12, 0xB5B1A6); r(x, 2, x + 5, 4, 0xD8D4CA)
+                    r(x, 50, x + 6, 62, 0xA8A49A); r(x, 50, x + 6, 53, 0xD8D4CA); r(x + 5, 53, x + 6, 62, 0x6F6B63)
+
+                }
+            }
+            MT.B_WALK -> {
+                // tábuas soltas presas por cordas, com frestas
+                for (k in 0 until 8) {
+                    val x0 = k * 8 + 1
+                    val dy = h(k, 0, 420) % 3 - 1
+                    r(x0, 16 + dy, x0 + 6, 50 + dy, sh(0xA67848, 0.9f + (h(k, 1, 421) % 16) / 100f))
+                    r(x0, 16 + dy, x0 + 6, 18 + dy, 0xC8A070)
+                    r(x0, 48 + dy, x0 + 6, 50 + dy, 0x6A4A2A)
+                }
+                ra(0, 52, TS, 60, 0x30000000)
+                r(0, 10, TS, 12, 0xC8B078); r(0, 52, TS, 54, 0xC8B078); r(0, 12, TS, 13, 0x8A7448); r(0, 54, TS, 55, 0x8A7448)
+                for (x in 0 until TS step 32) {
+                    r(x, 4, x + 4, 14, 0x6A4A2A); r(x, 4, x + 4, 6, 0xA67848)
+                    r(x, 48, x + 4, 62, 0x5A3A1E); r(x, 48, x + 4, 50, 0xA67848)
+                }
+            }
+            else -> {
+                ra(0, 14, TS, 62, 0x40000000)
+                for (y in 10 until 54) for (x in 0 until TS) {
+                    val k = x / 8
+                    var col = sh(0x9A6A3C, 0.88f + (h(k, 0, 401) % 22) / 100f)
+                    if (x % 8 == 0) col = 0x4E3219
+                    else if (h(x, y, 402) % 11 == 0) col = sh(col, 0.9f)
+                    if (y == 10) col = sh(col, 1.25f)
+                    if (y >= 52) col = sh(col, 0.82f)
+                    if (x % 8 == 3 && (y == 14 || y == 49)) col = 0x2E2E34
+                    hb.setPixel(x, y, col or (0xFF shl 24))
+                }
+                r(0, 4, TS, 7, 0xB78450); r(0, 7, TS, 10, 0x6B4423)
+                for (x in 0 until TS step 16) { r(x, 2, x + 4, 12, 0x4A2E18); r(x, 2, x + 4, 4, 0xC08A52) }
+
+                r(0, 54, TS, 56, 0xC08A52); r(0, 56, TS, 60, 0x8A5A2B); r(0, 60, TS, 62, 0x4A2E18)
+                for (x in 0 until TS step 16) { r(x, 49, x + 5, 62, 0x5A3A1E); r(x, 49, x + 5, 52, 0xC08A52) }
+            }
+        }
+        if (!vertical) hb else {
+            val m = Matrix()
+            m.postRotate(90f, TS / 2f, TS / 2f)
+            Bitmap.createBitmap(hb, 0, 0, TS, TS, m, false)
+        }
+    }
 
     /** máscara de vizinhos que são parede: N=1, L=2, S=4, O=8 */
     const val M_N = 1

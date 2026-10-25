@@ -14,6 +14,7 @@ import kotlin.math.floor
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.sqrt
 
 /** Editor de mapas: toque para pintar, dois dedos para mover/dar zoom. */
 class MapEditorView @JvmOverloads constructor(
@@ -27,6 +28,9 @@ class MapEditorView @JvmOverloads constructor(
         const val L_PROP = 2
         const val L_ENT = 3
         const val L_HOUSE = 4
+        const val L_TERRAIN = 5
+        const val L_BRIDGE = 6
+        const val L_BUILD = 7
 
         const val T_BRUSH = 0
         const val T_RECT = 1
@@ -44,6 +48,60 @@ class MapEditorView @JvmOverloads constructor(
         private val srcTop = Rect(0, 0, MapTex.TS, MapTex.TS)
         private val srcFront = Rect(0, MapTex.TS, MapTex.TS, MapTex.TS + MapTex.WALL_H)
         private val srcProp = Rect(0, 0, PropArt.W, PropArt.H)
+
+        /** Itens da aba Relevo: (id, nome). 1..6 = nível, 10/11 = subir/baixar, 12 = aplanar, 20..23 = rampas, 30 = colina. */
+        val terrainItems: List<Pair<Int, String>> = listOf(
+            10 to "Subir +1", 11 to "Baixar −1", 12 to "Aplanar", 30 to "Colina",
+            20 to "Rampa ↑ norte", 21 to "Rampa → leste", 22 to "Rampa ↓ sul", 23 to "Rampa ← oeste",
+            1 to "Nível 1", 2 to "Nível 2", 3 to "Nível 3", 4 to "Nível 4", 5 to "Nível 5", 6 to "Nível 6"
+        )
+
+        private fun drawTerrainIcon(c: Canvas, v: Int) {
+            val p = Paint(Paint.ANTI_ALIAS_FLAG)
+            p.isFilterBitmap = false
+            c.drawBitmap(MapTex.tile(MT.floorDef(MT.F_GRASS), 0), 0f, 0f, p)
+            val lv = when {
+                v in 1..6 -> v
+                v == 10 -> 2
+                v == 11 -> 1
+                v == 30 -> 3
+                v in 20..23 -> 1
+                else -> 0
+            }
+            if (lv > 0) {
+                p.style = Paint.Style.FILL
+                p.color = (lv * 0x1C shl 24) or 0xFFFFFF
+                c.drawRect(0f, 0f, 64f, 64f, p)
+                p.color = 0x66000000
+                c.drawRect(0f, 64f - lv * 4f, 64f, 64f, p)
+            }
+            if (v == 30) {
+                p.style = Paint.Style.FILL
+                for (k in 0..2) {
+                    p.color = ((0x38 + k * 0x20) shl 24) or 0xFFFFFF
+
+                    c.drawRect(8f + k * 9f, 8f + k * 9f, 56f - k * 9f, 56f - k * 9f, p)
+                }
+                return
+            }
+            val tp = Paint(Paint.ANTI_ALIAS_FLAG)
+            tp.textAlign = Paint.Align.CENTER
+            tp.isFakeBoldText = true
+            tp.color = 0xFFFFFFFF.toInt()
+            tp.setShadowLayer(3f, 0f, 0f, 0xFF000000.toInt())
+            tp.textSize = 34f
+            val label = when (v) {
+                10 -> "+1"
+                11 -> "-1"
+                12 -> "0"
+                20 -> "↑"
+                21 -> "→"
+                22 -> "↓"
+                23 -> "←"
+                else -> v.toString()
+            }
+            c.drawText(label, 32f, 45f, tp)
+        }
 
         /** valor de entidade: 0 = início do jogador, 1 = inimigo, 2 = inimigo forte, 3 = chefe */
         val entNames = arrayOf("Início", "Inimigo", "Inimigo forte", "Chefe")
@@ -128,6 +186,13 @@ class MapEditorView @JvmOverloads constructor(
                     c.drawBitmap(MapTex.tile(MT.floorDef(MT.F_STONE), 0), 0f, 0f, p)
                     drawPropFlat(c, p, v, 0f, 64f, 64f)
                 }
+                L_BRIDGE -> {
+                    c.drawBitmap(MapTex.tile(MT.floorDef(MT.F_WATER), 0), 0f, 0f, p)
+                    c.drawBitmap(MapTex.bridge(v, false), 0f, 0f, p)
+                }
+                L_TERRAIN -> drawTerrainIcon(c, v)
+
+                L_BUILD -> c.drawColor(0xFF2A2F36.toInt())
                 L_HOUSE -> {
                     val tpl = Houses.template(v)
                     c.drawColor(0xFF2A3A28.toInt())
@@ -153,7 +218,11 @@ class MapEditorView @JvmOverloads constructor(
     var tool = T_BRUSH
     var showGrid = true
         set(v) { field = v; invalidate() }
-    val selected = intArrayOf(MT.F_STONE, MT.W_STONE, MT.P_CRATE, 0, 0)
+    val selected = intArrayOf(MT.F_STONE, MT.W_STONE, MT.P_CRATE, 0, 0, 10, MT.B_WOOD, 0)
+    /** Altura (1..4) da colina do pincel de relevo. */
+    var hillPeak = 3
+    /** Opções do construtor de cômodos (aba Obra). */
+    val buildOpts = BuildOpts()
     var dirty = false
     var onHistoryChanged: (() -> Unit)? = null
     var onMessage: ((String) -> Unit)? = null
@@ -183,6 +252,9 @@ class MapEditorView @JvmOverloads constructor(
     private val ghostPaint = Paint().apply { isFilterBitmap = false; isAntiAlias = false; alpha = 190 }
 
     private var mode = MODE_NONE
+    /** Ferramenta efetiva do traço atual (na aba Obra, pincel/linha/balde viram retângulo). */
+    private var curTool = T_BRUSH
+    private var strokeSeen = BooleanArray(0)
     private var before: MapSnap? = null
     private var lastCx = -1
     private var lastCy = -1
@@ -268,6 +340,8 @@ class MapEditorView @JvmOverloads constructor(
                 m.hgt[i] = 0
                 m.cap[i] = 0
             }
+            L_TERRAIN -> applyTerrain(m, x, y, erase)
+            L_BRIDGE -> m.bridge[i] = if (erase) 0 else selected[L_BRIDGE]
             else -> {
                 if (erase) {
                     m.ents.removeAll { it.x == x && it.y == y }
@@ -281,6 +355,87 @@ class MapEditorView @JvmOverloads constructor(
                         if (m.ents.size < 200) m.ents.add(MapEnt(x, y, v - 1))
                     }
                 }
+            }
+        }
+    }
+
+    private fun seenCell(m: MapData, i: Int): Boolean {
+        if (strokeSeen.size != m.w * m.h) strokeSeen = BooleanArray(m.w * m.h)
+
+        if (strokeSeen[i]) return true
+        strokeSeen[i] = true
+        return false
+    }
+
+    /** Aplica o item de relevo escolhido na célula (subir, baixar, nível, rampa, colina). */
+    private fun applyTerrain(m: MapData, x: Int, y: Int, erase: Boolean) {
+        val i = y * m.w + x
+        if (erase) { m.elev[i] = 0; return }
+        val sel = selected[L_TERRAIN]
+        val cur = m.elev[i]
+        when {
+            sel in 1..6 -> m.elev[i] = MT.elevOf(sel, 0)
+            sel == 10 -> if (!seenCell(m, i)) m.elev[i] = MT.elevOf(MT.level(cur) + 1, MT.ramp(cur))
+            sel == 11 -> if (!seenCell(m, i)) m.elev[i] = MT.elevOf(MT.level(cur) - 1, MT.ramp(cur))
+            sel == 12 -> m.elev[i] = 0
+            sel in 20..23 -> {
+                val dir = sel - 19
+                val lv = MT.level(cur)
+                m.elev[i] = MT.elevOf(lv, dir)
+                // o lado alto da rampa precisa ter um nível a mais: sobe o vizinho se estiver mais baixo
+                val nx = x + (if (dir == 2) 1 else if (dir == 4) -1 else 0)
+                val ny = y + (if (dir == 3) 1 else if (dir == 1) -1 else 0)
+                if (m.inB(nx, ny)) {
+                    val n = m.elev[ny * m.w + nx]
+                    if (MT.ramp(n) == 0 && MT.level(n) < lv + 1 && lv + 1 <= MT.MAX_LEVEL) m.elev[ny * m.w + nx] = MT.elevOf(lv + 1, 0)
+                }
+            }
+            sel == 30 -> hill(m, x, y, hillPeak)
+        }
+    }
+
+
+    /** Colina em degraus circulares, com uma rampa em cada direção (norte, sul, leste e oeste) para subir. */
+    private fun hill(m: MapData, cx: Int, cy: Int, peak: Int) {
+        for (dy in -peak..peak) for (dx in -peak..peak) {
+            val x = cx + dx
+            val y = cy + dy
+            if (!m.inB(x, y)) continue
+            val d = floor(sqrt((dx * dx + dy * dy).toFloat()) + 0.001f).toInt()
+            if (d > peak) continue
+            val lv = peak - d
+            var ramp = 0
+            if (lv < peak) {
+                if (dy == 0 && dx != 0) ramp = if (dx > 0) 4 else 2
+                else if (dx == 0 && dy != 0) ramp = if (dy > 0) 1 else 3
+            }
+            if (lv == 0 && ramp == 0) continue
+            m.elev[y * m.w + x] = MT.elevOf(lv, ramp)
+        }
+    }
+
+    /** Rampa comprida: preenche a área subindo um nível a cada célula, a partir da altura do chão na ponta baixa. */
+    private fun fillRamp(m: MapData, x0: Int, y0: Int, x1: Int, y1: Int, dir: Int) {
+        val vertical = dir == 1 || dir == 3
+        val len = if (vertical) y1 - y0 + 1 else x1 - x0 + 1
+        val across = if (vertical) x1 - x0 + 1 else y1 - y0 + 1
+        for (a in 0 until across) {
+            // ponta baixa: dir 1 (sobe p/ norte) = linha de baixo; 2 (leste) = coluna da esquerda; 3 = linha de cima; 4 = coluna da direita
+            val lowX = when (dir) { 2 -> x0; 4 -> x1; else -> x0 + a }
+            val lowY = when (dir) { 1 -> y1; 3 -> y0; else -> y0 + a }
+            val base = m.levelAt(lowX, lowY)
+            for (k in 0 until len) {
+                val x = when (dir) { 2 -> x0 + k; 4 -> x1 - k; else -> x0 + a }
+                val y = when (dir) { 1 -> y1 - k; 3 -> y0 + k; else -> y0 + a }
+
+                if (!m.inB(x, y)) continue
+                m.elev[y * m.w + x] = MT.elevOf(min(MT.MAX_LEVEL, base + k), dir)
+            }
+            // platô depois da ponta alta
+            val endX = when (dir) { 2 -> x1 + 1; 4 -> x0 - 1; else -> x0 + a }
+            val endY = when (dir) { 1 -> y0 - 1; 3 -> y1 + 1; else -> y0 + a }
+            if (m.inB(endX, endY) && MT.ramp(m.elev[endY * m.w + endX]) == 0 && MT.level(m.elev[endY * m.w + endX]) < min(MT.MAX_LEVEL, base + len)) {
+                m.elev[endY * m.w + endX] = MT.elevOf(min(MT.MAX_LEVEL, base + len), 0)
             }
         }
     }
@@ -325,8 +480,22 @@ class MapEditorView @JvmOverloads constructor(
 
     private fun floodFill(m: MapData, sx: Int, sy: Int) {
         if (!m.inB(sx, sy)) return
-        val arr = if (layer == L_FLOOR) m.floor else m.obj
-        val repl = if (layer == L_FLOOR) selected[L_FLOOR] else selected[layer]
+        val arr = when (layer) {
+            L_FLOOR -> m.floor
+            L_TERRAIN -> m.elev
+            L_BRIDGE -> m.bridge
+            else -> m.obj
+        }
+        val repl: Int
+        if (layer == L_TERRAIN) {
+            val sel = selected[L_TERRAIN]
+            repl = when {
+                sel in 1..6 -> MT.elevOf(sel, 0)
+                sel == 12 -> 0
+                else -> { onMessage?.invoke("O balde só funciona com Nível ou Aplanar"); return }
+            }
+        } else repl = selected[layer]
+
         val target = arr[sy * m.w + sx]
         if (target == repl) return
         val seen = BooleanArray(m.w * m.h)
@@ -351,20 +520,30 @@ class MapEditorView @JvmOverloads constructor(
     private fun cellAt(x: Float, y: Float): Pair<Int, Int> =
         Pair(floor((x - offX) / cell).toInt(), floor((y - offY) / cell).toInt())
 
+    /** Aba em que o toque pinta células (as outras abas têm comportamento próprio). */
+    private fun isCellLayer() = layer != L_ENT && layer != L_HOUSE && layer != L_BUILD
+
     private fun beginStroke(m: MapData, x: Float, y: Float) {
         before = m.snapshot()
+        strokeSeen = BooleanArray(m.w * m.h)
         val (cx, cy) = cellAt(x, y)
         lastCx = cx
         lastCy = cy
-        if (layer == L_HOUSE && tool != T_COPY && tool != T_PICK) {
-            if (tool == T_ERASE) onMessage?.invoke("Para apagar, use a borracha nas abas Chão, Paredes ou Objetos")
+        if (layer == L_HOUSE && curTool != T_COPY && curTool != T_PICK) {
+            if (curTool == T_ERASE) onMessage?.invoke("Para apagar, use a borracha nas abas Chão, Paredes, Objetos, Relevo ou Pontes")
             invalidate()
             return
         }
-        when (tool) {
-            T_BRUSH, T_ERASE -> applyCell(m, cx, cy, tool == T_ERASE)
+        if (layer == L_BUILD && curTool == T_ERASE) {
+            onMessage?.invoke("Para apagar, use a borracha nas abas Chão, Paredes ou Objetos")
+            invalidate()
+            return
+        }
+        when (curTool) {
+            T_BRUSH, T_ERASE -> applyCell(m, cx, cy, curTool == T_ERASE)
             T_RECT, T_LINE, T_COPY -> {
-                if (layer == L_ENT && tool != T_COPY) onMessage?.invoke("Para entidades use o pincel")
+
+                if (layer == L_ENT && curTool != T_COPY) onMessage?.invoke("Para entidades use o pincel")
                 rectSx = cx; rectSy = cy; rectEx = cx; rectEy = cy
             }
             T_PICK -> pick(m, cx, cy)
@@ -379,14 +558,14 @@ class MapEditorView @JvmOverloads constructor(
     private fun moveStroke(m: MapData, x: Float, y: Float) {
         val (cx, cy) = cellAt(x, y)
         if (cx == lastCx && cy == lastCy) return
-        if (layer == L_HOUSE && tool != T_COPY && tool != T_PICK) {
+        if ((layer == L_HOUSE && curTool != T_COPY && curTool != T_PICK) || (layer == L_BUILD && curTool == T_ERASE)) {
             lastCx = cx
             lastCy = cy
             invalidate()
             return
         }
-        when (tool) {
-            T_BRUSH, T_ERASE -> line(m, lastCx, lastCy, cx, cy, tool == T_ERASE)
+        when (curTool) {
+            T_BRUSH, T_ERASE -> line(m, lastCx, lastCy, cx, cy, curTool == T_ERASE)
             T_RECT, T_LINE, T_COPY -> { rectEx = cx; rectEy = cy }
         }
         lastCx = cx
@@ -408,6 +587,8 @@ class MapEditorView @JvmOverloads constructor(
             val o = tp.obj[y * tp.w + x]
             if (f >= 0) m.floor[i] = f
             if (o >= 0) { m.obj[i] = o; m.hgt[i] = tp.hgt[y * tp.w + x]; m.cap[i] = tp.cap[y * tp.w + x] }
+            if (tp.elev[y * tp.w + x] >= 0) m.elev[i] = tp.elev[y * tp.w + x]
+            if (tp.bridge[y * tp.w + x] >= 0) m.bridge[i] = tp.bridge[y * tp.w + x]
         }
         // apaga inimigos que ficaram dentro de paredes
         m.ents.removeAll { e -> m.inB(e.x, e.y) && MT.solidObj(m.obj[e.y * m.w + e.x]) }
@@ -417,6 +598,19 @@ class MapEditorView @JvmOverloads constructor(
     private fun pick(m: MapData, cx: Int, cy: Int) {
         if (!m.inB(cx, cy)) return
         val i = cy * m.w + cx
+        if (layer == L_TERRAIN) {
+            val lv = MT.level(m.elev[i])
+            selected[L_TERRAIN] = if (lv == 0) 12 else lv
+            tool = T_BRUSH
+            onPick?.invoke()
+            return
+        }
+        if (layer == L_BRIDGE) {
+            if (m.bridge[i] != 0) selected[L_BRIDGE] = m.bridge[i]
+            tool = T_BRUSH
+            onPick?.invoke()
+            return
+        }
         val o = m.obj[i]
         when {
             layer == L_FLOOR || o == 0 -> {
@@ -457,6 +651,8 @@ class MapEditorView @JvmOverloads constructor(
             tp.obj[ti] = m.obj[si]
             tp.hgt[ti] = m.hgt[si]
             tp.cap[ti] = m.cap[si]
+            tp.elev[ti] = m.elev[si]
+            tp.bridge[ti] = m.bridge[si]
         }
         Houses.clipboard = tp
         layer = L_HOUSE
@@ -467,17 +663,21 @@ class MapEditorView @JvmOverloads constructor(
     }
 
     private fun endStroke(m: MapData) {
-        if (layer == L_HOUSE && tool != T_ERASE && tool != T_COPY && tool != T_PICK) stampHouse(m, lastCx, lastCy)
-        if (tool == T_LINE && layer != L_ENT && layer != L_HOUSE) {
+        if (layer == L_HOUSE && curTool != T_ERASE && curTool != T_COPY && curTool != T_PICK) stampHouse(m, lastCx, lastCy)
+        if (curTool == T_LINE && isCellLayer()) {
             line(m, rectSx, rectSy, rectEx, rectEy, false)
         }
-        if (tool == T_COPY) copyArea(m)
-        if (tool == T_RECT && layer != L_ENT && layer != L_HOUSE) {
+        if (curTool == T_COPY) copyArea(m)
+        if (curTool == T_RECT && layer == L_BUILD) {
+            onMessage?.invoke(RoomBuilder.build(m, rectSx, rectSy, rectEx, rectEy, buildOpts))
+        } else if (curTool == T_RECT && isCellLayer()) {
             val x0 = max(0, min(rectSx, rectEx))
             val x1 = min(m.w - 1, max(rectSx, rectEx))
             val y0 = max(0, min(rectSy, rectEy))
             val y1 = min(m.h - 1, max(rectSy, rectEy))
-            for (yy in y0..y1) for (xx in x0..x1) applyCell(m, xx, yy, false)
+            val sel = selected[L_TERRAIN]
+            if (layer == L_TERRAIN && sel in 20..23) fillRamp(m, x0, y0, x1, y1, sel - 19)
+            else for (yy in y0..y1) for (xx in x0..x1) applyCell(m, xx, yy, false)
         }
         val b = before
         before = null
@@ -505,6 +705,7 @@ class MapEditorView @JvmOverloads constructor(
                     panLastY = e.y
                 } else {
                     mode = MODE_DRAW
+                    curTool = if (layer == L_BUILD && (tool == T_BRUSH || tool == T_LINE || tool == T_FILL)) T_RECT else tool
                     beginStroke(m, e.x, e.y)
                 }
             }
@@ -557,6 +758,48 @@ class MapEditorView @JvmOverloads constructor(
 
     // ───────────────────────── desenho ─────────────────────────
 
+    /** Marca o relevo de uma célula no editor (visto de cima). */
+    private fun drawElevCell(canvas: Canvas, m: MapData, x: Int, y: Int, e: Int, l: Float, t: Float) {
+        val lv = MT.level(e)
+        val rp = MT.ramp(e)
+        paint.style = Paint.Style.FILL
+        if (lv > 0) {
+            paint.color = ((lv * 0x14 + 0x10) shl 24) or 0xFFFFFF
+            canvas.drawRect(l, t, l + cell + 1f, t + cell + 1f, paint)
+        }
+        if (rp != 0) {
+            // faixas mais claras para o lado alto
+            for (k in 0 until 4) {
+                val a = (0x10 + k * 0x14) shl 24 or 0xFFFFFF
+                paint.color = a
+                val f0 = k / 4f
+                val f1 = (k + 1) / 4f
+                when (rp) {
+
+                    1 -> canvas.drawRect(l, t + cell * (1f - f1), l + cell + 1f, t + cell * (1f - f0) + 1f, paint)
+                    3 -> canvas.drawRect(l, t + cell * f0, l + cell + 1f, t + cell * f1 + 1f, paint)
+                    2 -> canvas.drawRect(l + cell * f0, t, l + cell * f1 + 1f, t + cell + 1f, paint)
+                    else -> canvas.drawRect(l + cell * (1f - f1), t, l + cell * (1f - f0) + 1f, t + cell + 1f, paint)
+                }
+            }
+        }
+        // penhasco: borda escura onde o vizinho do sul é mais baixo
+        val zs = lv + (if (rp == 3) 1 else 0)
+        val zn = m.levelAt(x, y + 1) + (if (MT.ramp(if (m.inB(x, y + 1)) m.elev[(y + 1) * m.w + x] else 0) == 1) 1 else 0)
+        if (zs > zn) {
+            paint.color = 0xB0000000.toInt()
+            canvas.drawRect(l, t + cell - max(3f, cell * 0.1f), l + cell + 1f, t + cell + 1f, paint)
+        }
+        if (cell >= 22f && (layer == L_TERRAIN || rp != 0)) {
+            textPaint.color = 0xFFFFFFFF.toInt()
+            textPaint.setShadowLayer(3f, 0f, 0f, 0xFF000000.toInt())
+            textPaint.textSize = cell * 0.4f
+            val label = when (rp) { 1 -> "↑"; 2 -> "→"; 3 -> "↓"; 4 -> "←"; else -> "" } + (if (layer == L_TERRAIN) lv.toString() else "")
+            if (label.isNotEmpty()) canvas.drawText(label, l + cell * 0.5f, t + cell * 0.66f, textPaint)
+            textPaint.clearShadowLayer()
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         canvas.drawColor(0xFF14181D.toInt())
@@ -575,6 +818,21 @@ class MapEditorView @JvmOverloads constructor(
             val t = offY + y * cell
             rf.set(l, t, l + cell + 1f, t + cell + 1f)
             canvas.drawBitmap(bmp, srcTop, rf, bmpPaint)
+        }
+        // pontes
+        for (y in y0..y1) for (x in x0..x1) {
+            val br = m.bridge[y * m.w + x]
+            if (br == 0) continue
+            val l = offX + x * cell
+            val t = offY + y * cell
+            rf.set(l, t, l + cell + 1f, t + cell + 1f)
+            canvas.drawBitmap(MapTex.bridge(br, m.bridgeVertical(x, y)), srcTop, rf, bmpPaint)
+        }
+        // relevo: clareia as células altas, marca penhascos (borda escura ao sul) e rampas (faixas + seta)
+        for (y in y0..y1) for (x in x0..x1) {
+            val e = m.elev[y * m.w + x]
+            if (e == 0) continue
+            drawElevCell(canvas, m, x, y, e, offX + x * cell, offY + y * cell)
         }
         // paredes e props, de cima para baixo
         for (y in y0..y1) for (x in x0..x1) {
@@ -617,14 +875,14 @@ class MapEditorView @JvmOverloads constructor(
             drawEntMarker(canvas, paint, textPaint, 0, offX + (m.spawnX + 0.5f) * cell, offY + (m.spawnY + 0.5f) * cell, cell * 0.34f)
         }
         // pré-visualização do retângulo
-        if (mode == MODE_DRAW && tool == T_LINE && layer != L_ENT && layer != L_HOUSE) {
+        if (mode == MODE_DRAW && curTool == T_LINE && isCellLayer()) {
             paint.style = Paint.Style.FILL
             paint.color = 0x55FFC107
             for ((lx, ly) in lineCells(rectSx, rectSy, rectEx, rectEy)) {
                 rf.set(offX + lx * cell, offY + ly * cell, offX + (lx + 1) * cell, offY + (ly + 1) * cell)
                 canvas.drawRect(rf, paint)
             }
-        } else if (mode == MODE_DRAW && (tool == T_RECT && layer != L_ENT && layer != L_HOUSE || tool == T_COPY)) {
+        } else if (mode == MODE_DRAW && ((curTool == T_RECT && (isCellLayer() || layer == L_BUILD)) || curTool == T_COPY)) {
             val ax = min(rectSx, rectEx)
             val bx = max(rectSx, rectEx)
             val ay = min(rectSy, rectEy)
@@ -637,7 +895,12 @@ class MapEditorView @JvmOverloads constructor(
             paint.strokeWidth = 3f
             paint.color = 0xFFFFC107.toInt()
             canvas.drawRect(rf, paint)
-        } else if (mode == MODE_DRAW && layer == L_HOUSE && tool != T_ERASE) {
+            if (layer == L_BUILD || curTool == T_COPY) {
+                textPaint.textSize = cell * 0.42f
+                textPaint.color = 0xFFFFFFFF.toInt()
+                canvas.drawText("" + (bx - ax + 1) + "×" + (by - ay + 1), (rf.left + rf.right) / 2f, rf.top - cell * 0.12f, textPaint)
+            }
+        } else if (mode == MODE_DRAW && layer == L_HOUSE && curTool != T_ERASE) {
             val tp = Houses.template(selected[L_HOUSE])
             val gx = offX + (lastCx - tp.w / 2) * cell
             val gy = offY + (lastCy - tp.h / 2) * cell
@@ -646,7 +909,7 @@ class MapEditorView @JvmOverloads constructor(
             paint.strokeWidth = 3f
             paint.color = 0xFFFFC107.toInt()
             canvas.drawRect(gx, gy, gx + tp.w * cell, gy + tp.h * cell, paint)
-        } else if (mode == MODE_DRAW && tool != T_RECT && tool != T_LINE && layer != L_HOUSE) {
+        } else if (mode == MODE_DRAW && curTool != T_RECT && curTool != T_LINE && layer != L_HOUSE && layer != L_BUILD) {
             rf.set(offX + lastCx * cell, offY + lastCy * cell, offX + (lastCx + 1) * cell, offY + (lastCy + 1) * cell)
             paint.style = Paint.Style.STROKE
             paint.strokeWidth = 2f

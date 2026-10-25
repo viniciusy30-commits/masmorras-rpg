@@ -9,7 +9,7 @@ import java.io.File
 data class MapEnt(val x: Int, val y: Int, val type: Int)
 
 /** Cópia do estado do mapa (usada pelo desfazer/refazer). */
-class MapSnap(val floor: IntArray, val obj: IntArray, val hgt: IntArray, val cap: IntArray, val ents: List<MapEnt>, val sx: Int, val sy: Int)
+class MapSnap(val floor: IntArray, val obj: IntArray, val hgt: IntArray, val cap: IntArray, val elev: IntArray, val bridge: IntArray, val ents: List<MapEnt>, val sx: Int, val sy: Int)
 
 /** Mapa montado pelo jogador. Duas camadas de células (chão e objetos) + entidades. */
 class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
@@ -19,19 +19,25 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
     val hgt = IntArray(w * h)
     /** Material dos andares de cima (0 = igual ao de baixo). */
     val cap = IntArray(w * h)
+    /** Relevo: nível 0..6 (bits 0..2) + direção da rampa (bits 3..5). */
+    val elev = IntArray(w * h)
+    /** Pontes sobre o chão: 0 nenhuma, 1 madeira, 2 pedra, 3 passarela. */
+    val bridge = IntArray(w * h)
     val ents = ArrayList<MapEnt>()
     var spawnX = 2
     var spawnY = 2
 
     fun inB(x: Int, y: Int) = x in 0 until w && y in 0 until h
 
-    fun snapshot() = MapSnap(floor.copyOf(), obj.copyOf(), hgt.copyOf(), cap.copyOf(), ents.toList(), spawnX, spawnY)
+    fun snapshot() = MapSnap(floor.copyOf(), obj.copyOf(), hgt.copyOf(), cap.copyOf(), elev.copyOf(), bridge.copyOf(), ents.toList(), spawnX, spawnY)
 
     fun restore(s: MapSnap) {
         s.floor.copyInto(floor)
         s.obj.copyInto(obj)
         s.hgt.copyInto(hgt)
         s.cap.copyInto(cap)
+        s.elev.copyInto(elev)
+        s.bridge.copyInto(bridge)
         ents.clear()
         ents.addAll(s.ents)
         spawnX = s.sx
@@ -39,7 +45,7 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
     }
 
     fun sameAs(s: MapSnap): Boolean =
-        floor.contentEquals(s.floor) && obj.contentEquals(s.obj) && hgt.contentEquals(s.hgt) && cap.contentEquals(s.cap) && ents == s.ents && spawnX == s.sx && spawnY == s.sy
+        floor.contentEquals(s.floor) && obj.contentEquals(s.obj) && hgt.contentEquals(s.hgt) && cap.contentEquals(s.cap) && elev.contentEquals(s.elev) && bridge.contentEquals(s.bridge) && ents == s.ents && spawnX == s.sx && spawnY == s.sy
 
     /** Mapa novo: chão de pedra com paredes na borda. */
     fun fillDefault() {
@@ -69,6 +75,39 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         }
     }
 
+    /** Nível base do relevo na célula (0 fora do mapa). */
+    fun levelAt(x: Int, y: Int): Int = if (inB(x, y)) MT.level(elev[y * w + x]) else 0
+
+    /** Altura (px) do terreno no ponto (u, v) dentro da célula, u/v em 0..1 (v cresce para o sul). Rampas inclinam. */
+    fun surfaceZ(x: Int, y: Int, u: Float, v: Float): Float {
+        if (!inB(x, y)) return 0f
+        val e = elev[y * w + x]
+        val base = MT.level(e) * MT.EH
+        return base + when (MT.ramp(e)) {
+            1 -> (1f - v) * MT.EH
+            2 -> u * MT.EH
+            3 -> v * MT.EH
+
+            4 -> (1f - u) * MT.EH
+            else -> 0f
+        }
+    }
+
+    private fun voidish(f: Int) = f == MT.F_WATER || f == MT.F_LAVA || f == MT.F_SLIME || f == MT.F_VOID
+    private fun bridgeAt(x: Int, y: Int) = inB(x, y) && bridge[y * w + x] != 0
+    private fun floorOrVoid(x: Int, y: Int) = if (inB(x, y)) floor[y * w + x] else MT.F_STONE
+
+    /** Ponte na vertical (norte-sul)? Segue as pontes vizinhas; sozinha, atravessa o rio. */
+    fun bridgeVertical(x: Int, y: Int): Boolean {
+        val v = bridgeAt(x, y - 1) || bridgeAt(x, y + 1)
+        val hz = bridgeAt(x - 1, y) || bridgeAt(x + 1, y)
+        if (v && !hz) return true
+        if (hz) return false
+        val ns = voidish(floorOrVoid(x, y - 1)) || voidish(floorOrVoid(x, y + 1))
+        val ew = voidish(floorOrVoid(x - 1, y)) || voidish(floorOrVoid(x + 1, y))
+        return ew && !ns
+    }
+
     /** Altura (andares) da parede na célula; 0 se não for parede. */
     fun wallH(x: Int, y: Int): Int {
         if (!inB(x, y)) return 0
@@ -91,6 +130,8 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         o.put("obj", encode(obj))
         o.put("hgt", encode(hgt))
         o.put("cap", encode(cap))
+        o.put("elev", encode(elev))
+        o.put("bridge", encode(bridge))
         val arr = JSONArray()
         for (e in ents) arr.put(JSONArray().put(e.x).put(e.y).put(e.type))
         o.put("ents", arr)
@@ -102,7 +143,7 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
             val m = MapData(o.optString("name", "Mapa"), o.getInt("w"), o.getInt("h"), id)
             m.spawnX = o.optInt("sx", 1)
             m.spawnY = o.optInt("sy", 1)
-            m.decodeInto(o.optInt("v", 1) >= 2, o.optString("floor", ""), o.optString("obj", ""), o.optString("hgt", ""), o.optString("cap", ""))
+            m.decodeInto(o.optInt("v", 1) >= 2, o.optString("floor", ""), o.optString("obj", ""), o.optString("hgt", ""), o.optString("cap", ""), o.optString("elev", ""), o.optString("bridge", ""))
             val arr = o.optJSONArray("ents")
             if (arr != null) for (i in 0 until arr.length()) {
                 val e = arr.getJSONArray(i)
@@ -112,11 +153,13 @@ class MapData(var name: String, val w: Int, val h: Int, var id: String = "") {
         }
     }
 
-    private fun decodeInto(v2: Boolean, f: String, o: String, hg: String, cp: String) {
+    private fun decodeInto(v2: Boolean, f: String, o: String, hg: String, cp: String, el: String, br: String) {
         decode(f, floor, v2)
         decode(o, obj, v2)
         decode(hg, hgt, true)
         decode(cp, cap, true)
+        decode(el, elev, true)
+        decode(br, bridge, true)
     }
 }
 
