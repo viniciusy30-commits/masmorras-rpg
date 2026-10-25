@@ -44,12 +44,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var hpBar: ProgressBar
     private lateinit var mpBar: ProgressBar
     private lateinit var tvClasseHud: TextView
-    private lateinit var tvClasseBadge: TextView
+    private lateinit var ivClasseBadge: android.widget.ImageView
     private lateinit var tvHpNum: TextView
     private lateinit var tvInimigos: TextView
     private lateinit var mpRow: View
     private lateinit var btnWeapon: android.widget.ImageButton
     private lateinit var ivManaSlot: View
+    private lateinit var btnAttack: android.widget.ImageButton
     private lateinit var hudLayer: View
     private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
@@ -108,11 +109,12 @@ class MainActivity : AppCompatActivity() {
         hpBar = findViewById(R.id.hpBar)
         mpBar = findViewById(R.id.mpBar)
         tvClasseHud = findViewById(R.id.tvClasseHud)
-        tvClasseBadge = findViewById(R.id.tvClasseBadge)
+        ivClasseBadge = findViewById(R.id.ivClasseBadge)
         tvHpNum = findViewById(R.id.tvHpNum)
         tvInimigos = findViewById(R.id.tvInimigos)
         mpRow = findViewById(R.id.mpRow)
         btnWeapon = findViewById(R.id.btnWeapon)
+        btnAttack = findViewById(R.id.btnAttack)
         ivManaSlot = findViewById(R.id.ivManaSlot)
         hudLayer = findViewById(R.id.hudLayer)
         menuBg = findViewById(R.id.menuBg)
@@ -255,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         }
         btnWeapon.setOnClickListener { gameView.switchWeapon() }
         gameView.onWeapon = { w ->
-            runOnUiThread { btnWeapon.setImageResource(if (w == 1) R.drawable.hudic_spear else R.drawable.hudic_sword) }
+            runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hudic_spear_bm else R.drawable.hudic_sword_bm) }
         }
         findViewById<View>(R.id.btnRoll).setOnClickListener {
             gameView.roll()
@@ -381,11 +383,17 @@ class MainActivity : AppCompatActivity() {
         currentCustom = custom
         tvClasseHud.text = classe.nome
         tvClasseHud.setTextColor(0xFFF2B63D.toInt())
-        tvClasseBadge.text = classe.nome.take(1).uppercase()
-        btnWeapon.setImageResource(R.drawable.hudic_sword)
+        ivClasseBadge.setImageResource(
+            when (classe) {
+                Classe.GUERREIRO -> R.drawable.hudic_c_guerreiro_bm
+                Classe.MAGO -> R.drawable.hudic_c_mago_bm
+                Classe.ARQUEIRO -> R.drawable.hudic_c_arqueiro_bm
+                Classe.BARBARO -> R.drawable.hudic_c_barbaro_bm
+            }
+        )
+        btnAttack.setImageResource(R.drawable.hudic_sword_bm)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
-        tvClasseBadge.setTextColor(Ui.lighten(classe.cor, 0.45f))
         overlayFim.visibility = View.GONE
         show(gameContainer)
         gameView.startGame(classe, custom)

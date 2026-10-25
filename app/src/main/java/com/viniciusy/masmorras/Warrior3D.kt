@@ -737,20 +737,20 @@ object Warrior3D {
     private val ikO = FloatArray(3)
 
     // chaves: mão de trás (x,y,z), mão da frente (x,y,z), giro do peito, agachar, inclinar, quadril, deslize da haste
-    private val SK_I = floatArrayOf(-5f, 9f, 3f, 2.5f, 11.5f, 9.5f, 0f, 0f, 0f, 0f, 0f)
-    private val SK_TUCK = floatArrayOf(-3.5f, 7.5f, 3.5f, 2f, 9f, 6.5f, 0f, 0.3f, 0f, 0f, -2f)
-    private val SK_DIP = floatArrayOf(-5f, 4f, 2f, 1.5f, 5f, 6.5f, 0f, 0.5f, 0f, 0f, -4f)
+    private val SK_I = floatArrayOf(-1.3f, 9.5f, 2.5f, 1.3f, 12f, 7.5f, 0f, 0f, 0f, 0f, 0f)
+    private val SK_TUCK = floatArrayOf(-1.5f, 8f, 3f, 1.2f, 9.5f, 6.5f, 0f, 0.3f, 0f, 0f, -2f)
+    private val SK_DIP = floatArrayOf(-1.5f, 5f, 2f, 1f, 6f, 6f, 0f, 0.5f, 0f, 0f, -4f)
     private val SK_W = arrayOf(
-        floatArrayOf(-5f, 9.5f, 0.5f, 2f, 11f, 6.5f, -0.45f, 0.25f, -0.12f, 0.35f, -6f),
-        floatArrayOf(-6f, 8f, 2f, 3f, 9.5f, 7.5f, -1.0f, 0.4f, -0.1f, 0.55f, -2f),
-        floatArrayOf(-5.5f, 11f, -1f, 2f, 12.5f, 5.5f, -0.55f, 0.6f, -0.2f, 0.5f, -7f),
-        floatArrayOf(-6f, 12.5f, -2f, 1.5f, 13.5f, 5f, -0.8f, 0.35f, -0.25f, 0.6f, -9f)
+        floatArrayOf(-1.5f, 9f, 0.5f, 1f, 11f, 5f, -0.3f, 0.25f, -0.1f, 0.3f, -7f),
+        floatArrayOf(-2f, 9f, 2f, 1.5f, 9.5f, 6.5f, -1.1f, 0.4f, -0.1f, 0.6f, -2f),
+        floatArrayOf(-1.5f, 11f, 0f, 1f, 12.5f, 5f, -0.4f, 0.6f, -0.2f, 0.4f, -8f),
+        floatArrayOf(-1.5f, 12.5f, -0.5f, 1f, 13.5f, 4.5f, -0.6f, 0.35f, -0.25f, 0.5f, -10f)
     )
     private val SK_E = arrayOf(
-        floatArrayOf(-4.5f, 10f, 5.5f, 3f, 11.2f, 10f, 0.55f, 0.5f, 0.3f, -0.45f, 8f),
-        floatArrayOf(-5f, 9f, 3f, 3f, 9.5f, 9f, 1.0f, 0.5f, 0.2f, -0.55f, 2f),
-        floatArrayOf(-4f, 8.5f, 6f, 3f, 10f, 10.5f, 0.4f, 0.9f, 0.5f, -0.4f, 12f),
-        floatArrayOf(-4f, 8f, 6.5f, 3f, 9.5f, 10.5f, 0.5f, 0.95f, 0.55f, -0.35f, 15f)
+        floatArrayOf(-1f, 9.5f, 3.5f, 1f, 10.5f, 8f, 0.35f, 0.5f, 0.3f, -0.35f, 9f),
+        floatArrayOf(-2f, 9f, 2f, 1.5f, 9.5f, 6.5f, 1.1f, 0.5f, 0.2f, -0.6f, 2f),
+        floatArrayOf(-1f, 8.5f, 3.5f, 1f, 9.5f, 8f, 0.3f, 0.9f, 0.5f, -0.3f, 13f),
+        floatArrayOf(-1f, 8f, 4f, 1f, 9f, 8f, 0.4f, 0.95f, 0.55f, -0.3f, 16f)
     )
     private val SK_T = arrayOf(
         floatArrayOf(0.16f, 0.40f, 0.58f),

@@ -55,7 +55,7 @@ class ChargeRingView @JvmOverloads constructor(
         val d = resources.displayMetrics.density
         // raio do hexágono do botão e do anel gravado dentro dele
         val outer = min(width, height) / 2f - 0.5f * d
-        val r = outer - 15.5f * d * 2f / 1.7320508f
+        val r = outer - 16.8f * d * 2f / 1.7320508f
         if (builtFor != r) buildHex(width / 2f, height / 2f, r)
 
         val full = level >= 0.999f

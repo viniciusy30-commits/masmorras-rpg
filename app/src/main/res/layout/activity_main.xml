@@ -170,16 +170,16 @@
                     android:orientation="horizontal">
 
                     <ImageView
-                        android:layout_width="36dp"
-                        android:layout_height="36dp"
-                        android:src="@drawable/hudic_skull"/>
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:src="@drawable/hudic_skull_bm"/>
 
                     <TextView
                         android:id="@+id/tvInimigos"
                         style="@style/Mc.Text"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="8dp"
+                        android:layout_marginStart="6dp"
                         android:text="0"
                         android:textColor="#FFFFFF"
                         android:textSize="28sp"
@@ -192,63 +192,61 @@
                     style="@style/Mc.Text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
+                    android:layout_marginStart="4dp"
                     android:background="@drawable/hud_tag"
                     android:paddingLeft="12dp"
                     android:paddingRight="12dp"
                     android:paddingTop="3dp"
-                    android:paddingBottom="4dp"
+                    android:paddingBottom="5dp"
                     android:textColor="@color/mc_gold"
                     android:textSize="12sp"
                     android:textAllCaps="true"/>
             </LinearLayout>
 
-            <!-- Topo direito: objetivo (faixa com degradê) + menu hexagonal -->
+            <!-- Topo direito: objetivo + menu hexagonal -->
             <TextView
                 style="@style/Mc.Text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="top|end"
-                android:layout_marginTop="4dp"
-                android:layout_marginEnd="50dp"
+                android:layout_marginTop="6dp"
+                android:layout_marginEnd="52dp"
                 android:background="@drawable/hud_banner"
                 android:gravity="end|center_vertical"
                 android:paddingLeft="48dp"
                 android:paddingRight="12dp"
                 android:paddingTop="5dp"
-                android:paddingBottom="8dp"
+                android:paddingBottom="9dp"
                 android:text="ELIMINE OS INIMIGOS"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"/>
 
-            <androidx.appcompat.widget.AppCompatButton
+            <ImageButton
                 android:id="@+id/btnSairJogo"
-                style="@style/Mc.Button"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 android:layout_gravity="top|end"
                 android:background="@drawable/hudbtn_menu"
-                android:paddingLeft="0dp"
-                android:paddingRight="0dp"
-                android:text="✕"
-                android:textSize="14sp"/>
+                android:contentDescription="Sair"
+                android:scaleType="center"
+                android:src="@drawable/hudic_exit_bm"/>
 
-            <!-- Barra inferior compacta: medalhão da classe | vida | coração | mana -->
+            <!-- Barra inferior: medalhão da classe | vida | coração | mana | medalhão de mana -->
             <FrameLayout
-                android:layout_width="300dp"
-                android:layout_height="62dp"
+                android:layout_width="316dp"
+                android:layout_height="68dp"
                 android:layout_gravity="bottom|center_horizontal">
 
                 <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="32dp"
+                    android:layout_height="40dp"
                     android:layout_gravity="bottom"
                     android:layout_marginBottom="2dp"
                     android:background="@drawable/hud_hotbar"
                     android:gravity="center_vertical"
                     android:orientation="horizontal"
-                    android:paddingLeft="38dp"
-                    android:paddingRight="38dp">
+                    android:paddingLeft="46dp"
+                    android:paddingRight="46dp">
 
                     <TextView
                         android:id="@+id/tvHpNum"
@@ -257,13 +255,14 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center_vertical|end"
+                        android:paddingBottom="2dp"
                         android:textColor="#FFFFFF"
-                        android:textSize="10sp"
+                        android:textSize="11sp"
                         android:shadowDx="2"
                         android:shadowDy="2"/>
 
                     <View
-                        android:layout_width="62dp"
+                        android:layout_width="68dp"
                         android:layout_height="1dp"/>
 
                     <FrameLayout
@@ -279,22 +278,15 @@
                             android:background="@drawable/hud_tube"
                             android:gravity="center_vertical"
                             android:orientation="horizontal"
-                            android:paddingLeft="5dp"
-                            android:paddingRight="5dp"
+                            android:paddingLeft="4dp"
+                            android:paddingRight="4dp"
                             android:visibility="gone">
-
-                            <ImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:src="@drawable/hudic_mana"/>
 
                             <ProgressBar
                                 android:id="@+id/mpBar"
                                 style="?android:attr/progressBarStyleHorizontal"
-                                android:layout_width="0dp"
-                                android:layout_height="11dp"
-                                android:layout_marginStart="3dp"
-                                android:layout_weight="1"
+                                android:layout_width="match_parent"
+                                android:layout_height="10dp"
                                 android:max="100"
                                 android:progress="100"
                                 android:progressDrawable="@drawable/bar_mp"/>
@@ -302,46 +294,40 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- medalhão hexagonal da classe, na ponta esquerda -->
-                <TextView
-                    android:id="@+id/tvClasseBadge"
-                    style="@style/Mc.Text"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                <ImageView
+                    android:id="@+id/ivClasseBadge"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_gravity="bottom|start"
-                    android:layout_marginBottom="1dp"
-                    android:background="@drawable/hudhex_menu_n"
-                    android:gravity="center"
-                    android:textSize="18sp"/>
+                    android:layout_marginBottom="2dp"
+                    android:background="@drawable/hudhex_badge_n_bm"
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_c_guerreiro_bm"/>
 
-                <!-- medalhão hexagonal da mana, na ponta direita -->
                 <ImageView
                     android:id="@+id/ivManaSlot"
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginBottom="1dp"
-                    android:background="@drawable/hudhex_menu_n"
-                    android:padding="10dp"
-                    android:scaleType="fitCenter"
-                    android:alpha="0.45"
-                    android:src="@drawable/hudic_mana"/>
+                    android:layout_marginBottom="2dp"
+                    android:background="@drawable/hudhex_badge_n_bm"
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_mana_bm"/>
 
-                <!-- encaixe dourado + coração (enche de baixo para cima) -->
                 <ImageView
-                    android:layout_width="60dp"
-                    android:layout_height="46dp"
+                    android:layout_width="64dp"
+                    android:layout_height="52dp"
                     android:layout_gravity="bottom|center_horizontal"
-                    android:layout_marginBottom="10dp"
-                    android:src="@drawable/hud_socket"/>
+                    android:layout_marginBottom="8dp"
+                    android:src="@drawable/hud_socket_bm"/>
 
                 <ProgressBar
                     android:id="@+id/hpBar"
                     style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="40dp"
-                    android:layout_height="36dp"
+                    android:layout_width="44dp"
+                    android:layout_height="40dp"
                     android:layout_gravity="bottom|center_horizontal"
-                    android:layout_marginBottom="16dp"
+                    android:layout_marginBottom="14dp"
                     android:max="100"
                     android:progress="100"
                     android:progressDrawable="@drawable/bar_hp"/>
@@ -360,51 +346,61 @@
                     android:layout_width="112dp"
                     android:layout_height="112dp"
                     android:layout_gravity="center"
-                    android:background="@drawable/hud_joy_base"/>
+                    android:background="@drawable/hud_joy_base_bm"/>
 
                 <View
                     android:id="@+id/joystickKnob"
                     android:layout_width="58dp"
                     android:layout_height="58dp"
                     android:layout_gravity="center"
-                    android:background="@drawable/hud_joy_knob"/>
+                    android:background="@drawable/hud_joy_knob_bm"/>
             </FrameLayout>
 
             <!-- Botões de ação hexagonais -->
             <FrameLayout
-                android:layout_width="184dp"
-                android:layout_height="172dp"
+                android:layout_width="196dp"
+                android:layout_height="184dp"
                 android:layout_gravity="bottom|end">
 
-                <androidx.appcompat.widget.AppCompatImageButton
-                    android:id="@+id/btnJump"
-                    style="@style/Mc.Slot"
-                    android:layout_width="60dp"
-                    android:layout_height="60dp"
+                <ImageButton
+                    android:id="@+id/btnWeapon"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="70dp"
-                    android:layout_marginBottom="108dp"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="118dp"
+                    android:background="@drawable/hudbtn_weapon"
+                    android:contentDescription="Trocar arma"
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_swap_bm"
+                    android:visibility="gone"/>
+
+                <ImageButton
+                    android:id="@+id/btnJump"
+                    android:layout_width="68dp"
+                    android:layout_height="68dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="82dp"
+                    android:layout_marginBottom="106dp"
                     android:background="@drawable/hudbtn_jump"
                     android:contentDescription="Pular"
-                    android:padding="8dp"
-                    android:src="@drawable/hudic_jump"/>
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_jump_bm"/>
 
-                <androidx.appcompat.widget.AppCompatImageButton
+                <ImageButton
                     android:id="@+id/btnRoll"
-                    style="@style/Mc.Slot"
-                    android:layout_width="66dp"
-                    android:layout_height="66dp"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
                     android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="108dp"
+                    android:layout_marginEnd="114dp"
                     android:layout_marginBottom="4dp"
                     android:background="@drawable/hudbtn_roll"
                     android:contentDescription="Rolar"
-                    android:padding="10dp"
-                    android:src="@drawable/hudic_roll"/>
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_roll_bm"/>
 
-                <androidx.appcompat.widget.AppCompatImageButton
+                <ImageButton
                     android:id="@+id/btnAttack"
-                    style="@style/Mc.Slot"
                     android:layout_width="104dp"
                     android:layout_height="104dp"
                     android:layout_gravity="bottom|end"
@@ -412,23 +408,8 @@
                     android:layout_marginBottom="2dp"
                     android:background="@drawable/hudbtn_attack"
                     android:contentDescription="Atacar"
-                    android:padding="20dp"
-                    android:src="@drawable/hudic_sword"/>
-
-                <androidx.appcompat.widget.AppCompatImageButton
-                    android:id="@+id/btnWeapon"
-                    style="@style/Mc.Slot"
-                    android:layout_width="50dp"
-                    android:layout_height="50dp"
-                    android:layout_gravity="bottom|end"
-                    android:layout_marginEnd="14dp"
-                    android:layout_marginBottom="114dp"
-                    android:background="@drawable/hudbtn_weapon"
-                    android:contentDescription="Trocar arma"
-                    android:padding="9dp"
-                    android:scaleType="fitCenter"
-                    android:src="@drawable/hudic_sword"
-                    android:visibility="gone"/>
+                    android:scaleType="center"
+                    android:src="@drawable/hudic_sword_bm"/>
 
                 <com.viniciusy.masmorras.ChargeRingView
                     android:id="@+id/chargeRing"
