@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvClasseHud: TextView
     private lateinit var ivClasseBadge: android.widget.ImageView
     private lateinit var tvHpNum: TextView
+    private lateinit var tvMpNum: TextView
     private lateinit var tvInimigos: TextView
     private lateinit var mpRow: View
     private lateinit var btnWeapon: android.widget.ImageButton
@@ -111,6 +112,7 @@ class MainActivity : AppCompatActivity() {
         tvClasseHud = findViewById(R.id.tvClasseHud)
         ivClasseBadge = findViewById(R.id.ivClasseBadge)
         tvHpNum = findViewById(R.id.tvHpNum)
+        tvMpNum = findViewById(R.id.tvMpNum)
         tvInimigos = findViewById(R.id.tvInimigos)
         mpRow = findViewById(R.id.mpRow)
         btnWeapon = findViewById(R.id.btnWeapon)
@@ -292,13 +294,15 @@ class MainActivity : AppCompatActivity() {
                 if (p != null && gameContainer.visibility == View.VISIBLE) {
                     hpBar.max = p.maxHp.toInt()
                     hpBar.progress = p.hp.toInt().coerceAtLeast(0)
-                    tvHpNum.text = "${p.hp.toInt().coerceAtLeast(0)} / ${p.maxHp.toInt()}"
+                    setOrbText(tvHpNum, p.hp.toInt().coerceAtLeast(0), p.maxHp.toInt())
                     if (p.classe.maxMp > 0f) {
                         mpRow.visibility = View.VISIBLE
                         mpBar.max = p.classe.maxMp.toInt()
                         mpBar.progress = p.mp.toInt().coerceAtLeast(0)
+                        setOrbText(tvMpNum, p.mp.toInt().coerceAtLeast(0), p.classe.maxMp.toInt())
                     } else {
                         mpRow.visibility = View.GONE
+                        tvMpNum.text = ""
                     }
                     tvInimigos.text = gameView.aliveEnemies().toString()
                 }
@@ -376,6 +380,18 @@ class MainActivity : AppCompatActivity() {
         }
         testingFromEditor = false
         startGame(classe, custom)
+    }
+
+    /** Número dentro do orbe: "atual/máx", com a fonte diminuindo para sempre caber no círculo. */
+    private fun setOrbText(tv: TextView, cur: Int, max: Int) {
+        val s = "$cur/$max"
+        tv.text = s
+        tv.textSize = when {
+            s.length <= 5 -> 11f
+            s.length == 6 -> 10f
+            s.length == 7 -> 9f
+            else -> 8f
+        }
     }
 
     private fun startGame(classe: Classe, custom: MapData?) {

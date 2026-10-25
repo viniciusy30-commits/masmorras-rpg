@@ -254,43 +254,31 @@
                 android:scaleType="fitCenter"
                 android:src="@drawable/hd_ic_exit"/>
 
-            <!-- Barra inferior: orbe de vida | placa | orbe de mana -->
-            <FrameLayout
-                android:layout_width="312dp"
-                android:layout_height="100dp"
-                android:layout_gravity="bottom|center_horizontal">
-
-                <TextView
-                    android:id="@+id/tvHpNum"
-                    style="@style/Mc.Text"
-                    android:layout_width="200dp"
-                    android:layout_height="34dp"
-                    android:layout_gravity="bottom|center_horizontal"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/hd_plaque"
-                    android:gravity="center"
-                    android:paddingBottom="2dp"
-                    android:textColor="#FFE9A8"
-                    android:textSize="12sp"/>
+            <!-- Barra inferior: orbe de vida | 2 slots de poção | orbe de mana -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|center_horizontal"
+                android:gravity="bottom"
+                android:orientation="horizontal">
 
                 <!-- Orbe de vida -->
                 <FrameLayout
-                    android:layout_width="92dp"
-                    android:layout_height="92dp"
-                    android:layout_gravity="bottom|start"
-                    android:layout_marginBottom="4dp">
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:layout_marginBottom="2dp">
 
                     <ImageView
-                        android:layout_width="67.5dp"
-                        android:layout_height="67.5dp"
+                        android:layout_width="55.7dp"
+                        android:layout_height="55.7dp"
                         android:layout_gravity="center"
                         android:src="@drawable/hd_orb_empty_hp"/>
 
                     <ProgressBar
                         android:id="@+id/hpBar"
                         style="?android:attr/progressBarStyleHorizontal"
-                        android:layout_width="67.5dp"
-                        android:layout_height="67.5dp"
+                        android:layout_width="55.7dp"
+                        android:layout_height="55.7dp"
                         android:layout_gravity="center"
                         android:max="100"
                         android:progress="100"
@@ -300,26 +288,91 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:src="@drawable/hd_orb_frame_hp"/>
+
+                    <TextView
+                        android:id="@+id/tvHpNum"
+                        style="@style/Mc.Text"
+                        android:layout_width="44dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:shadowDx="1"
+                        android:shadowDy="1"/>
                 </FrameLayout>
+
+                <!-- Slots de poção -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="-4dp"
+                    android:layout_marginEnd="-4dp"
+                    android:layout_marginBottom="9dp"
+                    android:orientation="horizontal">
+
+                    <FrameLayout
+                        android:id="@+id/slotPotionHp"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/hd_slot_hp"/>
+
+                        <ImageView
+                            android:id="@+id/icPotionHp"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:alpha="0.4"
+                            android:padding="8dp"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/hd_ic_pot_hp"/>
+                    </FrameLayout>
+
+                    <FrameLayout
+                        android:id="@+id/slotPotionMp"
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:layout_marginStart="4dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:src="@drawable/hd_slot_mp"/>
+
+                        <ImageView
+                            android:id="@+id/icPotionMp"
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:alpha="0.4"
+                            android:padding="8dp"
+                            android:scaleType="fitCenter"
+                            android:src="@drawable/hd_ic_pot_mp"/>
+                    </FrameLayout>
+                </LinearLayout>
 
                 <!-- Orbe de mana -->
                 <FrameLayout
                     android:id="@+id/ivManaSlot"
-                    android:layout_width="92dp"
-                    android:layout_height="92dp"
-                    android:layout_gravity="bottom|end"
-                    android:layout_marginBottom="4dp">
+                    android:layout_width="76dp"
+                    android:layout_height="76dp"
+                    android:layout_marginBottom="2dp">
 
                     <ImageView
-                        android:layout_width="67.5dp"
-                        android:layout_height="67.5dp"
+                        android:layout_width="55.7dp"
+                        android:layout_height="55.7dp"
                         android:layout_gravity="center"
                         android:src="@drawable/hd_orb_empty_mp"/>
 
                     <FrameLayout
                         android:id="@+id/mpRow"
-                        android:layout_width="67.5dp"
-                        android:layout_height="67.5dp"
+                        android:layout_width="55.7dp"
+                        android:layout_height="55.7dp"
                         android:layout_gravity="center"
                         android:visibility="gone">
 
@@ -337,8 +390,23 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:src="@drawable/hd_orb_frame_mp"/>
+
+                    <TextView
+                        android:id="@+id/tvMpNum"
+                        style="@style/Mc.Text"
+                        android:layout_width="44dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:textColor="#FFFFFF"
+                        android:textSize="10sp"
+                        android:shadowDx="1"
+                        android:shadowDy="1"/>
                 </FrameLayout>
-            </FrameLayout>
+            </LinearLayout>
 
             <!-- Joystick -->
             <FrameLayout

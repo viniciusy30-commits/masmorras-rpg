@@ -1,6 +1,7 @@
 #id 2026-10-25-e
 #titulo HUD refeito do zero, inspirado em Diablo 3 e Minecraft Dungeons
-- Orbes de vida e mana em vidro, com moldura de ferro, ouro, espinhos e gema; o líquido sobe e desce conforme a vida e a mana
+- Orbes de vida e mana em vidro, menores, com moldura de ferro, ouro, espinhos e gema; o líquido sobe e desce e os números ficam dentro de cada orbe
+- Dois slots de item no meio da barra, para poção de vida e poção de mana
 - Botões redondos de metal com rebites e gemas coloridas: ataque em vermelho, rolar em azul, pular em verde e trocar arma em âmbar
 - Joystick com anel dourado, setas nas direções e manopla de metal
 - Medalhão da classe, contador de inimigos com caveira, etiqueta e faixa de objetivo em placas de ferro com borda dourada
