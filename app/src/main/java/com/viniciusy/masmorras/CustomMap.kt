@@ -96,7 +96,11 @@ class CustomMap(private val data: MapData) : GameMap {
         return solid[i]
     }
 
+    /** Transparência arquitetônica (telhado/paredes que bloqueiam a visão). Só visual. */
+    val arch = ArchVis(data, ts.toInt())
+
     override fun update(px: Float, py: Float, dt: Float) {
+        arch.update(px, py, dt)
         for (i in doorCells) {
             val cx = (i % width + 0.5f) * ts
             val cy = (i / width + 0.5f) * ts
@@ -266,7 +270,26 @@ class CustomMap(private val data: MapData) : GameMap {
                 val frame = if (MT.isDoor(o)) Math.round(doorOpen[ty * width + tx] * 3f).coerceIn(0, 3) else 0
                 val bmp = MapTex.wall(def, gm and 15, hg, gm shr 4, capDef, frame)
                 val wy = Math.round(ty * ts - hg * MapTex.WALL_H - camY - z).toFloat()
-                canvas.drawBitmap(bmp, x, wy, bmpPaint)
+                val wi = ty * width + tx
+                val wa = arch.wallA[wi]
+                val ca = arch.capA[wi]
+                if (wa >= 0.99f && ca >= 0.99f) {
+                    canvas.drawBitmap(bmp, x, wy, bmpPaint)
+                } else {
+                    if (capDef != null && ca < 0.99f) {
+                        val body = MapTex.wall(def, gm and 15, hg, gm shr 4, null, frame)
+                        bmpPaint.alpha = (wa * 255f).toInt().coerceIn(0, 255)
+                        canvas.drawBitmap(body, x, wy, bmpPaint)
+                        if (ca > 0.02f) {
+                            bmpPaint.alpha = (wa * ca * 255f).toInt().coerceIn(0, 255)
+                            canvas.drawBitmap(bmp, x, wy, bmpPaint)
+                        }
+                    } else {
+                        bmpPaint.alpha = (wa * 255f).toInt().coerceIn(0, 255)
+                        canvas.drawBitmap(bmp, x, wy, bmpPaint)
+                    }
+                    bmpPaint.alpha = 255
+                }
                 if (o == MT.W_CHIMNEY) smoke(canvas, paint, x + 32f, wy + 30f, t, tx * 7 + ty)
             } else {
                 val bmp = PropArt.get(o, t + hash(tx, ty) % 7 * 0.13f, data.hgt[ty * width + tx])

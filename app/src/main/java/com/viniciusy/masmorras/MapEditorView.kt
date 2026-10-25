@@ -114,8 +114,12 @@ class MapEditorView @JvmOverloads constructor(
         val entNames = arrayOf("Início", "Inimigo", "Inimigo forte", "Chefe")
 
         /** Parede vista de cima, com andares: o topo sobe um pouco por andar e a face aparece embaixo. */
-        private fun drawWallFlat(c: Canvas, p: Paint, def: MT.Def?, capDef: MT.Def?, hgt: Int, geom: Int, l: Float, t: Float, r: Float, b: Float) {
+        /** Modo de visualização "interior": esconde os telhados só na tela (não altera nem salva o mapa). */
+        @JvmStatic var hideCaps = false
+
+        private fun drawWallFlat(c: Canvas, p: Paint, def: MT.Def?, capDefIn: MT.Def?, hgt: Int, geom: Int, l: Float, t: Float, r: Float, b: Float) {
             if (def == null) return
+            val capDef = if (hideCaps) null else capDefIn
             val mask = geom and 15
             val lo = geom shr 4
             val spr = MapTex.wall(def, mask, hgt, lo, capDef, 0)

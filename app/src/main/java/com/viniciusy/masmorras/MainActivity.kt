@@ -707,7 +707,15 @@ class MainActivity : AppCompatActivity() {
             actBtn("↕", "Espelhar") { editorView.transformClip(2) },
             actBtn("⟳", "Girar 90°") { editorView.transformClip(3) }
         ))
-        group("VISTA", listOf(toolBtn(MapEditorView.T_PAN, "✥", "Tela")))
+        lateinit var capChip: TextView
+        capChip = chip("⌂\nTelhado", 54, 40, 9f, 2) {
+            MapEditorView.hideCaps = !MapEditorView.hideCaps
+            styleChip(capChip, MapEditorView.hideCaps)
+            capChip.text = if (MapEditorView.hideCaps) "⌂\nOculto" else "⌂\nTelhado"
+            editorView.invalidate()
+        }
+        MapEditorView.hideCaps = false
+        group("VISTA", listOf(toolBtn(MapEditorView.T_PAN, "✥", "Tela"), capChip))
         editorView.onPick = {
             refreshTabs()
             refreshPalette()
