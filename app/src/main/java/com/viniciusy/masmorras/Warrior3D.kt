@@ -1039,26 +1039,38 @@ object Warrior3D {
         }
     }
 
-    /** Ombreira acompanha o braço: gira (em parte) do braço caído até a direção do úmero, em torno do eixo perpendicular. */
+    /**
+     * Ombreira acompanha o braço (60% do caminho entre "braço caído" e a direção do úmero) com o giro travado:
+     * a ombreira nunca vira de cabeça para baixo nem gira em torno do próprio eixo, e o braço sai por baixo dela.
+     */
     private fun pauldronFollow(side: Float, ux: Float, uy: Float, uz: Float) {
         push()
-        val c0 = (-uy).coerceIn(-1f, 1f)
-        val ang = acos(c0) * 0.8f
-        var ax = -uz
-        var az = ux
-        val al = sqrt(ax * ax + az * az)
-        if (al > 0.0001f && ang > 0.001f) {
-            ax /= al; az /= al
-            val c = cos(ang)
-            val sn = sin(ang)
-            val k = 1f - c
-            // Rodrigues, eixo (ax, 0, az): imagens dos eixos X, Y, Z
-            applyBasis(
-                c + ax * ax * k, az * sn, ax * az * k,
-                -az * sn, c, ax * sn,
-                ax * az * k, -ax * sn, c + az * az * k
-            )
+        val w = 0.6f
+        var dx = ux * w
+        var dy = -(1f - w) + uy * w
+        var dz = uz * w
+        val dl = sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(0.0001f)
+        dx /= dl; dy /= dl; dz /= dl
+        // eixo X local = X do mundo sem a parte ao longo do braço
+        var xx = 1f - dx * dx
+        var xy = -dx * dy
+        var xz = -dx * dz
+        var xl = sqrt(xx * xx + xy * xy + xz * xz)
+        if (xl < 0.2f) {
+            xx = -dz * dx
+            xy = -dz * dy
+            xz = 1f - dz * dz
+            xl = sqrt(xx * xx + xy * xy + xz * xz).coerceAtLeast(0.0001f)
         }
+        xx /= xl; xy /= xl; xz /= xl
+        val yx = -dx
+        val yy = -dy
+        val yz = -dz
+        // Z = X × Y
+        val zx = xy * yz - xz * yy
+        val zy = xz * yx - xx * yz
+        val zz = xx * yy - xy * yx
+        applyBasis(xx, xy, xz, yx, yy, yz, zx, zy, zz)
         pauldron(side)
         pop()
     }
