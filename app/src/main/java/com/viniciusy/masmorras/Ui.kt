@@ -56,4 +56,33 @@ object Ui {
         s.addState(intArrayOf(), bevel(ctx, face, unitDp, false))
         return s
     }
+
+    /** Retângulo arredondado com gradiente vertical (top -> bottom) e contorno. */
+    fun round(ctx: Context, top: Int, bottom: Int, stroke: Int, radiusDp: Float = 8f, strokeDp: Float = 1.5f): GradientDrawable {
+        val g = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom))
+        g.cornerRadius = dp(ctx, radiusDp)
+        g.setStroke(dp(ctx, strokeDp).toInt().coerceAtLeast(1), stroke)
+        return g
+    }
+
+    /** Botão do editor: pedra escura com friso dourado quando selecionado. */
+    fun chipBg(ctx: Context, selected: Boolean, base: Int = 0xFF3A3530.toInt()): Drawable {
+        val s = StateListDrawable()
+        val press = if (selected) round(ctx, darken(GOLD, 0.25f), darken(GOLD, 0.45f), 0xFFFFE9A8.toInt())
+                    else round(ctx, darken(base, 0.35f), darken(base, 0.15f), GOLD)
+        val norm = if (selected) round(ctx, lighten(GOLD, 0.25f), darken(GOLD, 0.12f), 0xFFFFF3C4.toInt())
+                   else round(ctx, lighten(base, 0.10f), darken(base, 0.30f), 0xFF8C7B5A.toInt())
+        s.addState(intArrayOf(android.R.attr.state_pressed), press)
+        s.addState(intArrayOf(), norm)
+        return s
+    }
+
+    /** Painel escuro das barras do editor, com borda dourada fina. */
+    fun dock(ctx: Context, radiusDp: Float = 10f): Drawable =
+        round(ctx, 0xF0221C17.toInt(), 0xF0120F0C.toInt(), 0xFF8A6A2A.toInt(), radiusDp, 1.5f)
+
+    /** Cartão da paleta (selecionado = moldura dourada). */
+    fun card(ctx: Context, selected: Boolean): Drawable =
+        if (selected) round(ctx, 0xFF5A4720.toInt(), 0xFF2E2410.toInt(), GOLD, 8f, 2.5f)
+        else round(ctx, 0xFF3A332B.toInt(), 0xFF1E1914.toInt(), 0xFF5C503C.toInt(), 8f, 1.5f)
 }

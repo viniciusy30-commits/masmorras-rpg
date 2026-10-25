@@ -292,9 +292,9 @@ object MT {
         Def(F_ICE, "Gelo", "floor_ice"),
         Def(F_MUD, "Lama", "floor_mud", true),
         Def(F_BASALT, "Basalto", "floor_basalt"),
-        Def(F_WATER, "Água", "floor_water", false, 8, 6f),
-        Def(F_LAVA, "Lava", "floor_lava", false, 8, 5f),
-        Def(F_SLIME, "Lodo tóxico", "floor_slime", false, 8, 5f),
+        Def(F_WATER, "Água", "floor_water", false, 32, 12f),
+        Def(F_LAVA, "Lava", "floor_lava", false, 32, 10f),
+        Def(F_SLIME, "Lodo tóxico", "floor_slime", false, 32, 10f),
         Def(F_BRIDGE, "Ponte", "floor_bridge"),
         Def(F_FARM, "Terra arada", "floor_farm"),
         Def(F_ASH, "Cinzas", "floor_ash"),
@@ -302,7 +302,7 @@ object MT {
         Def(F_CHECKER, "Xadrez", "floor_checker"),
         Def(F_CARPET_B, "Tapete azul", "floor_carpet_b"),
         Def(F_CARPET_G, "Tapete verde", "floor_carpet_g"),
-        Def(F_RUNE, "Piso rúnico", "floor_rune", false, 8, 6f),
+        Def(F_RUNE, "Piso rúnico", "floor_rune", false, 32, 12f),
         Def(F_DEEPSLATE, "Ardósia profunda", "floor_deepslate"),
         Def(F_COBBLED_DEEPSLATE, "Ardósia bruta", "floor_cobbled_deepslate"),
         Def(F_BLACKSTONE, "Pedra negra", "floor_blackstone"),
@@ -328,7 +328,7 @@ object MT {
         Def(F_MUDBRICK, "Tijolo de barro", "floor_mudbrick"),
         Def(F_PRISMARINE, "Prismarinho", "floor_prismarine"),
         Def(F_HAYFLOOR, "Feno", "floor_hay"),
-        Def(F_MAGMA, "Magma", "floor_magma", false, 8, 5f)
+        Def(F_MAGMA, "Magma", "floor_magma", false, 32, 10f)
     )
 
     val walls = listOf(
@@ -727,6 +727,12 @@ object MapTex {
         else -> mk { i, j -> if ((i / 4 + j / 4) % 2 == 0) 0xFF00FF else 0x220022 } // textura ausente (magenta)
     }
 
+    /** Existe o PNG em assets/tiles? */
+    fun has(file: String): Boolean = try {
+        val am = assets
+        if (am == null) false else { am.open("tiles/$file.png").close(); true }
+    } catch (e: Exception) { false }
+
     /** Textura original (PNG em assets/tiles se existir, senão a de teste). */
     fun base(file: String): Bitmap = raw.getOrPut(file) {
         var bmp: Bitmap? = null
@@ -1010,6 +1016,38 @@ object PropArt {
     }
 
     private val strips = HashMap<Int, Array<Bitmap>>()
+    private val faceStrips = HashMap<Int, Array<Bitmap>>()
+
+    private fun assetExists(file: String): Boolean = MapTex.has(file)
+
+    /** Quadros do objeto virado para o lado [face] (0 = sul/frente, 1 = leste, 2 = norte/costas, 3 = oeste).
+     *  Usa prop_X_f1/_f2/_f3.png se existir; senão, lados 1 e 3 são o desenho espelhado e 2 repete a frente. */
+    private fun facing(id: Int, face: Int): Array<Bitmap> {
+        if (face == 0) return frames(id)
+        return faceStrips.getOrPut(id * 4 + face) {
+            val def = MT.propDef(id)
+            var out: Array<Bitmap>? = null
+            if (def != null && assetExists(def.file + "_f" + face)) {
+                val src = MapTex.base(def.file + "_f" + face)
+                val fw = src.height * 2 / 3
+                if (fw > 0 && src.height >= 48 && src.height % 3 == 0 && src.width % fw == 0) {
+                    out = Array(src.width / fw) { fi ->
+                        val cut = Bitmap.createBitmap(src, fi * fw, 0, fw, src.height)
+                        if (fw == W && src.height == H) cut else Bitmap.createScaledBitmap(cut, W, H, false)
+                    }
+                }
+            }
+            if (out == null) {
+                val base = frames(id)
+                out = if (face == 2) base else Array(base.size) { k ->
+                    val m = Matrix()
+                    m.postScale(-1f, 1f)
+                    Bitmap.createBitmap(base[k], 0, 0, base[k].width, base[k].height, m, false)
+                }
+            }
+            out
+        }
+    }
 
     /** Quadros do sprite (PNG em assets/tiles/prop_*.png, tira horizontal). Sem arquivo, usa o desenho antigo. */
     private fun frames(id: Int): Array<Bitmap> = strips.getOrPut(id) {
@@ -1030,8 +1068,24 @@ object PropArt {
         out ?: arrayOf(legacy(id))
     }
 
-    fun get(id: Int, time: Float = 0f): Bitmap {
+    /** Parte fracionária do quadro atual (0..1): usada para dissolver suavemente para o próximo quadro. */
+    fun frac(id: Int, time: Float): Float {
         val fr = frames(id)
+        if (fr.size == 1) return 0f
+        val x = time * (MT.propDef(id)?.fps ?: 8f)
+        return x - Math.floor(x.toDouble()).toFloat()
+    }
+
+    /** Quadro seguinte da animação (para a transição suave). */
+    fun getNext(id: Int, time: Float = 0f, face: Int = 0): Bitmap {
+        val fr = facing(id, face and 3)
+        if (fr.size == 1) return fr[0]
+        val fps = MT.propDef(id)?.fps ?: 8f
+        return fr[((time * fps).toInt() + 1) % fr.size]
+    }
+
+    fun get(id: Int, time: Float = 0f, face: Int = 0): Bitmap {
+        val fr = facing(id, face and 3)
         if (fr.size == 1) return fr[0]
         val fps = MT.propDef(id)?.fps ?: 8f
         return fr[((time * fps).toInt() % fr.size + fr.size) % fr.size]

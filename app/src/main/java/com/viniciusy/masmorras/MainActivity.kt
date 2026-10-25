@@ -583,8 +583,8 @@ class MainActivity : AppCompatActivity() {
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density + 0.5f).toInt()
 
     private fun styleChip(tv: TextView, selected: Boolean) {
-        tv.background = Ui.button(this, if (selected) Ui.GOLD else Ui.STONE)
-        tv.setTextColor(if (selected) Ui.INK else 0xFFFFFFFF.toInt())
+        tv.background = Ui.chipBg(this, selected)
+        tv.setTextColor(if (selected) Ui.INK else 0xFFF1E6CC.toInt())
     }
 
     private fun chip(text: String, w: Int, h: Int, size: Float, pad: Int = 8, onClick: () -> Unit): TextView {
@@ -608,9 +608,13 @@ class MainActivity : AppCompatActivity() {
         editorView.onMessage = { Toast.makeText(this, it, Toast.LENGTH_SHORT).show() }
 
         // barra superior
-        edTopBar.addView(chip("‹ Salvar e sair", 0, 36, 13f) { exitEditor() })
+        edTopBar.background = Ui.dock(this, 0f)
+        findViewById<View>(R.id.edDock).background = Ui.dock(this, 0f)
+        edTopBar.addView(chip("‹ Sair", 64, 36, 13f) { exitEditor() })
         tvEdName = TextView(this)
-        tvEdName.setTextColor(0xFFFFFFFF.toInt())
+        tvEdName.setTextColor(0xFFFFE9A8.toInt())
+        tvEdName.background = Ui.round(this, 0x55000000, 0x33000000, 0xFF5C503C.toInt(), 10f, 1f)
+        tvEdName.setPadding(dp(12), 0, dp(12), 0)
         tvEdName.textSize = 14f
         tvEdName.gravity = Gravity.CENTER
         tvEdName.maxLines = 1
@@ -619,108 +623,125 @@ class MainActivity : AppCompatActivity() {
             val m = editingMap ?: return@setOnClickListener
             promptName("Nome do mapa", m.name) { n ->
                 m.name = n
-                tvEdName.text = n
+                tvEdName.text = "✎ " + n
                 editorView.dirty = true
             }
         }
-        edTopBar.addView(tvEdName, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-        btnUndo = chip("↶", 40, 36, 16f) { editorView.undo() }
-        btnRedo = chip("↷", 40, 36, 16f) { editorView.redo() }
-        btnGrid = chip("Grade", 0, 36, 12f) {
+        val nameLp = LinearLayout.LayoutParams(0, dp(34), 1f)
+        nameLp.setMargins(dp(6), 0, dp(6), 0)
+        edTopBar.addView(tvEdName, nameLp)
+        btnUndo = chip("↶", 40, 36, 17f) { editorView.undo() }
+        btnRedo = chip("↷", 40, 36, 17f) { editorView.redo() }
+        btnGrid = chip("▦ Grade", 0, 36, 11f) {
             editorView.showGrid = !editorView.showGrid
             refreshHistory()
         }
         edTopBar.addView(btnUndo)
         edTopBar.addView(btnRedo)
         edTopBar.addView(btnGrid)
-        edTopBar.addView(chip("▶ Testar", 0, 36, 13f) { testMap() })
+        val testBtn = chip("▶ Testar", 0, 36, 13f) { testMap() }
+        testBtn.background = Ui.chipBg(this, false, 0xFF3F8A3F.toInt())
+        testBtn.setTextColor(0xFFFFFFFF.toInt())
+        edTopBar.addView(testBtn)
 
-        // ferramentas
-        val tools = listOf(
-            MapEditorView.T_BRUSH to "Pincel",
-            MapEditorView.T_RECT to "Retâng.",
-            MapEditorView.T_FILL to "Balde",
-            MapEditorView.T_ERASE to "Borracha",
-            MapEditorView.T_LINE to "Linha",
-            MapEditorView.T_PICK to "Conta-gotas",
-            MapEditorView.T_COPY to "Copiar",
-            MapEditorView.T_CUT to "Recortar",
-            MapEditorView.T_OVAL to "Oval",
-            MapEditorView.T_FRAME to "Contorno",
-            MapEditorView.T_REPLACE to "Trocar tudo",
-            MapEditorView.T_SPRAY to "Espalhar",
-            MapEditorView.T_PAN to "Tela"
-        )
-        // duas colunas de ferramentas
-        edTools.orientation = LinearLayout.HORIZONTAL
-        val toolCols = listOf(LinearLayout(this), LinearLayout(this), LinearLayout(this))
-        for (col in toolCols) {
-            col.orientation = LinearLayout.VERTICAL
-            edTools.addView(col)
+        // ferramentas agrupadas, em duas colunas
+        edTools.orientation = LinearLayout.VERTICAL
+        edTools.background = Ui.dock(this, 10f)
+        edTools.setPadding(dp(4), dp(4), dp(4), dp(4))
+        fun header(t: String) {
+            val h = TextView(this)
+            h.text = t
+            h.textSize = 8.5f
+            h.setTextColor(Ui.GOLD)
+            h.gravity = Gravity.CENTER
+            h.setPadding(0, dp(3), 0, dp(1))
+            edTools.addView(h, LinearLayout.LayoutParams(dp(112), ViewGroup.LayoutParams.WRAP_CONTENT))
         }
-        for ((idx, pair) in tools.withIndex()) {
-            val (t, name) = pair
-            val c = chip(name, 62, 32, 10f) {
+        fun group(title: String, views: List<View>) {
+            header(title)
+            var i = 0
+            while (i < views.size) {
+                val row = LinearLayout(this)
+                row.orientation = LinearLayout.HORIZONTAL
+                row.addView(views[i])
+                if (i + 1 < views.size) row.addView(views[i + 1])
+                edTools.addView(row)
+                i += 2
+            }
+        }
+        fun toolBtn(t: Int, icon: String, name: String): View {
+            val c = chip(icon + "\n" + name, 54, 40, 9.5f, 2) {
                 editorView.tool = t
                 refreshTools()
             }
             toolChips.add(t to c)
-            toolCols[idx % 3].addView(c)
+            return c
         }
-        // ações sobre a área copiada e simetria
-        toolCols[0].addView(chip("Espelhar ↔", 62, 32, 10f) { editorView.transformClip(1) })
-        toolCols[1].addView(chip("Espelhar ↕", 62, 32, 10f) { editorView.transformClip(2) })
-        toolCols[2].addView(chip("Girar 90°", 62, 32, 10f) { editorView.transformClip(3) })
-        val symNames = listOf("Simetria: não", "Simetria ↔", "Simetria ↕", "Simetria ✛")
+        fun actBtn(icon: String, name: String, f: () -> Unit): View = chip(icon + "\n" + name, 54, 40, 9.5f, 2) { f() }
         lateinit var symChip: TextView
-        symChip = chip(symNames[0], 62, 32, 10f) {
+        val symNames = listOf("não", "↔", "↕", "✛")
+        symChip = chip("◧\nSimetria " + symNames[0], 54, 40, 8.5f, 2) {
             editorView.symmetry = (editorView.symmetry + 1) % 4
-            symChip.text = symNames[editorView.symmetry]
+            symChip.text = "◧\nSimetria " + symNames[editorView.symmetry]
             styleChip(symChip, editorView.symmetry != 0)
         }
-        toolCols[0].addView(symChip)
+        group("DESENHAR", listOf(
+            toolBtn(MapEditorView.T_BRUSH, "✎", "Pincel"),
+            toolBtn(MapEditorView.T_LINE, "／", "Linha"),
+            toolBtn(MapEditorView.T_RECT, "▭", "Retâng."),
+            toolBtn(MapEditorView.T_OVAL, "◯", "Oval"),
+            toolBtn(MapEditorView.T_FRAME, "▢", "Contorno"),
+            toolBtn(MapEditorView.T_FILL, "▣", "Balde"),
+            toolBtn(MapEditorView.T_SPRAY, "∴", "Espalhar")
+        ))
+        group("EDITAR", listOf(
+            toolBtn(MapEditorView.T_ERASE, "⌫", "Borracha"),
+            toolBtn(MapEditorView.T_PICK, "◎", "Gotas"),
+            toolBtn(MapEditorView.T_REPLACE, "⇄", "Trocar"),
+            symChip
+        ))
+        group("ÁREA", listOf(
+            toolBtn(MapEditorView.T_COPY, "❐", "Copiar"),
+            toolBtn(MapEditorView.T_CUT, "✂", "Recortar"),
+            actBtn("↔", "Espelhar") { editorView.transformClip(1) },
+            actBtn("↕", "Espelhar") { editorView.transformClip(2) },
+            actBtn("⟳", "Girar 90°") { editorView.transformClip(3) }
+        ))
+        group("VISTA", listOf(toolBtn(MapEditorView.T_PAN, "✥", "Tela")))
         editorView.onPick = {
             refreshTabs()
             refreshPalette()
             refreshTools()
         }
 
-        // abas (2x2)
+        // abas em uma fileira com rolagem
         val tabs = listOf(
-            MapEditorView.L_FLOOR to "Chão",
-            MapEditorView.L_WALL to "Paredes",
-            MapEditorView.L_PROP to "Objetos",
-            MapEditorView.L_ENT to "Entid.",
-            MapEditorView.L_HOUSE to "Casas",
-            MapEditorView.L_TERRAIN to "Relevo",
-            MapEditorView.L_BRIDGE to "Pontes",
-            MapEditorView.L_BUILD to "Obra"
+            MapEditorView.L_FLOOR to "▦ Chão",
+            MapEditorView.L_WALL to "▮ Paredes",
+            MapEditorView.L_PROP to "♜ Objetos",
+            MapEditorView.L_ENT to "☠ Entidades",
+            MapEditorView.L_HOUSE to "⌂ Casas",
+            MapEditorView.L_TERRAIN to "▲ Relevo",
+            MapEditorView.L_BRIDGE to "≈ Pontes",
+            MapEditorView.L_BUILD to "⚒ Obra"
         )
-        for (rowIdx in 0..1) {
-            val row = LinearLayout(this)
-            row.orientation = LinearLayout.HORIZONTAL
-            for (colIdx in 0..3) {
-                val k = rowIdx * 4 + colIdx
-                if (k >= tabs.size) break
-                val (l, name) = tabs[k]
-                val c = chip(name, 58, 32, 9.5f, 4) {
-                    editorView.layer = l
-                    if (l == MapEditorView.L_BUILD && (editorView.tool == MapEditorView.T_BRUSH || editorView.tool == MapEditorView.T_LINE || editorView.tool == MapEditorView.T_FILL)) {
-                        editorView.tool = MapEditorView.T_RECT
-                    }
-                    when (l) {
-                        MapEditorView.L_BUILD -> Toast.makeText(this, "Arraste uma área no mapa para construir o cômodo", Toast.LENGTH_SHORT).show()
-                        MapEditorView.L_TERRAIN -> Toast.makeText(this, "Rampa: pincel (arraste na direção) ou retângulo (rampa comprida)", Toast.LENGTH_SHORT).show()
-                        MapEditorView.L_BRIDGE -> Toast.makeText(this, "Use a Linha para esticar a ponte sobre a água", Toast.LENGTH_SHORT).show()
-                    }
-                    refreshTabs()
-                    refreshPalette()
-                    refreshTools()
+        for ((l, name) in tabs) {
+            val c = chip(name, 0, 28, 11f, 10) {
+                editorView.layer = l
+                if (l == MapEditorView.L_BUILD && (editorView.tool == MapEditorView.T_BRUSH || editorView.tool == MapEditorView.T_LINE || editorView.tool == MapEditorView.T_FILL)) {
+                    editorView.tool = MapEditorView.T_RECT
                 }
-                tabChips.add(l to c)
-                row.addView(c)
+                when (l) {
+                    MapEditorView.L_BUILD -> Toast.makeText(this, "Arraste uma área no mapa para construir o cômodo", Toast.LENGTH_SHORT).show()
+                    MapEditorView.L_TERRAIN -> Toast.makeText(this, "Rampa: pincel (arraste na direção) ou retângulo (rampa comprida)", Toast.LENGTH_SHORT).show()
+                    MapEditorView.L_BRIDGE -> Toast.makeText(this, "Use a Linha para esticar a ponte sobre a água", Toast.LENGTH_SHORT).show()
+                }
+                refreshTabs()
+                refreshPalette()
+                refreshTools()
             }
-            edTabs.addView(row)
+            tabChips.add(l to c)
+            edTabs.addView(c)
         }
     }
 
@@ -729,7 +750,7 @@ class MainActivity : AppCompatActivity() {
         editorView.setMap(m)
         editorView.layer = MapEditorView.L_FLOOR
         editorView.tool = MapEditorView.T_BRUSH
-        tvEdName.text = m.name
+        tvEdName.text = "✎ " + m.name
         refreshTabs()
         refreshPalette()
         refreshTools()
@@ -795,6 +816,10 @@ class MainActivity : AppCompatActivity() {
                 refreshPalette()
             }
             ctrl.addView(cc)
+            val faceNames = listOf("Sul ▼ (frente)", "Leste ▶", "Norte ▲ (costas)", "Oeste ◀")
+            ctrl.addView(ctrlChip(112, { "Virado: " + faceNames[editorView.propFace and 3] }) {
+                editorView.propFace = (editorView.propFace + 1) and 3
+            })
             edPalette.addView(ctrl, LinearLayout.LayoutParams(dp(116), ViewGroup.LayoutParams.WRAP_CONTENT))
         }
         if (layer == MapEditorView.L_TERRAIN) {
@@ -843,12 +868,12 @@ class MainActivity : AppCompatActivity() {
             val box = LinearLayout(this)
             box.orientation = LinearLayout.VERTICAL
             box.gravity = Gravity.CENTER_HORIZONTAL
-            box.setPadding(dp(3), dp(3), dp(3), dp(3))
+            box.setPadding(dp(3), dp(4), dp(3), dp(3))
             val iv = ImageView(this)
             iv.setImageBitmap(Bitmap.createScaledBitmap(MapEditorView.preview(layer, id), dp(40), dp(40), false))
             val tv = TextView(this)
             tv.text = name
-            tv.textSize = 9f
+            tv.textSize = 8.5f
             tv.maxLines = 2
             tv.gravity = Gravity.CENTER
             tv.setTextColor(0xFFDDDDDD.toInt())
@@ -859,7 +884,7 @@ class MainActivity : AppCompatActivity() {
                 refreshPaletteSelection()
             }
             val lp = LinearLayout.LayoutParams(dp(64), ViewGroup.LayoutParams.WRAP_CONTENT)
-            lp.setMargins(dp(2), 0, dp(2), 0)
+            lp.setMargins(dp(3), 0, dp(3), 0)
             edPalette.addView(box, lp)
             paletteViews.add(id to box)
         }
@@ -943,17 +968,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshPaletteSelection() {
         val cur = editorView.selected[editorView.layer]
-        for ((id, v) in paletteViews) {
-            if (id == cur) {
-                val bg = GradientDrawable()
-                bg.cornerRadius = dp(2).toFloat()
-                bg.setColor(0x44F2B63D)
-                bg.setStroke(dp(2), 0xFFF2B63D.toInt())
-                v.background = bg
-            } else {
-                v.background = null
-            }
-        }
+        for ((id, v) in paletteViews) v.background = Ui.card(this, id == cur)
     }
 
     private fun show(target: View) {

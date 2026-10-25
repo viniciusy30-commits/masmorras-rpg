@@ -269,9 +269,16 @@ class CustomMap(private val data: MapData) : GameMap {
                 canvas.drawBitmap(bmp, x, wy, bmpPaint)
                 if (o == MT.W_CHIMNEY) smoke(canvas, paint, x + 32f, wy + 30f, t, tx * 7 + ty)
             } else {
-                val bmp = PropArt.get(o, t + hash(tx, ty) % 7 * 0.13f)
+                val bmp = PropArt.get(o, t + hash(tx, ty) % 7 * 0.13f, data.hgt[ty * width + tx])
                 val y = Math.round((ty + 1) * ts - PropArt.H - camY - z).toFloat()
                 canvas.drawBitmap(bmp, x, y, bmpPaint)
+                val pt = t + hash(tx, ty) % 7 * 0.13f
+                val fq = PropArt.frac(o, pt)
+                if (fq > 0.03f) {
+                    bmpPaint.alpha = (fq * 255f).toInt().coerceIn(0, 255)
+                    canvas.drawBitmap(PropArt.getNext(o, pt, data.hgt[ty * width + tx]), x, y, bmpPaint)
+                    bmpPaint.alpha = 255
+                }
                 val g = MT.glows[o]
                 if (g != null) {
                     val fl = 1f + g.flicker * (0.08f * sin(t * 9f + tx * 1.3f) + 0.05f * sin(t * 15f + ty))

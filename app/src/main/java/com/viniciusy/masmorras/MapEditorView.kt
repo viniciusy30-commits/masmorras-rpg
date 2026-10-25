@@ -149,15 +149,15 @@ class MapEditorView @JvmOverloads constructor(
                     val geom = wallGeomOf(tp.w, tp.h, x, y, wh)
                     val cp = tp.cap[y * tp.w + x]
                     drawWallFlat(c, p, MT.wallDef(o), if (cp != 0) MT.wallDef(cp) else null, wh(x, y).coerceAtLeast(1), geom, cl, ct, cl + cell + 1f, ct + cell + 1f)
-                } else drawPropFlat(c, p, o, cl, ct + cell, cell, time)
+                } else drawPropFlat(c, p, o, cl, ct + cell, cell, time, tp.hgt[y * tp.w + x])
             }
         }
 
-        private fun drawPropFlat(c: Canvas, p: Paint, id: Int, l: Float, b: Float, size: Float, time: Float = 0f) {
+        private fun drawPropFlat(c: Canvas, p: Paint, id: Int, l: Float, b: Float, size: Float, time: Float = 0f, face: Int = 0) {
             val h = size * 1.1f
             val w = h * PropArt.W / PropArt.H
             val left = l + (size - w) / 2f
-            c.drawBitmap(PropArt.get(id, time), srcProp, RectF(left, b - h, left + w, b), p)
+            c.drawBitmap(PropArt.get(id, time, face), srcProp, RectF(left, b - h, left + w, b), p)
         }
 
         private fun drawEntMarker(c: Canvas, p: Paint, tp: Paint, v: Int, cx: Float, cy: Float, rad: Float) {
@@ -241,6 +241,8 @@ class MapEditorView @JvmOverloads constructor(
     var onPick: (() -> Unit)? = null
     /** Andares da parede que será pintada (1..4) e material dos andares de cima (0 = igual). */
     var wallHeight = 1
+    /** Lado para onde o objeto fica virado: 0 sul (frente), 1 leste, 2 norte (costas), 3 oeste. Guardado em hgt[] das células de objeto. */
+    var propFace = 0
     var wallCap = 0
 
     private var cell = 48f
@@ -356,7 +358,7 @@ class MapEditorView @JvmOverloads constructor(
             }
             L_PROP -> {
                 m.obj[i] = if (erase) 0 else selected[L_PROP]
-                m.hgt[i] = 0
+                m.hgt[i] = if (erase) 0 else propFace
                 m.cap[i] = 0
             }
             L_TERRAIN -> applyTerrain(m, x, y, erase)
@@ -522,7 +524,7 @@ class MapEditorView @JvmOverloads constructor(
             for (i in arr.indices) {
                 if (arr[i] != target) continue
                 arr[i] = repl
-                if (layer == L_WALL) { m.hgt[i] = wallHeight; m.cap[i] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[i] = 0; m.cap[i] = 0 }
+                if (layer == L_WALL) { m.hgt[i] = wallHeight; m.cap[i] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[i] = propFace; m.cap[i] = 0 }
                 n++
             }
             onMessage?.invoke("Trocados $n blocos no mapa todo")
@@ -537,7 +539,7 @@ class MapEditorView @JvmOverloads constructor(
         while (head < tail) {
             val cur = queue[head++]
             arr[cur] = repl
-            if (layer == L_WALL) { m.hgt[cur] = wallHeight; m.cap[cur] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[cur] = 0; m.cap[cur] = 0 }
+            if (layer == L_WALL) { m.hgt[cur] = wallHeight; m.cap[cur] = if (wallHeight > 1) wallCap else 0 } else if (layer == L_PROP) { m.hgt[cur] = propFace; m.cap[cur] = 0 }
             val cx = cur % m.w
             val cy = cur / m.w
             if (cx > 0) { val n = cur - 1; if (!seen[n] && arr[n] == target) { seen[n] = true; queue[tail++] = n } }
@@ -598,6 +600,16 @@ class MapEditorView @JvmOverloads constructor(
     private fun shapeCells(): List<Pair<Int, Int>> =
         if (curTool == T_OVAL) ovalCells(rectSx, rectSy, rectEx, rectEy, true) else frameCells(rectSx, rectSy, rectEx, rectEy)
 
+    /** Novo lado de um objeto depois de espelhar (1 = ↔, 2 = ↕) ou girar 90° (3). */
+    private fun turnFace(f: Int, kind: Int): Int {
+        val a = f and 3
+        return when (kind) {
+            1 -> when (a) { 1 -> 3; 3 -> 1; else -> a }
+            2 -> when (a) { 0 -> 2; 2 -> 0; else -> a }
+            else -> (a + 1) and 3
+        }
+    }
+
     /** Espelha (1 = esquerda/direita, 2 = cima/baixo) ou gira (3 = 90° horário) a área copiada. */
     fun transformClip(kind: Int) {
         val t = Houses.clipboard
@@ -630,7 +642,7 @@ class MapEditorView @JvmOverloads constructor(
             val di = ny * nw + nx
             o.floor[di] = t.floor[si]
             o.obj[di] = t.obj[si]
-            o.hgt[di] = t.hgt[si]
+            o.hgt[di] = if (t.obj[si] > 0 && MT.isProp(t.obj[si])) turnFace(t.hgt[si], kind) else t.hgt[si]
             o.cap[di] = t.cap[si]
             o.elev[di] = ramp(t.elev[si])
             o.bridge[di] = t.bridge[si]
@@ -759,6 +771,7 @@ class MapEditorView @JvmOverloads constructor(
             MT.isProp(o) -> {
                 layer = L_PROP
                 selected[L_PROP] = o
+                propFace = m.hgt[i] and 3
             }
             else -> {
                 layer = L_FLOOR
@@ -999,7 +1012,7 @@ class MapEditorView @JvmOverloads constructor(
                     canvas.drawText("" + hh, l + cell * 0.22f, t + cell * 0.95f, textPaint)
                 }
             }
-            else drawPropFlat(canvas, bmpPaint, o, l, t + cell, cell, time + ((x * 7 + y * 13) % 7) * 0.13f)
+            else drawPropFlat(canvas, bmpPaint, o, l, t + cell, cell, time + ((x * 7 + y * 13) % 7) * 0.13f, m.hgt[y * m.w + x])
         }
         // grade
         if (showGrid && cell >= 22f) {
