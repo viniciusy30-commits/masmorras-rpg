@@ -2,7 +2,7 @@
 #titulo Botões mais bonitos, rolar e pular melhorados
 - Botões de ataque, pulo, rolar, trocar arma e menu redesenhados: anel de ferro com rebites (espinhos no ataque), aro dourado, brilho de vidro e acabamento mais detalhado; o visual voltou a ser liso, sem pixel art
 - Novo símbolo de rolagem (seta circular limpa) e novo símbolo de pulo
-- Ao segurar a lança para arremessar, a ombreira acompanha o braço sem virar de cabeça para baixo e o braço sai por baixo dela
+- Ao segurar a lança para arremessar, a ombreira fica sempre com o topo para cima (sem inverter) e só inclina um pouco junto com o braço
 - Rolamento: agacha, gira com começo e fim suaves, levanta amortecendo e solta poeira
 - Pulo: poeira na decolagem, pernas assimétricas no ar e agachada mais funda ao aterrissar
 

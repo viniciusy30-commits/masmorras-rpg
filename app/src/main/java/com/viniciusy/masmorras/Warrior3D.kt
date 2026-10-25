@@ -1040,32 +1040,24 @@ object Warrior3D {
     }
 
     /**
-     * Ombreira acompanha o braço (60% do caminho entre "braço caído" e a direção do úmero) com o giro travado:
-     * a ombreira nunca vira de cabeça para baixo nem gira em torno do próprio eixo, e o braço sai por baixo dela.
+     * Ombreira sempre com o topo para cima: só inclina (até ~30°) acompanhando o braço quando ele sobe,
+     * então nunca fica invertida; o braço sai por baixo dela.
      */
     private fun pauldronFollow(side: Float, ux: Float, uy: Float, uz: Float) {
         push()
-        val w = 0.6f
-        var dx = ux * w
-        var dy = -(1f - w) + uy * w
-        var dz = uz * w
-        val dl = sqrt(dx * dx + dy * dy + dz * dz).coerceAtLeast(0.0001f)
-        dx /= dl; dy /= dl; dz /= dl
-        // eixo X local = X do mundo sem a parte ao longo do braço
-        var xx = 1f - dx * dx
-        var xy = -dx * dy
-        var xz = -dx * dz
-        var xl = sqrt(xx * xx + xy * xy + xz * xz)
-        if (xl < 0.2f) {
-            xx = -dz * dx
-            xy = -dz * dy
-            xz = 1f - dz * dz
-            xl = sqrt(xx * xx + xy * xy + xz * xz).coerceAtLeast(0.0001f)
-        }
+        val f = (uy + 1f).coerceIn(0f, 1f) * 0.55f
+        // topo: para cima, inclinado para o lado oposto ao do braço (a ponta de fora sobe junto)
+        var yx = -ux * f
+        var yy = 1f
+        var yz = -uz * f
+        val yl = sqrt(yx * yx + yy * yy + yz * yz)
+        yx /= yl; yy /= yl; yz /= yl
+        // X local = X do mundo sem a parte ao longo do topo
+        var xx = 1f - yx * yx
+        var xy = -yx * yy
+        var xz = -yx * yz
+        val xl = sqrt(xx * xx + xy * xy + xz * xz).coerceAtLeast(0.0001f)
         xx /= xl; xy /= xl; xz /= xl
-        val yx = -dx
-        val yy = -dy
-        val yz = -dz
         // Z = X × Y
         val zx = xy * yz - xz * yy
         val zy = xz * yx - xx * yz
