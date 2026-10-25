@@ -143,8 +143,10 @@ class Player(
         if (rollT > 0f) {
             rollT -= dt
             if (rollT < 0f) rollT = 0f
-            vx = rollDX * 330f
-            vy = rollDY * 330f
+            val q = 1f - rollT / ROLL_TIME
+            val spd = 330f * (1.35f - 0.7f * q)
+            vx = rollDX * spd
+            vy = rollDY * spd
         } else {
             vx = inX * classe.velocidade * 60f
             vy = inY * classe.velocidade * 60f
@@ -168,12 +170,13 @@ class Player(
         val sx = x - camX
         val sy = y - camY
         // Squash horizontal + stretch vertical no push do ataque / aterrissagem
-        val squashX = 1f + landSquash * 0.22f - attackPunch * 0.08f
-        val squashY = 1f - landSquash * 0.18f + attackPunch * 0.12f
+        val up = (alt - ground).coerceAtLeast(0f)
+        val airStretch = if (up > 1f) (vz / 340f).coerceIn(-1f, 1f) * 0.07f else 0f
+        val squashX = 1f + landSquash * 0.22f - attackPunch * 0.08f - airStretch * 0.6f
+        val squashY = 1f - landSquash * 0.18f + attackPunch * 0.12f + airStretch
         val s = (radius / 24f) * ((squashX + squashY) * 0.5f)
         val gy = sy + radius * 0.55f - ground
         val feet = sy + radius * 0.55f - alt
-        val up = (alt - ground).coerceAtLeast(0f)
         val k = (1f - up / 90f).coerceIn(0.4f, 1f)
         val moving = hypot(vx, vy) > 1f
         // Offset de “punch” na direção do golpe
@@ -205,7 +208,7 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 

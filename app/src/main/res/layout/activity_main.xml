@@ -6,117 +6,137 @@
     android:layout_height="match_parent"
     android:background="@color/background">
 
-    <!-- MENU PRINCIPAL -->
+    <!-- Fundo animado do menu (tijolos + tochas + brasas) -->
+    <com.viniciusy.masmorras.MenuBgView
+        android:id="@+id/menuBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- ═════════ MENU PRINCIPAL ═════════ -->
     <LinearLayout
         android:id="@+id/menuLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:gravity="center"
         android:padding="24dp"
         android:visibility="visible">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="MASMORRAS"
-            android:textSize="46sp"
-            android:textStyle="bold"
-            android:textColor="@color/accent"
-            android:letterSpacing="0.18"
-            android:shadowColor="#000000"
-            android:shadowDx="0"
-            android:shadowDy="4"
-            android:shadowRadius="8"/>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.1"
+            android:orientation="vertical"
+            android:gravity="center">
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="RPG"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#FFCC80"
-            android:letterSpacing="0.35"/>
+            <com.viniciusy.masmorras.TitleView
+                android:id="@+id/titleView"
+                android:layout_width="match_parent"
+                android:layout_height="96dp"/>
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:text="Câmera e combate estilo Minecraft Dungeons"
-            android:textSize="13sp"
-            android:textColor="@color/text_secondary"/>
+            <TextView
+                style="@style/Mc.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/ribbon_gold"
+                android:paddingLeft="22dp"
+                android:paddingRight="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:text="RPG DE MASMORRAS"
+                android:textColor="@color/mc_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.3"
+                android:shadowColor="#99FFF2C0"
+                android:shadowDx="0"
+                android:shadowDy="2"/>
 
-        <View
-            android:layout_width="140dp"
-            android:layout_height="3dp"
-            android:layout_marginTop="28dp"
-            android:layout_marginBottom="28dp"
-            android:background="@color/primary"/>
+            <TextView
+                style="@style/Mc.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Hack &amp; slash nas profundezas"
+                android:textSize="13sp"/>
+        </LinearLayout>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnJogar"
-            android:layout_width="240dp"
-            android:layout_height="58dp"
-            android:text="@string/jogar"
-            android:textSize="18sp"
-            android:textStyle="bold"
-            app:cornerRadius="14dp"
-            style="@style/Widget.MaterialComponents.Button"/>
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.9"
+            android:orientation="vertical"
+            android:gravity="center">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnEditor"
-            android:layout_width="240dp"
-            android:layout_height="50dp"
-            android:layout_marginTop="14dp"
-            android:text="Editor de mapas"
-            app:cornerRadius="14dp"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnJogar"
+                style="@style/Mc.Button.Gold"
+                android:layout_width="260dp"
+                android:layout_height="60dp"
+                android:text="@string/jogar"
+                android:textSize="22sp"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnConfig"
-            android:layout_width="240dp"
-            android:layout_height="50dp"
-            android:layout_marginTop="14dp"
-            android:text="@string/configuracoes"
-            app:cornerRadius="14dp"
-            style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnEditor"
+                style="@style/Mc.Button"
+                android:layout_width="260dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="Editor de mapas"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnConfig"
+                style="@style/Mc.Button"
+                android:layout_width="260dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/configuracoes"/>
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- SELEÇÃO DE CLASSE -->
+    <!-- ═════════ SELEÇÃO DE CLASSE ═════════ -->
     <LinearLayout
         android:id="@+id/classLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="14dp"
         android:visibility="gone">
 
         <TextView
+            style="@style/Mc.Header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="@string/escolher_classe"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:gravity="center"
-            android:layout_marginBottom="16dp"/>
+            android:textSize="22sp"/>
+
+        <View
+            android:layout_width="90dp"
+            android:layout_height="3dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/mc_gold"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvClasses"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"/>
+            android:layout_weight="1"
+            android:clipToPadding="false"/>
 
-        <com.google.android.material.button.MaterialButton
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnVoltarClasse"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="@string/voltar"
-            style="@style/Widget.MaterialComponents.Button.TextButton"/>
+            style="@style/Mc.Button.Small"
+            android:layout_width="180dp"
+            android:layout_height="42dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:text="@string/voltar"/>
     </LinearLayout>
 
-    <!-- JOGO -->
+    <!-- ═════════ JOGO ═════════ -->
     <FrameLayout
         android:id="@+id/gameContainer"
         android:layout_width="match_parent"
@@ -128,213 +148,307 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 
-        <!-- HUD estilo Dungeons -->
-        <LinearLayout
+        <!-- Camada de interface (respeita notch / bordas) -->
+        <FrameLayout
+            android:id="@+id/hudLayer"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:paddingStart="14dp"
-            android:paddingEnd="14dp"
-            android:paddingTop="10dp"
-            android:paddingBottom="12dp"
-            android:background="#CC0A0E12">
+            android:layout_height="match_parent"
+            android:padding="8dp">
 
-            <TextView
-                android:id="@+id/tvClasseHud"
+            <!-- Herói: retrato + vida + mana (compacto, sem barra cobrindo o jogo) -->
+            <LinearLayout
+                android:id="@+id/hudPanel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="#FFCC80"
-                android:textStyle="bold"
-                android:textSize="13sp"
-                android:letterSpacing="0.08"/>
+                android:layout_gravity="top|start"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/panel_hud"
+                android:padding="7dp">
 
-            <ProgressBar
-                android:id="@+id/hpBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="14dp"
-                android:layout_marginTop="6dp"
-                android:max="100"
-                android:progress="100"
-                android:progressTint="@color/hp_green"
-                android:progressBackgroundTint="#33FFFFFF"/>
+                <TextView
+                    android:id="@+id/tvClasseBadge"
+                    style="@style/Mc.Text"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:gravity="center"
+                    android:textSize="24sp"
+                    android:textStyle="bold"/>
 
-            <ProgressBar
-                android:id="@+id/mpBar"
-                style="?android:attr/progressBarStyleHorizontal"
-                android:layout_width="match_parent"
-                android:layout_height="9dp"
-                android:layout_marginTop="5dp"
-                android:max="100"
-                android:progress="100"
-                android:progressTint="@color/mp_blue"
-                android:progressBackgroundTint="#33FFFFFF"
-                android:visibility="gone"/>
-        </LinearLayout>
+                <LinearLayout
+                    android:layout_width="176dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="9dp"
+                    android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnSairJogo"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_gravity="top|end"
-            android:layout_marginTop="4dp"
-            android:layout_marginEnd="6dp"
-            android:text="✕"
-            android:textSize="16sp"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:padding="0dp"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            app:cornerRadius="22dp"
-            app:backgroundTint="#99000000"
-            style="@style/Widget.MaterialComponents.Button"/>
+                    <TextView
+                        android:id="@+id/tvClasseHud"
+                        style="@style/Mc.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/mc_gold"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"/>
 
-        <!-- Controles -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="horizontal"
-            android:padding="16dp"
-            android:gravity="center_vertical">
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-            <!-- Joystick área -->
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_heart"/>
+
+                        <FrameLayout
+                            android:layout_width="0dp"
+                            android:layout_height="17dp"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1">
+
+                            <ProgressBar
+                                android:id="@+id/hpBar"
+                                style="?android:attr/progressBarStyleHorizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:max="100"
+                                android:progress="100"
+                                android:progressDrawable="@drawable/bar_hp"/>
+
+                            <TextView
+                                android:id="@+id/tvHpNum"
+                                style="@style/Mc.Text"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:shadowDx="1"
+                                android:shadowDy="1"/>
+                        </FrameLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/mpRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_mana"/>
+
+                        <ProgressBar
+                            android:id="@+id/mpBar"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="0dp"
+                            android:layout_height="12dp"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="100"
+                            android:progressDrawable="@drawable/bar_mp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Contador de inimigos (topo central) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|center_horizontal"
+                android:background="@drawable/panel_hud"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="12dp"
+                android:paddingRight="14dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_skull"/>
+
+                <TextView
+                    android:id="@+id/tvInimigos"
+                    style="@style/Mc.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="0"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="20sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Sair -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSairJogo"
+                style="@style/Mc.Button"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="top|end"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp"
+                android:text="✕"
+                android:textSize="16sp"/>
+
+            <!-- Joystick -->
             <FrameLayout
                 android:id="@+id/joystickArea"
-                android:layout_width="140dp"
-                android:layout_height="140dp">
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="bottom|start"
+                android:layout_marginBottom="4dp">
+
                 <View
                     android:id="@+id/joystickBase"
-                    android:layout_width="100dp"
-                    android:layout_height="100dp"
+                    android:layout_width="112dp"
+                    android:layout_height="112dp"
                     android:layout_gravity="center"
                     android:background="@drawable/joystick_base"/>
+
                 <View
                     android:id="@+id/joystickKnob"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
                     android:layout_gravity="center"
                     android:background="@drawable/joystick_knob"/>
             </FrameLayout>
 
-            <View
-                android:layout_width="0dp"
-                android:layout_height="1dp"
-                android:layout_weight="1"/>
+            <!-- Botões de ação: ATK grande, ROLAR ao lado, PULAR acima -->
+            <FrameLayout
+                android:layout_width="184dp"
+                android:layout_height="172dp"
+                android:layout_gravity="bottom|end">
 
-            <!-- Botões de ação -->
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="bottom">
-
-                <com.google.android.material.button.MaterialButton
+                <androidx.appcompat.widget.AppCompatImageButton
                     android:id="@+id/btnJump"
-                    android:layout_width="62dp"
-                    android:layout_height="62dp"
-                    android:layout_marginEnd="10dp"
-                    android:text="PULAR"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:padding="0dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    app:cornerRadius="31dp"
-                    style="@style/Widget.MaterialComponents.Button"/>
+                    style="@style/Mc.Slot"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="76dp"
+                    android:layout_marginBottom="100dp"
+                    android:contentDescription="Pular"
+                    android:src="@drawable/ic_jump"/>
 
-                <com.google.android.material.button.MaterialButton
+                <androidx.appcompat.widget.AppCompatImageButton
                     android:id="@+id/btnRoll"
-                    android:layout_width="62dp"
-                    android:layout_height="62dp"
-                    android:layout_marginEnd="10dp"
-                    android:text="ROLAR"
-                    android:textSize="10sp"
-                    android:textStyle="bold"
-                    android:padding="0dp"
-                    android:insetTop="0dp"
-                    android:insetBottom="0dp"
-                    app:cornerRadius="31dp"
-                    style="@style/Widget.MaterialComponents.Button"/>
+                    style="@style/Mc.Slot"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="104dp"
+                    android:layout_marginBottom="6dp"
+                    android:contentDescription="Rolar"
+                    android:src="@drawable/ic_roll"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnAttack"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:text="ATK"
-                android:textSize="16sp"
-                android:textStyle="bold"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                app:cornerRadius="40dp"
-                style="@style/Widget.MaterialComponents.Button"/>
-            </LinearLayout>
-        </LinearLayout>
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnAttack"
+                    style="@style/Mc.Slot.Gold"
+                    android:layout_width="92dp"
+                    android:layout_height="92dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:contentDescription="Atacar"
+                    android:src="@drawable/ic_sword"/>
+            </FrameLayout>
 
-        <!-- Overlay fim de jogo -->
+        </FrameLayout>
+
+        <!-- Fim de jogo -->
         <LinearLayout
             android:id="@+id/overlayFim"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:orientation="vertical"
-            android:gravity="center"
             android:background="#CC000000"
-            android:visibility="gone"
-            android:padding="24dp">
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
 
-            <TextView
-                android:id="@+id/tvFim"
-                android:layout_width="wrap_content"
+            <LinearLayout
+                android:layout_width="320dp"
                 android:layout_height="wrap_content"
-                android:textSize="32sp"
-                android:textStyle="bold"
-                android:textColor="@color/accent"/>
+                android:background="@drawable/panel_stone"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="22dp">
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTentar"
-                android:layout_width="200dp"
-                android:layout_height="48dp"
-                android:layout_marginTop="24dp"
-                android:text="@string/tentar_novamente"/>
+                <TextView
+                    android:id="@+id/tvFim"
+                    style="@style/Mc.Header"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="34sp"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnMenu"
-                android:layout_width="200dp"
-                android:layout_height="48dp"
-                android:layout_marginTop="8dp"
-                android:text="@string/menu"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"/>
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="18dp"
+                    android:background="@color/mc_gold"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnTentar"
+                    style="@style/Mc.Button.Gold"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/tentar_novamente"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnMenu"
+                    style="@style/Mc.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/menu"/>
+            </LinearLayout>
         </LinearLayout>
     </FrameLayout>
 
-    <!-- LISTA DE MAPAS (jogar / editar) -->
+    <!-- ═════════ LISTA DE MAPAS ═════════ -->
     <LinearLayout
         android:id="@+id/mapListLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:padding="16dp"
+        android:padding="14dp"
         android:visibility="gone">
 
         <TextView
             android:id="@+id/tvMapListTitle"
+            style="@style/Mc.Header"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
-            android:gravity="center"/>
+            android:textSize="22sp"/>
+
+        <View
+            android:layout_width="90dp"
+            android:layout_height="3dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:background="@color/mc_gold"/>
 
         <TextView
             android:id="@+id/tvMapListHint"
+            style="@style/Mc.Body"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:layout_marginBottom="8dp"
-            android:textSize="13sp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"/>
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:gravity="center"
+            android:textSize="12sp"/>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/rvMaps"
@@ -345,27 +459,30 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
             android:orientation="horizontal">
 
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnVoltarMapas"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
-                android:text="@string/voltar"
-                style="@style/Widget.MaterialComponents.Button.TextButton"/>
+                style="@style/Mc.Button.Small"
+                android:layout_width="180dp"
+                android:layout_height="42dp"
+                android:text="@string/voltar"/>
 
-            <com.google.android.material.button.MaterialButton
+            <androidx.appcompat.widget.AppCompatButton
                 android:id="@+id/btnNovoMapa"
-                android:layout_width="0dp"
-                android:layout_height="48dp"
-                android:layout_weight="1"
+                style="@style/Mc.Button.Gold"
+                android:layout_width="180dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="12dp"
                 android:text="+ Novo mapa"
+                android:textSize="13sp"
                 android:visibility="gone"/>
         </LinearLayout>
     </LinearLayout>
 
-    <!-- EDITOR DE MAPAS (os botões são criados em código) -->
+    <!-- ═════════ EDITOR DE MAPAS (botões criados em código) ═════════ -->
     <FrameLayout
         android:id="@+id/editorLayout"
         android:layout_width="match_parent"
@@ -381,13 +498,14 @@
         <LinearLayout
             android:id="@+id/edTopBar"
             android:layout_width="match_parent"
-            android:layout_height="44dp"
+            android:layout_height="46dp"
             android:layout_gravity="top"
-            android:orientation="horizontal"
+            android:background="@drawable/bar_top"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:paddingStart="6dp"
             android:paddingEnd="6dp"
-            android:background="#DD0A0E12"/>
+            android:paddingBottom="3dp"/>
 
         <LinearLayout
             android:id="@+id/edTools"
@@ -399,13 +517,14 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="76dp"
+            android:layout_height="78dp"
             android:layout_gravity="bottom"
-            android:orientation="horizontal"
+            android:background="@drawable/bar_bottom"
             android:gravity="center_vertical"
+            android:orientation="horizontal"
             android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:background="#E60A0E12">
+            android:paddingTop="3dp"
+            android:paddingEnd="6dp">
 
             <LinearLayout
                 android:id="@+id/edTabs"
@@ -416,128 +535,168 @@
             <HorizontalScrollView
                 android:layout_width="0dp"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
                 android:layout_marginStart="8dp"
+                android:layout_weight="1"
                 android:scrollbars="none">
 
                 <LinearLayout
                     android:id="@+id/edPalette"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"/>
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"/>
             </HorizontalScrollView>
         </LinearLayout>
     </FrameLayout>
 
-    <!-- CONFIGURAÇÕES -->
-    <LinearLayout
+    <!-- ═════════ CONFIGURAÇÕES ═════════ -->
+    <ScrollView
         android:id="@+id/configLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:padding="24dp"
+        android:fillViewport="true"
+        android:padding="12dp"
         android:visibility="gone">
 
-        <TextView
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/configuracoes"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"
+            android:layout_height="match_parent"
             android:gravity="center"
-            android:layout_marginBottom="24dp"/>
+            android:orientation="vertical">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnVerificarUpdate"
-            android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:text="@string/verificar_atualizacao"/>
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="60dp"
+                android:background="@drawable/panel_stone"
+                android:orientation="vertical"
+                android:padding="20dp">
 
-        <TextView
-            android:id="@+id/tvUpdateStatus"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textColor="@color/text_secondary"
-            android:gravity="center"
-            android:textSize="14sp"/>
+                <TextView
+                    style="@style/Mc.Header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/configuracoes"
+                    android:textSize="22sp"/>
 
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginVertical="24dp"
-            android:background="#33FFFFFF"/>
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="3dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@color/mc_gold"/>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/sobre"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary"/>
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVerificarUpdate"
+                    style="@style/Mc.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="@string/verificar_atualizacao"/>
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="RPG top-down hack &amp; slash inspirado em Minecraft Dungeons.\n\nVersão do app usa o número do build do GitHub.\nAtualizações automáticas via Releases públicas."
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp"
-            android:lineSpacingExtra="4dp"/>
+                <TextView
+                    android:id="@+id/tvUpdateStatus"
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:textSize="13sp"/>
 
-        <View
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:layout_weight="1"/>
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="#55000000"/>
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/btnVoltarConfig"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="@string/voltar"
-            style="@style/Widget.MaterialComponents.Button.TextButton"/>
-    </LinearLayout>
+                <TextView
+                    style="@style/Mc.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sobre"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"/>
 
-    <!-- NOVIDADES -->
+                <TextView
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="RPG top-down hack &amp; slash inspirado em Minecraft Dungeons.\nA versão do app usa o número do build do GitHub. Atualizações automáticas via Releases públicas."
+                    android:textSize="12sp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVoltarConfig"
+                    style="@style/Mc.Button.Small"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/voltar"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ═════════ NOVIDADES ═════════ -->
     <ScrollView
         android:id="@+id/novidadesLayout"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#EE000000"
-        android:visibility="gone"
-        android:padding="24dp">
+        android:background="#E6000000"
+        android:fillViewport="true"
+        android:padding="12dp"
+        android:visibility="gone">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
+            android:gravity="center"
             android:orientation="vertical">
 
-            <TextView
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/novidades"
-                android:textSize="22sp"
-                android:textStyle="bold"
-                android:textColor="@color/accent"
-                android:gravity="center"
-                android:layout_marginBottom="16dp"/>
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="60dp"
+                android:background="@drawable/panel_stone"
+                android:orientation="vertical"
+                android:padding="20dp">
 
-            <TextView
-                android:id="@+id/tvNovidades"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textColor="@color/text_primary"
-                android:textSize="14sp"
-                android:lineSpacingExtra="6dp"/>
+                <TextView
+                    style="@style/Mc.Header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/novidades"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="22sp"/>
 
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnFecharNovidades"
-                android:layout_width="match_parent"
-                android:layout_height="48dp"
-                android:layout_marginTop="24dp"
-                android:text="Entendi!"/>
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="3dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="@color/mc_gold"/>
+
+                <TextView
+                    android:id="@+id/tvNovidades"
+                    style="@style/Mc.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:lineSpacingExtra="5dp"
+                    android:textSize="13sp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnFecharNovidades"
+                    style="@style/Mc.Button.Gold"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:text="Entendi!"/>
+            </LinearLayout>
         </LinearLayout>
     </ScrollView>
 </FrameLayout>

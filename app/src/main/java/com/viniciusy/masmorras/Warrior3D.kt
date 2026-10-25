@@ -72,6 +72,8 @@ object Warrior3D {
 
     // estado de animação
     private var yaw = 0f
+    private var airW = 0f   // 0..1 suavizado: quanto o herói está "no ar"
+    private var rollW = 0f  // 0..1 suavizado: quanto a pose de rolamento está ativa
     private var blend = 0f
     private var clock = 0f
     private var lastNs = 0L
@@ -403,9 +405,21 @@ object Warrior3D {
         val t = if (attack > 0.001f) 1f - attack else -1f
         val attacking = t >= 0f
         val rolling = rollP >= 0f
-        val air = inAir && !rolling
-        val tuck = if (rolling) 1f else if (air) (if (airVz > 0f) 0.55f else 0.25f) else 0f
-        val mv = if (rolling || air) 0f else if (attacking) blend * 0.4f else blend
+        // Pesos de pose SUAVIZADOS: entram e saem aos poucos em vez de trocar de uma vez
+        val airT = if (inAir && !rolling) 1f else 0f
+        val rollTgt = if (rolling) min(rollP / 0.15f, (1f - rollP) / 0.2f).coerceIn(0f, 1f) else 0f
+        if (first) {
+            airW = airT
+            rollW = rollTgt
+        } else {
+            airW += (airT - airW) * min(1f, dt * (if (airT > airW) 16f else 11f))
+            rollW += (rollTgt - rollW) * min(1f, dt * 26f)
+        }
+        val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
+        // pernas recolhem mais na subida e vão esticando até a aterrissagem
+        val tuck = max(rollW, airW * (0.28f + 0.32f * max(0f, vzN)))
+        val still = 1f - max(rollW, airW)
+        val mv = still * (if (attacking) blend * 0.4f else blend)
         val walk = sin(phase)
 
         // poses da espada (braço direito)
@@ -457,18 +471,21 @@ object Warrior3D {
 
         val bob = abs(walk) * 1.4f * mv + sin(clock * 2.4f) * 0.35f * (1f - mv)
         val lean = 0.10f * mv + lunge * 0.04f
-        if (rolling) {
-            sh = -1.2f
-            shZ = 0.2f
-            el = -1.9f
-            wrist = 0.3f
-        } else if (air && !attacking) {
-            sh = -2.0f
-            shZ = 0.5f
-            el = -0.6f
+        if (rollW > 0.001f) {
+            sh = lerp(sh, -1.2f, rollW)
+            shZ = lerp(shZ, 0.2f, rollW)
+            el = lerp(el, -1.9f, rollW)
+            wrist = lerp(wrist, 0.3f, rollW)
+        }
+        if (airW > 0.001f && !attacking) {
+            // braço sobe na subida e abre um pouco na descida
+            sh = lerp(sh, -2.0f - 0.25f * vzN, airW)
+            shZ = lerp(shZ, 0.5f, airW)
+            el = lerp(el, -0.6f, airW)
         }
         var shieldSh = (if (attacking) -0.45f else -0.25f) - walk * 0.15f * mv
-        if (rolling) shieldSh = -1.0f else if (air) shieldSh = -1.1f
+        shieldSh = lerp(shieldSh, -1.0f, rollW)
+        shieldSh = lerp(shieldSh, -1.1f - 0.2f * vzN, airW)
 
         rs = s * PX
         ox = fx
@@ -479,7 +496,7 @@ object Warrior3D {
         rotY(yaw)
         translate(0f, 0f, lunge)
         if (rolling) {
-            val ang = ease(rollP) * TWO_PI
+            val ang = (rollP * 0.55f + ease(rollP) * 0.45f) * TWO_PI
             val lift = 7f * sin(rollP * PI.toFloat())
             translate(0f, 11f + lift, 0f)
             rotX(ang)
@@ -511,7 +528,8 @@ object Warrior3D {
         // capa
         push()
         translate(0f, 13.4f, -4.2f)
-        val cape1 = 0.14f + 0.28f * mv + 0.12f * sin(clock * 3f + phase * 2f) * (0.4f + mv) + lunge * 0.05f
+        val cape1 = 0.14f + 0.28f * mv + 0.12f * sin(clock * 3f + phase * 2f) * (0.4f + mv) + lunge * 0.05f +
+            airW * (0.35f - 0.3f * vzN)
         rotX(cape1)
         cube(0f, -5.8f, -0.4f, 5.9f, 6.0f, 0.45f, RED_D)
         cube(0f, 0.9f, 0.1f, 6.6f, 1.0f, 1.2f, STEEL_D)

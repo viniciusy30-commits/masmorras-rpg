@@ -25,6 +25,13 @@ import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
+import android.os.Build
+import android.view.WindowManager
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.recyclerview.widget.GridLayoutManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,6 +44,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var hpBar: ProgressBar
     private lateinit var mpBar: ProgressBar
     private lateinit var tvClasseHud: TextView
+    private lateinit var tvClasseBadge: TextView
+    private lateinit var tvHpNum: TextView
+    private lateinit var tvInimigos: TextView
+    private lateinit var mpRow: View
+    private lateinit var hudLayer: View
+    private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
     private lateinit var tvFim: TextView
     private lateinit var tvUpdateStatus: TextView
@@ -75,6 +88,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        if (Build.VERSION.SDK_INT >= 28) {
+            val lp = window.attributes
+            lp.layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            window.attributes = lp
+        }
         setContentView(R.layout.activity_main)
         MapTex.init(this)
 
@@ -87,6 +106,12 @@ class MainActivity : AppCompatActivity() {
         hpBar = findViewById(R.id.hpBar)
         mpBar = findViewById(R.id.mpBar)
         tvClasseHud = findViewById(R.id.tvClasseHud)
+        tvClasseBadge = findViewById(R.id.tvClasseBadge)
+        tvHpNum = findViewById(R.id.tvHpNum)
+        tvInimigos = findViewById(R.id.tvInimigos)
+        mpRow = findViewById(R.id.mpRow)
+        hudLayer = findViewById(R.id.hudLayer)
+        menuBg = findViewById(R.id.menuBg)
         overlayFim = findViewById(R.id.overlayFim)
         tvFim = findViewById(R.id.tvFim)
         tvUpdateStatus = findViewById(R.id.tvUpdateStatus)
@@ -112,6 +137,9 @@ class MainActivity : AppCompatActivity() {
         setupConfig()
         setupNovidades()
         setupBack()
+        setupSafeArea()
+        enterImmersive()
+        menuBg.setRunning(true)
 
         // Auto check update
         Updater.autoCheck(this)
@@ -120,26 +148,51 @@ class MainActivity : AppCompatActivity() {
         checkNovidades()
     }
 
+    /** Tela cheia: esconde status bar e barra de navegação (deslize da borda para mostrar). */
+    private fun enterImmersive() {
+        val c = WindowInsetsControllerCompat(window, window.decorView)
+        c.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        c.hide(WindowInsetsCompat.Type.systemBars())
+    }
+
+    /** Empurra a interface para longe do notch / bordas, sem encolher o jogo em si. */
+    private fun setupSafeArea() {
+        val targets = listOf(menuLayout, classLayout, mapListLayout, configLayout, hudLayer, editorLayout, novidadesLayout)
+        val base = targets.associateWith { intArrayOf(it.paddingLeft, it.paddingTop, it.paddingRight, it.paddingBottom) }
+        val root = findViewById<View>(R.id.root)
+        ViewCompat.setOnApplyWindowInsetsListener(root) { _, insets ->
+            val i = insets.getInsets(WindowInsetsCompat.Type.displayCutout() or WindowInsetsCompat.Type.systemBars())
+            for ((v, b) in base) v.setPadding(b[0] + i.left, b[1] + i.top, b[2] + i.right, b[3] + i.bottom)
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) enterImmersive()
+    }
+
     private fun setupMenu() {
-        findViewById<MaterialButton>(R.id.btnJogar).setOnClickListener {
+        findViewById<View>(R.id.btnJogar).setOnClickListener {
             openMapList(false)
         }
-        findViewById<MaterialButton>(R.id.btnEditor).setOnClickListener {
+        findViewById<View>(R.id.btnEditor).setOnClickListener {
             openMapList(true)
         }
-        findViewById<MaterialButton>(R.id.btnConfig).setOnClickListener {
+        findViewById<View>(R.id.btnConfig).setOnClickListener {
             show(configLayout)
         }
     }
 
     private fun setupClassSelect() {
         val rv = findViewById<RecyclerView>(R.id.rvClasses)
-        rv.layoutManager = LinearLayoutManager(this)
+        rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
             onClassPicked(classe)
         }
-        findViewById<MaterialButton>(R.id.btnVoltarClasse).setOnClickListener {
+        findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)
         }
     }
@@ -157,7 +210,7 @@ class MainActivity : AppCompatActivity() {
                     joyCenterY = cy
                     var dx = event.x - cx
                     var dy = event.y - cy
-                    val maxR = 50f
+                    val maxR = 32f * resources.displayMetrics.density
                     val len = kotlin.math.hypot(dx.toDouble(), dy.toDouble()).toFloat()
                     if (len > maxR) {
                         dx = dx / len * maxR
@@ -179,13 +232,13 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        findViewById<MaterialButton>(R.id.btnAttack).setOnClickListener {
+        findViewById<View>(R.id.btnAttack).setOnClickListener {
             gameView.tryAttack()
         }
-        findViewById<MaterialButton>(R.id.btnJump).setOnClickListener {
+        findViewById<View>(R.id.btnJump).setOnClickListener {
             gameView.jump()
         }
-        findViewById<MaterialButton>(R.id.btnRoll).setOnClickListener {
+        findViewById<View>(R.id.btnRoll).setOnClickListener {
             gameView.roll()
         }
 
@@ -193,18 +246,18 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread {
                 overlayFim.visibility = View.VISIBLE
                 tvFim.text = if (vitoria) getString(R.string.vitoria) else getString(R.string.derrota)
-                tvFim.setTextColor(if (vitoria) 0xFF4CAF50.toInt() else 0xFFF44336.toInt())
+                tvFim.setTextColor(if (vitoria) 0xFFF2B63D.toInt() else 0xFFE53935.toInt())
             }
         }
 
-        findViewById<MaterialButton>(R.id.btnTentar).setOnClickListener {
+        findViewById<View>(R.id.btnTentar).setOnClickListener {
             overlayFim.visibility = View.GONE
             startGame(selectedClasse, currentCustom)
         }
-        findViewById<MaterialButton>(R.id.btnMenu).setOnClickListener {
+        findViewById<View>(R.id.btnMenu).setOnClickListener {
             leaveGame()
         }
-        findViewById<MaterialButton>(R.id.btnSairJogo).setOnClickListener {
+        findViewById<View>(R.id.btnSairJogo).setOnClickListener {
             leaveGame()
         }
 
@@ -215,13 +268,15 @@ class MainActivity : AppCompatActivity() {
                 if (p != null && gameContainer.visibility == View.VISIBLE) {
                     hpBar.max = p.maxHp.toInt()
                     hpBar.progress = p.hp.toInt().coerceAtLeast(0)
+                    tvHpNum.text = "${p.hp.toInt().coerceAtLeast(0)} / ${p.maxHp.toInt()}"
                     if (p.classe.maxMp > 0f) {
-                        mpBar.visibility = View.VISIBLE
+                        mpRow.visibility = View.VISIBLE
                         mpBar.max = p.classe.maxMp.toInt()
                         mpBar.progress = p.mp.toInt().coerceAtLeast(0)
                     } else {
-                        mpBar.visibility = View.GONE
+                        mpRow.visibility = View.GONE
                     }
+                    tvInimigos.text = gameView.aliveEnemies().toString()
                 }
                 gameView.postDelayed(this, 100)
             }
@@ -229,19 +284,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupConfig() {
-        findViewById<MaterialButton>(R.id.btnVerificarUpdate).setOnClickListener {
+        findViewById<View>(R.id.btnVerificarUpdate).setOnClickListener {
             tvUpdateStatus.text = getString(R.string.procurando)
             Updater.check(this, silent = false, statusCallback = { msg ->
                 tvUpdateStatus.text = msg
             })
         }
-        findViewById<MaterialButton>(R.id.btnVoltarConfig).setOnClickListener {
+        findViewById<View>(R.id.btnVoltarConfig).setOnClickListener {
             show(menuLayout)
         }
     }
 
     private fun setupNovidades() {
-        findViewById<MaterialButton>(R.id.btnFecharNovidades).setOnClickListener {
+        findViewById<View>(R.id.btnFecharNovidades).setOnClickListener {
             novidadesLayout.visibility = View.GONE
             val prefs = getSharedPreferences("novidades", Context.MODE_PRIVATE)
             val lastId = readLatestNovidadeId()
@@ -303,7 +358,9 @@ class MainActivity : AppCompatActivity() {
         selectedClasse = classe
         currentCustom = custom
         tvClasseHud.text = classe.nome
-        tvClasseHud.setTextColor(classe.cor)
+        tvClasseHud.setTextColor(0xFFF2B63D.toInt())
+        tvClasseBadge.text = classe.nome.take(1).uppercase()
+        tvClasseBadge.background = Ui.bevel(this, classe.cor)
         overlayFim.visibility = View.GONE
         show(gameContainer)
         gameView.startGame(classe, custom)
@@ -342,7 +399,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupMapList() {
         rvMaps.layoutManager = LinearLayoutManager(this)
-        findViewById<MaterialButton>(R.id.btnVoltarMapas).setOnClickListener { show(menuLayout) }
+        findViewById<View>(R.id.btnVoltarMapas).setOnClickListener { show(menuLayout) }
         btnNovoMapa.setOnClickListener { promptNewMap() }
     }
 
@@ -469,11 +526,8 @@ class MainActivity : AppCompatActivity() {
     private fun dp(v: Int): Int = (v * resources.displayMetrics.density + 0.5f).toInt()
 
     private fun styleChip(tv: TextView, selected: Boolean) {
-        val bg = GradientDrawable()
-        bg.cornerRadius = dp(8).toFloat()
-        bg.setColor(if (selected) 0xFFFFC107.toInt() else 0xFF2A2F36.toInt())
-        tv.background = bg
-        tv.setTextColor(if (selected) 0xFF111111.toInt() else 0xFFFFFFFF.toInt())
+        tv.background = Ui.button(this, if (selected) Ui.GOLD else Ui.STONE)
+        tv.setTextColor(if (selected) Ui.INK else 0xFFFFFFFF.toInt())
     }
 
     private fun chip(text: String, w: Int, h: Int, size: Float, onClick: () -> Unit): TextView {
@@ -655,9 +709,9 @@ class MainActivity : AppCompatActivity() {
         for ((id, v) in paletteViews) {
             if (id == cur) {
                 val bg = GradientDrawable()
-                bg.cornerRadius = dp(8).toFloat()
-                bg.setColor(0x33FFC107)
-                bg.setStroke(dp(2), 0xFFFFC107.toInt())
+                bg.cornerRadius = dp(2).toFloat()
+                bg.setColor(0x44F2B63D)
+                bg.setStroke(dp(2), 0xFFF2B63D.toInt())
                 v.background = bg
             } else {
                 v.background = null
@@ -677,6 +731,7 @@ class MainActivity : AppCompatActivity() {
         if (target != gameContainer) {
             gameView.stopGame()
         }
+        menuBg.setRunning(target != gameContainer && target != editorLayout)
     }
 
     override fun onPause() {
@@ -697,24 +752,29 @@ class ClasseAdapter(
 ) : RecyclerView.Adapter<ClasseAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
-        val cor: View = view.findViewById(R.id.corClasse)
+        val cor: TextView = view.findViewById(R.id.corClasse)
         val nome: TextView = view.findViewById(R.id.tvNomeClasse)
         val desc: TextView = view.findViewById(R.id.tvDescClasse)
+        val hp: ProgressBar = view.findViewById(R.id.statHp)
+        val dmg: ProgressBar = view.findViewById(R.id.statDmg)
+        val spd: ProgressBar = view.findViewById(R.id.statSpd)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
-        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_classe, parent, false)
+        val v = LayoutInflater.from(parent.context).inflate(R.layout.item_classe_card, parent, false)
         return VH(v)
     }
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         val c = list[position]
+        val ctx = holder.itemView.context
         holder.nome.text = c.nome
         holder.desc.text = c.descricao
-        val bg = GradientDrawable()
-        bg.shape = GradientDrawable.OVAL
-        bg.setColor(c.cor)
-        holder.cor.background = bg
+        holder.cor.text = c.nome.take(1).uppercase()
+        holder.cor.background = Ui.bevel(ctx, c.cor)
+        holder.hp.progress = (c.maxHp / 200f * 100f).toInt().coerceIn(5, 100)
+        holder.dmg.progress = (c.danoBase / 32f * 100f).toInt().coerceIn(5, 100)
+        holder.spd.progress = (c.velocidade / 3.6f * 100f).toInt().coerceIn(5, 100)
         holder.itemView.setOnClickListener { onClick(c) }
     }
 
@@ -730,7 +790,7 @@ class MapListAdapter(
 ) : RecyclerView.Adapter<MapListAdapter.VH>() {
 
     class VH(view: View) : RecyclerView.ViewHolder(view) {
-        val cor: View = view.findViewById(R.id.corClasse)
+        val cor: TextView = view.findViewById(R.id.corClasse)
         val nome: TextView = view.findViewById(R.id.tvNomeClasse)
         val desc: TextView = view.findViewById(R.id.tvDescClasse)
     }
@@ -744,10 +804,8 @@ class MapListAdapter(
         val item = list[position]
         holder.nome.text = item.nome
         holder.desc.text = item.desc
-        val bg = GradientDrawable()
-        bg.shape = GradientDrawable.OVAL
-        bg.setColor(item.cor)
-        holder.cor.background = bg
+        holder.cor.text = item.nome.take(1).uppercase()
+        holder.cor.background = Ui.bevel(holder.itemView.context, item.cor)
         holder.itemView.setOnClickListener { onClick(item) }
         holder.itemView.setOnLongClickListener {
             onLong(item)

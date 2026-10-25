@@ -1,3 +1,15 @@
+#id 2026-10-24-k
+#titulo Interface nova estilo Minecraft Dungeons
+- Menu com parede de tijolos, tochas tremeluzindo e brasas subindo
+- Logo MASMORRAS em blocos de pedra 3D
+- Botões de pedra biselada e botão dourado de destaque
+- Escolha de classe em cards com barras de vida, dano e velocidade
+- HUD novo: retrato do herói, coração de vida, mana e contador de caveiras (acabou a barra preta cobrindo o jogo)
+- Botões de ação com ícones: espada (atacar), rolar e pular
+- Joystick com visual de pedra
+- Jogo em tela cheia (sem barra de status/navegação, respeita o notch)
+- Painéis de configurações, novidades, fim de jogo e diálogos em pedra
+
 #id 2026-10-24-j
 #titulo Editor de mapas
 - Novo botão "Editor de mapas" no menu: monte seus próprios mapas dentro do jogo

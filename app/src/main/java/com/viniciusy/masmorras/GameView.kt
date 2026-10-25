@@ -483,29 +483,9 @@ class GameView @JvmOverloads constructor(
             paint.color = VoxelArt.alpha(t.color, a)
             canvas.drawText(t.text, sx, sy, paint)
         }
-
-        // HUD inferior estilo Dungeons (pill escuro + accent)
-        val aliveCount = enemies.count { it.alive }
-        val txt = "⚔  $aliveCount"
-        paint.textSize = 26f
-        paint.typeface = Typeface.DEFAULT_BOLD
-        paint.textAlign = Paint.Align.LEFT
-        val tw = paint.measureText(txt)
-        val pillL = 14f
-        val pillT = h - 78f
-        val pillR = pillL + tw + 36f
-        val pillB = h - 28f
-        paint.style = Paint.Style.FILL
-        paint.color = 0xCC0A0E12.toInt()
-        canvas.drawRoundRect(pillL, pillT, pillR, pillB, 18f, 18f, paint)
-        paint.style = Paint.Style.STROKE
-        paint.strokeWidth = 2f
-        paint.color = 0x44FFCC80.toInt()
-        canvas.drawRoundRect(pillL, pillT, pillR, pillB, 18f, 18f, paint)
-        paint.style = Paint.Style.FILL
-        paint.color = 0xFFFFE0B2.toInt()
-        canvas.drawText(txt, pillL + 18f, h - 44f, paint)
     }
+
+    fun aliveEnemies(): Int = enemies.count { it.alive }
 
     fun getPlayer(): Player? = player
 }

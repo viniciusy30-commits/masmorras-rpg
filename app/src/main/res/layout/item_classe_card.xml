@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Card de herói (grade de 4 colunas) -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="5dp"
+    android:background="@drawable/row_stone"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/corClasse"
+        style="@style/Mc.Text"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
+        android:gravity="center"
+        android:textSize="28sp"
+        android:textStyle="bold"/>
+
+    <TextView
+        android:id="@+id/tvNomeClasse"
+        style="@style/Mc.Text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:textColor="@color/mc_gold"
+        android:textSize="17sp"
+        android:textStyle="bold"
+        android:textAllCaps="true"
+        android:letterSpacing="0.08"/>
+
+    <TextView
+        android:id="@+id/tvDescClasse"
+        style="@style/Mc.Body"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:ellipsize="end"
+        android:gravity="center"
+        android:lineSpacingExtra="1dp"
+        android:maxLines="4"
+        android:minLines="4"
+        android:textSize="11sp"/>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView style="@style/Mc.Text" android:layout_width="44dp" android:layout_height="wrap_content" android:text="VIDA" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/text_secondary"/>
+        <ProgressBar android:id="@+id/statHp" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="9dp" android:layout_weight="1" android:max="100" android:progressDrawable="@drawable/bar_stat"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView style="@style/Mc.Text" android:layout_width="44dp" android:layout_height="wrap_content" android:text="DANO" android:textSize="9sp" android:textStyle="bold" android:textColor="@color/text_secondary"/>
+        <ProgressBar android:id="@+id/statDmg" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="9dp" android:layout_weight="1" android:max="100" android:progressDrawable="@drawable/bar_stat"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+        <TextView style="@style/Mc.Text" android:layout_width="44dp" android:layout_height="wrap_content" android:text="VELOC." android:textSize="9sp" android:textStyle="bold" android:textColor="@color/text_secondary"/>
+        <ProgressBar android:id="@+id/statSpd" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="9dp" android:layout_weight="1" android:max="100" android:progressDrawable="@drawable/bar_stat"/>
+    </LinearLayout>
+</LinearLayout>
