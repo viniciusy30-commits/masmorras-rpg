@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PathMeasure
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import kotlin.math.cos
@@ -37,13 +38,7 @@ class ChargeRingView @JvmOverloads constructor(
 
     private fun buildHex(cx: Float, cy: Float, r: Float) {
         hex.reset()
-        for (k in 0..5) {
-            val a = Math.toRadians(-90.0 + 60.0 * k)
-            val x = cx + r * cos(a).toFloat()
-            val y = cy + r * sin(a).toFloat()
-            if (k == 0) hex.moveTo(x, y) else hex.lineTo(x, y)
-        }
-        hex.close()
+        hex.arcTo(RectF(cx - r, cy - r, cx + r, cy + r), -90f, 359.9f, true)
         measure.setPath(hex, false)
         builtFor = r
     }
@@ -53,14 +48,14 @@ class ChargeRingView @JvmOverloads constructor(
         if (level <= 0f && shown < 0.01f) { shown = 0f; return }
 
         val d = resources.displayMetrics.density
-        // raio do hexágono do botão e do anel gravado dentro dele
-        val outer = min(width, height) / 2f - 0.5f * d
-        val r = outer - 16.8f * d * 2f / 1.7320508f
+        // raio do anel de ferro do botão redondo (90% do raio da moldura)
+        val outer = min(width, height) / 2f - (14f / 3f) * d
+        val r = outer * 0.90f
         if (builtFor != r) buildHex(width / 2f, height / 2f, r)
 
         val full = level >= 0.999f
         val pulse = if (full) 0.5f + 0.5f * sin(System.currentTimeMillis() / 70.0).toFloat() else 0f
-        val w = 5f * d
+        val w = 6f * d
 
         // trilho escuro
         paint.strokeWidth = w + 2f * d

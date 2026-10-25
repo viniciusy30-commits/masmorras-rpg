@@ -1,3 +1,11 @@
+#id 2026-10-25-e
+#titulo HUD refeito do zero, inspirado em Diablo 3 e Minecraft Dungeons
+- Orbes de vida e mana em vidro, com moldura de ferro, ouro, espinhos e gema; o líquido sobe e desce conforme a vida e a mana
+- Botões redondos de metal com rebites e gemas coloridas: ataque em vermelho, rolar em azul, pular em verde e trocar arma em âmbar
+- Joystick com anel dourado, setas nas direções e manopla de metal
+- Medalhão da classe, contador de inimigos com caveira, etiqueta e faixa de objetivo em placas de ferro com borda dourada
+- Ícones novos e coloridos: espada, lança, rolar, pular, trocar, caveira, sair e as quatro classes
+- Anel de carga do golpe forte agora circular, em volta do botão de ataque
 #id 2026-10-25-d
 #titulo Golpes de espada e lança mais certeiros
 - Espada: os quatro golpes foram refeitos, com a lâmina seguindo um arco limpo da preparação até o impacto, sem atravessar o corpo

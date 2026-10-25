@@ -257,7 +257,7 @@ class MainActivity : AppCompatActivity() {
         }
         btnWeapon.setOnClickListener { gameView.switchWeapon() }
         gameView.onWeapon = { w ->
-            runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hudic_spear_bm else R.drawable.hudic_sword_bm) }
+            runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
         findViewById<View>(R.id.btnRoll).setOnClickListener {
             gameView.roll()
@@ -385,13 +385,13 @@ class MainActivity : AppCompatActivity() {
         tvClasseHud.setTextColor(0xFFF2B63D.toInt())
         ivClasseBadge.setImageResource(
             when (classe) {
-                Classe.GUERREIRO -> R.drawable.hudic_c_guerreiro_bm
-                Classe.MAGO -> R.drawable.hudic_c_mago_bm
-                Classe.ARQUEIRO -> R.drawable.hudic_c_arqueiro_bm
-                Classe.BARBARO -> R.drawable.hudic_c_barbaro_bm
+                Classe.GUERREIRO -> R.drawable.hd_ic_c_guerreiro
+                Classe.MAGO -> R.drawable.hd_ic_c_mago
+                Classe.ARQUEIRO -> R.drawable.hd_ic_c_arqueiro
+                Classe.BARBARO -> R.drawable.hd_ic_c_barbaro
             }
         )
-        btnAttack.setImageResource(R.drawable.hudic_sword_bm)
+        btnAttack.setImageResource(R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
