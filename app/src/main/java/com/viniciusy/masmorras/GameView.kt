@@ -32,6 +32,9 @@ class GameView @JvmOverloads constructor(
     private val enemies = mutableListOf<Enemy>()
     private val projectiles = mutableListOf<Projectile>()
     private val particles = mutableListOf<Particle>()
+    private val groundFx = mutableListOf<GroundFx>()
+    private val fxPath = android.graphics.Path()
+    private var chargeFxT = 0f
     private val texts = mutableListOf<DmgText>()
     private val drawList = ArrayList<Entity>()
     private var vignette: Shader? = null
@@ -151,6 +154,7 @@ class GameView @JvmOverloads constructor(
         aimTarget = null
         aimOn = false
         particles.clear()
+        groundFx.clear()
         texts.clear()
         enemies.addAll(map.createEnemies())
         hadEnemies = enemies.isNotEmpty()
@@ -245,6 +249,10 @@ class GameView @JvmOverloads constructor(
         if (gameOver) return
         jumpHeld = true
         jumpHoldT = 0f
+        if (p.classe == Classe.BARBARO) {
+            p.startLeapCharge()
+            return
+        }
         if (p.classe == Classe.MAGO && p.flying) return
         jump()
     }
@@ -253,6 +261,12 @@ class GameView @JvmOverloads constructor(
         jumpHeld = false
         jumpHoldT = 0f
         val p = player ?: return
+        if (p.leapCharging) {
+            if (p.releaseLeap()) {
+                groundSmash(p, 62f, 0.6f, 1.2f, 12, 0.14f)
+            }
+            return
+        }
         if (p.flying) {
             p.flying = false
             p.glide = true
@@ -310,6 +324,14 @@ class GameView @JvmOverloads constructor(
         if (gameOver) return
         if (p.classe == Classe.MAGO) {
             teleport(p)
+            return
+        }
+        if (p.classe == Classe.BARBARO) {
+            val ax = if (aimOn) aimX else p.facingX
+            val ay = if (aimOn) aimY else p.facingY
+            if (p.startDash(System.currentTimeMillis(), ax, ay)) {
+                groundSmash(p, 58f, 0.5f, 1f, 12, 0.12f)
+            }
             return
         }
         if (p.startRoll(System.currentTimeMillis())) {
@@ -390,6 +412,56 @@ class GameView @JvmOverloads constructor(
                 }
             }
             if (thrust) shake = max(shake, if (spear && p.swing == 2) 0.16f else 0.1f)
+        }
+    }
+
+    /** Destrói o chão ao redor do bárbaro: rachaduras, pedras voando, dano em área e empurrão. */
+    private fun groundSmash(p: Player, radius: Float, dmgMul: Float, kb: Float, stones: Int, shk: Float) {
+        val gy = p.y + p.radius * 0.55f - p.ground
+        groundFx.add(GroundFx(p.x, gy, radius, 2.4f, Random.nextInt()))
+        burst(p.x, gy, stones, 0xFF8A7B6A.toInt())
+        burst(p.x, gy, stones / 2, 0xFF4A3F34.toInt())
+        burst(p.x, gy, 4, 0xFFFF9A3D.toInt())
+        shake = max(shake, shk)
+        val dmg = p.classe.danoBase * dmgMul
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            if (e.alt - p.alt > 24f) return@forEach
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (dist < radius + e.radius) damageEnemy(e, dmg, p.x, p.y, kb)
+        }
+    }
+
+    /** Pouso do salto: grande destruição ao redor. */
+    private fun leapLand(p: Player) {
+        Barbarian3D.slamReq = true
+        groundSmash(p, 110f, 1.8f, 2.2f, 26, 0.4f)
+        val gy = p.y + p.radius * 0.55f - p.ground
+        groundFx.add(GroundFx(p.x, gy, 70f, 2.0f, Random.nextInt()))
+    }
+
+    /** Movimento especial do bárbaro: carga do salto e detecção do pouso. */
+    private fun barbMotion(p: Player, dt: Float) {
+        if (p.leapCharging) {
+            if (!p.alive) {
+                p.leapCharging = false
+            } else {
+                chargeFxT -= dt
+                if (chargeFxT <= 0f) {
+                    chargeFxT = 0.09f
+                    burst(p.x + (Random.nextFloat() - 0.5f) * 36f, p.y + p.radius * 0.55f - p.ground, 2, 0xFF8A7B6A.toInt())
+                }
+                shake = max(shake, 0.02f + 0.06f * p.leapChargeT)
+            }
+        }
+        if (p.leaping) {
+            if (!p.leapAir && p.alt > p.ground + 2f) {
+                p.leapAir = true
+            } else if (p.leapAir && p.grounded) {
+                p.leaping = false
+                p.leapAir = false
+                leapLand(p)
+            }
         }
     }
 
@@ -720,6 +792,8 @@ class GameView @JvmOverloads constructor(
         if (shake > 0f) shake = (shake - dt).coerceAtLeast(0f)
         particles.forEach { it.update(dt) }
         particles.removeAll { it.life <= 0f }
+        groundFx.forEach { it.age += dt }
+        groundFx.removeAll { it.age >= it.life }
         texts.forEach {
             it.y -= 40f * dt
             it.life -= dt
@@ -832,6 +906,7 @@ class GameView @JvmOverloads constructor(
             if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
         }
         p.updateVertical(dt, map.heightAt(p.x, p.y))
+        if (p.classe == Classe.BARBARO) barbMotion(p, dt)
         if (p.landed > 0f) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
             p.landed = 0f
@@ -968,6 +1043,7 @@ class GameView @JvmOverloads constructor(
         }
 
         map.drawFloor(canvas, paint, camX, camY, w, h)
+        groundFx.forEach { it.draw(canvas, paint, camX, camY, fxPath) }
 
         drawList.clear()
         for (e in enemies) {

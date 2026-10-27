@@ -61,6 +61,7 @@ class Player(
 
     companion object {
         const val ROLL_TIME = 0.46f
+        const val DASH_TIME = 0.34f  // impulso do bárbaro
         const val MAGE_RATE = 2.3f
         const val TP_TIME = 0.34f   // duração da animação do teleporte
         const val TP_COST = 15f     // mana gasta no teleporte
@@ -82,6 +83,18 @@ class Player(
     // pulo e rolamento
     var vz = 0f
     var rollT = 0f
+    var rollDur = ROLL_TIME
+    var dashing = false
+
+    // bárbaro: salto carregado (segurar pular) e pouso destruidor
+    var leapCharging = false
+    var leapChargeT = 0f
+    var leaping = false
+    var leapAir = false
+    var leapDX = 0f
+    var leapDY = 0f
+    var leapSpd = 0f
+    var leapClock = 0f
     var rollDX = 0f
     var rollDY = 1f
     var lastRoll = 0L
@@ -113,7 +126,7 @@ class Player(
     var swapUntil = 0L
 
     fun canAttack(now: Long): Boolean {
-        if (rolling || now < swapUntil) return false
+        if (rolling || now < swapUntil || leapCharging || leaping) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else classe.cooldownAtaque
@@ -199,10 +212,65 @@ class Player(
         facingX = rollDX
         facingY = rollDY
         rollT = ROLL_TIME
+        rollDur = ROLL_TIME
+        dashing = false
         lastRoll = now
         attackAnim = 0f
         charging = false
         chargeT = 0f
+        return true
+    }
+
+    /** Impulso do bárbaro: arranca com a força das pernas na direção da mira. */
+    fun startDash(now: Long, dx: Float, dy: Float): Boolean {
+        if (!alive || rolling || !grounded || leaping || leapCharging || now - lastRoll < 700L) return false
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        rollDX = dx / l
+        rollDY = dy / l
+        facingX = rollDX
+        facingY = rollDY
+        rollT = DASH_TIME
+        rollDur = DASH_TIME
+        dashing = true
+        lastRoll = now
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        return true
+    }
+
+    /** Começa a carregar o salto (botão de pular segurado, no chão). */
+    fun startLeapCharge(): Boolean {
+        if (!alive || classe != Classe.BARBARO || rolling || !grounded || leaping || leapCharging) return false
+        leapCharging = true
+        leapChargeT = 0f
+        attackAnim = 0f
+        return true
+    }
+
+    /** Solta o salto: andando, vai longe na direção do movimento; parado, sobe alto. Devolve true se saltou. */
+    fun releaseLeap(): Boolean {
+        if (!leapCharging) return false
+        leapCharging = false
+        val c = 0.4f + 0.6f * leapChargeT
+        leapChargeT = 0f
+        if (!alive || !grounded) return false
+        val l = hypot(inX, inY)
+        if (l > 0.1f) {
+            leapDX = inX / l
+            leapDY = inY / l
+            leapSpd = 250f + 260f * c
+            vz = 300f + 140f * c
+        } else {
+            leapDX = 0f
+            leapDY = 0f
+            leapSpd = 0f
+            vz = 400f + 240f * c
+        }
+        alt = ground + 0.7f
+        leaping = true
+        leapAir = false
+        leapClock = 0f
         return true
     }
 
@@ -243,15 +311,23 @@ class Player(
     }
 
     override fun update(dt: Float) {
+        if (leaping) {
+            leapClock += dt
+            if (leapClock > 2.5f) leaping = false
+        }
         if (rollT > 0f) {
             rollT -= dt
-            if (rollT <= 0f) { rollT = 0f; landSquash = max(landSquash, 0.3f) }
-            val q = 1f - rollT / ROLL_TIME
-            val spd = 300f * (1.4f - 0.75f * q)
+            if (rollT <= 0f) { rollT = 0f; dashing = false; landSquash = max(landSquash, 0.3f) }
+            val q = 1f - rollT / rollDur
+            val spd = if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
+        } else if (leaping) {
+            vx = leapDX * leapSpd
+            vy = leapDY * leapSpd
         } else {
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f)
+            if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f)
             vx = inX * classe.velocidade * 60f * slow
             vy = inY * classe.velocidade * 60f * slow
         }
@@ -326,7 +402,10 @@ class Player(
         Warrior3D.weapon = weapon
         Warrior3D.spearGone = weapon == 1 && spearOut
         Warrior3D.charge = if (charging) chargeT else -1f
-        Barbarian3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Barbarian3D.rollP = -1f
+        Barbarian3D.dashP = if (rollT > 0f && dashing) 1f - rollT / rollDur else -1f
+        Barbarian3D.leapCharge = if (leapCharging) leapChargeT else -1f
+        Barbarian3D.leaping = leaping && leapAir
         Barbarian3D.inAir = up > 1f
         Barbarian3D.airH = up
         Barbarian3D.airVz = vz

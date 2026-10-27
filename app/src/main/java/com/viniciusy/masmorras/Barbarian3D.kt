@@ -467,6 +467,10 @@ object Barbarian3D {
     var airH = 0f
     var swing = 0               // 0 machado direito, 1 machado esquerdo, 2 batida dupla
     var alphaV = 1f
+    var leapCharge = -1f        // 0..1 enquanto carrega o salto; <0 = sem carga
+    var leaping = false         // no ar durante o salto carregado
+    var dashP = -1f             // 0..1 durante o impulso; <0 = sem impulso
+    var slamReq = false         // pedido de efeito de pouso (o jogo marca ao aterrissar do salto)
 
     // ───────────── estado de animação ─────────────
     private var yaw = 0f
@@ -493,6 +497,44 @@ object Barbarian3D {
     private var curSwing = 0
     private var furyW = 0f
     private var axeP = 0
+    private var chW = 0f
+    private var leapW = 0f
+    private var dW = 0f
+    private var slamT = 0f
+    private var slamFire = false
+    private var shockMax = 26f
+    private var shockOff = 15f
+    private var dashWas = false
+    private var dashDustT = 0f
+    private val CK_A = floatArrayOf(0.2f, 0.95f, 1.7f, 2.4f, 3.1f, 3.8f, 4.5f, 5.4f)
+    private val CK_J = floatArrayOf(0.25f, -0.3f, 0.2f, -0.25f, 0.3f, -0.2f, 0.25f, -0.3f)
+
+    /** Rachaduras brilhantes no chão (carga do salto). */
+    private fun drawCracks(c: Canvas, p: Paint, cx: Float, cy: Float, r: Float, a: Float) {
+        p.style = Paint.Style.STROKE
+        p.strokeCap = Paint.Cap.ROUND
+        for (pass in 0..1) {
+            p.strokeWidth = if (pass == 0) max(2f, rs * 1.5f) else max(1f, rs * 0.6f)
+            val al = ((if (pass == 0) 0.85f else 0.85f * a) * 255f).toInt().coerceIn(0, 255)
+            p.color = (al shl 24) or (if (pass == 0) 0x00241A12 else 0x00FF7A2A)
+            for (k in CK_A.indices) {
+                val a0 = CK_A[k]
+                val a1 = a0 + CK_J[k]
+                val a2 = a0 + CK_J[k] * 0.4f
+                val x1 = cx + cos(a0) * r * 0.5f
+                val y1 = cy + sin(a0) * r * 0.5f * SINP
+                val x2 = cx + cos(a1) * r * 0.78f
+                val y2 = cy + sin(a1) * r * 0.78f * SINP
+                val x3 = cx + cos(a2) * r
+                val y3 = cy + sin(a2) * r * SINP
+                c.drawLine(cx, cy, x1, y1, p)
+                c.drawLine(x1, y1, x2, y2, p)
+                c.drawLine(x2, y2, x3, y3, p)
+            }
+        }
+        p.strokeCap = Paint.Cap.BUTT
+        p.style = Paint.Style.FILL
+    }
 
     // pontas das lâminas projetadas na tela: 0/1 = machado direito (topo/base do fio), 2/3 = esquerdo
     private val ptX = FloatArray(4)
@@ -1239,7 +1281,7 @@ object Barbarian3D {
         val ltw = kO[9]
         val tw = kO[10]
         var crouch = kO[11]
-        val leanAtk = kO[12]
+        var leanAtk = kO[12]
         val hipTw = kO[13]
         for (i in 0 until NK) lastPose[i] = kO[i]
         if (rollW > 0.001f) {
@@ -1261,6 +1303,54 @@ object Barbarian3D {
             lshZ = lerp(lshZ, 0.45f, airW)
             lel = lerp(lel, -0.7f, airW)
             lth = lerp(lth, 0.2f, airW)
+        }
+
+        // ── salto carregado, pouso destruidor e impulso ──
+        val chOn = leapCharge >= 0f && !rolling
+        chW += ((if (chOn) 1f else 0f) - chW) * min(1f, dt * (if (chOn) 10f else 16f))
+        val lpOn = leaping && !rolling
+        leapW += ((if (lpOn) 1f else 0f) - leapW) * min(1f, dt * (if (lpOn) 18f else 12f))
+        val dsOn = dashP >= 0f
+        dW += ((if (dsOn) 1f else 0f) - dW) * min(1f, dt * (if (dsOn) 30f else 14f))
+        if (slamReq) {
+            slamReq = false
+            slamT = 0.5f
+            slamFire = true
+        }
+        slamT = max(0f, slamT - dt)
+        val cp = max(0f, leapCharge)
+        if (chW > 0.001f) {
+            // agachado com os machados recolhidos atrás, tremendo de força
+            val tr = sin(clock * 55f) * 0.05f * cp
+            rsh = lerp(rsh, 0.7f, chW); rshZ = lerp(rshZ, 0.3f, chW); rel = lerp(rel, -0.4f, chW); rth = lerp(rth, -1.6f, chW)
+            lsh = lerp(lsh, 0.7f, chW); lshZ = lerp(lshZ, -0.3f, chW); lel = lerp(lel, -0.4f, chW); lth = lerp(lth, -1.6f, chW)
+            crouch = lerp(crouch, 0.4f + 0.65f * cp, chW)
+            leanAtk = lerp(leanAtk, 0.3f + tr, chW)
+        }
+        if (leapW > 0.001f) {
+            // subindo: machados erguidos; descendo: machados apontam para o chão
+            val fall = (-vzN * 2.2f).coerceIn(0f, 1f)
+            val ash = lerp(-2.9f, -1.7f, fall)
+            val ael = lerp(-1.1f, -0.5f, fall)
+            val ath = lerp(-0.1f, 1.5f, fall)
+            rsh = lerp(rsh, ash, leapW); rshZ = lerp(rshZ, 0.25f, leapW); rel = lerp(rel, ael, leapW); rth = lerp(rth, ath, leapW)
+            lsh = lerp(lsh, ash, leapW); lshZ = lerp(lshZ, -0.25f, leapW); lel = lerp(lel, ael, leapW); lth = lerp(lth, ath, leapW)
+            leanAtk = lerp(leanAtk, -0.1f + 0.45f * fall, leapW)
+        }
+        if (slamT > 0f) {
+            // pouso: os dois machados cravados no chão
+            val w = min(1f, slamT / 0.3f)
+            rsh = lerp(rsh, -1.0f, w); rshZ = lerp(rshZ, 0.3f, w); rel = lerp(rel, -0.3f, w); rth = lerp(rth, 2.4f, w)
+            lsh = lerp(lsh, -1.0f, w); lshZ = lerp(lshZ, -0.3f, w); lel = lerp(lel, -0.3f, w); lth = lerp(lth, 2.4f, w)
+            crouch = max(crouch, 0.9f * w)
+            leanAtk = lerp(leanAtk, 0.5f, w)
+        }
+        if (dW > 0.001f) {
+            // impulso: corpo baixo e inclinado, machados para trás
+            rsh = lerp(rsh, 0.9f, dW); rshZ = lerp(rshZ, 0.25f, dW); rel = lerp(rel, -0.3f, dW); rth = lerp(rth, -1.8f, dW)
+            lsh = lerp(lsh, 0.9f, dW); lshZ = lerp(lshZ, -0.25f, dW); lel = lerp(lel, -0.3f, dW); lth = lerp(lth, -1.8f, dW)
+            crouch = max(crouch, 0.5f * dW)
+            leanAtk = lerp(leanAtk, 0.65f, dW)
         }
 
         // ── molas (capa, barba, cabelo, saias, cabeça, inclinação) ──
@@ -1344,6 +1434,13 @@ object Barbarian3D {
             }
         }
 
+        if (dW > 0.001f) {
+            aL = lerp(aL, -1.0f, dW); kL = lerp(kL, 0.6f, dW); fL = lerp(fL, 0f, dW)
+            aR = lerp(aR, 0.9f, dW); kR = lerp(kR, 0.1f, dW); fR = lerp(fR, 0.9f, dW)
+        }
+        if (chW > 0.001f) {
+            aL = lerp(aL, -0.3f, chW); aR = lerp(aR, 0.25f, chW)
+        }
         val flare = 0.04f + 0.10f * spN + 0.3f * airW
         skeleton(
             hipY, hipTw, wob, lean, chestTw, breath,
@@ -1357,6 +1454,28 @@ object Barbarian3D {
         if (attacking && sw == 2 && !released && t >= tM) {
             shockT = 0f
             shockSw = 2
+            shockMax = 26f
+            shockOff = 15f
+        }
+        if (slamFire) {
+            // pouso do salto: onda de choque grande, poeira e faíscas
+            slamFire = false
+            shockT = 0f
+            shockMax = 46f
+            shockOff = 0f
+            for (i in 0..9) {
+                val a = i * 0.628f
+                emitDust(fx + cos(a) * 4f * rs, fy + sin(a) * 2f * rs, cos(a) * rs * 34f, sin(a) * rs * 12f - rs * 3f, rs * 2.6f)
+            }
+            for (i in 0..15) {
+                val a = (i / 16f) * TWO_PI
+                val v0 = (20f + (i % 3) * 14f) * rs
+                emitSpark(
+                    fx, fy - 2f * rs, cos(a) * v0, sin(a) * v0 * 0.5f - rs * 30f,
+                    0.35f + (i % 4) * 0.06f, rs * 80f,
+                    if (i % 2 == 0) 0xFFFF9A3D.toInt() else 0xFFFFE0B0.toInt(), 1.0f
+                )
+            }
         }
         if (shockT >= 0f) {
             shockT += dt
@@ -1364,9 +1483,9 @@ object Barbarian3D {
                 shockT = -1f
             } else {
                 val u = shockT / 0.38f
-                val rr = (4f + 26f * (1f - (1f - u) * (1f - u))) * rs
-                val cx0 = fx + sin(yaw) * 15f * rs
-                val cy0 = fy + cos(yaw) * 15f * rs * SINP
+                val rr = (4f + shockMax * (1f - (1f - u) * (1f - u))) * rs
+                val cx0 = fx + sin(yaw) * shockOff * rs
+                val cy0 = fy + cos(yaw) * shockOff * rs * SINP
                 val ra = 1f - u
                 p.style = Paint.Style.STROKE
                 p.strokeWidth = max(2f, rs * 2.4f * ra)
@@ -1377,6 +1496,51 @@ object Barbarian3D {
                 c.drawOval(cx0 - rr * 0.8f, cy0 - rr * 0.8f * SINP, cx0 + rr * 0.8f, cy0 + rr * 0.8f * SINP, p)
                 p.style = Paint.Style.FILL
             }
+        }
+
+        // ── rachaduras brilhando sob os pés enquanto carrega o salto ──
+        if (chW > 0.03f) drawCracks(c, p, fx, fy, (6f + 16f * cp) * rs * chW, chW)
+
+        // ── impulso: explosão no arranque e rastro de velocidade ──
+        if (dsOn) {
+            if (!dashWas) {
+                dashWas = true
+                for (i in 0..7) {
+                    val a = i * 0.785f
+                    emitDust(fx + cos(a) * 3f * rs, fy + sin(a) * 1.5f * rs, cos(a) * rs * 30f, sin(a) * rs * 10f - rs * 3f, rs * 2.2f)
+                }
+                for (i in 0..9) {
+                    emitSpark(
+                        fx, fy - 2f * rs, (kotlin.random.Random.nextFloat() - 0.5f) * rs * 70f, -rs * (10f + kotlin.random.Random.nextFloat() * 40f),
+                        0.3f + kotlin.random.Random.nextFloat() * 0.2f, rs * 90f,
+                        if (i % 2 == 0) 0xFFFF9A3D.toInt() else 0xFFFFE0B0.toInt(), 0.9f
+                    )
+                }
+            }
+            dashDustT -= dt
+            if (dashDustT <= 0f) {
+                dashDustT = 0.035f
+                emitDust(
+                    fx - sin(yaw) * 5f * rs + (kotlin.random.Random.nextFloat() - 0.5f) * 4f * rs, fy - cos(yaw) * 5f * rs * SINP,
+                    (kotlin.random.Random.nextFloat() - 0.5f) * rs * 12f, -rs * 4f, rs * 2f
+                )
+            }
+            val dxs = sin(yaw)
+            val dys = cos(yaw) * SINP
+            p.style = Paint.Style.STROKE
+            p.strokeCap = Paint.Cap.ROUND
+            for (k in 0..2) {
+                val off = (k - 1) * 5f * rs
+                val sx0 = fx - dxs * 6f * rs + dys * off * 0.0f - off * cos(yaw)
+                val sy0 = fy - 10f * rs - dys * 6f * rs + off * 0.3f
+                p.strokeWidth = max(1.5f, rs * 1.1f)
+                p.color = (((0.4f * (1f - dashP) * 255f).toInt()) shl 24) or 0x00FFFFFF
+                c.drawLine(sx0, sy0, sx0 - dxs * 22f * rs, sy0 - dys * 22f * rs, p)
+            }
+            p.strokeCap = Paint.Cap.BUTT
+            p.style = Paint.Style.FILL
+        } else {
+            dashWas = false
         }
 
         // ── poeira dos passos, da aterrissagem e do rolamento (atrás do herói) ──
