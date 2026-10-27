@@ -434,7 +434,7 @@
             <!-- Botões de ação -->
             <FrameLayout
                 android:layout_width="196dp"
-                android:layout_height="184dp"
+                android:layout_height="250dp"
                 android:layout_gravity="bottom|end">
 
                 <ImageButton
@@ -449,6 +449,70 @@
                     android:padding="14dp"
                     android:scaleType="fitCenter"
                     android:src="@drawable/hd_ic_swap"
+                    android:visibility="gone"/>
+
+                <ImageButton
+                    android:id="@+id/btnSkill1"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="118dp"
+                    android:background="@drawable/hdbtn_weapon"
+                    android:contentDescription="Chuva de Flechas"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hd_ic_rain"
+                    android:visibility="gone"/>
+
+                <ImageButton
+                    android:id="@+id/btnSkill2"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="180dp"
+                    android:background="@drawable/hdbtn_weapon"
+                    android:contentDescription="Flecha Trovão"
+                    android:padding="12dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hd_ic_thunder"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tvSkill1Cd"
+                    style="@style/Mc.Text"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="118dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="20sp"
+                    android:shadowColor="#000000"
+                    android:shadowDx="2"
+                    android:shadowDy="2"
+                    android:shadowRadius="1"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tvSkill2Cd"
+                    style="@style/Mc.Text"
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="10dp"
+                    android:layout_marginBottom="180dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="20sp"
+                    android:shadowColor="#000000"
+                    android:shadowDx="2"
+                    android:shadowDy="2"
+                    android:shadowRadius="1"
                     android:visibility="gone"/>
 
                 <ImageButton

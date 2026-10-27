@@ -63,6 +63,10 @@ class Player(
         const val ROLL_TIME = 0.46f
         const val DASH_TIME = 0.34f  // impulso do bárbaro
         const val MAGE_RATE = 2.3f
+        const val ARCHER_RATE = 2.6f // velocidade da animação do tiro (T_SHOT sincroniza a saída da flecha)
+        const val HOP_TIME = 0.34f   // salto-dash do arqueiro
+        const val RAIN_CD = 7000L    // recarga da Chuva de Flechas (ms)
+        const val THUNDER_CD = 9000L // recarga da Flecha Trovão (ms)
         const val TP_TIME = 0.34f   // duração da animação do teleporte
         const val TP_COST = 15f     // mana gasta no teleporte
         const val TP_DIST = 165f    // alcance máximo do teleporte
@@ -124,9 +128,18 @@ class Player(
     var weapon = 0 // 0 espada e escudo, 1 lança
     var spearOut = false // lança arremessada, ainda no chão esperando ser recolhida
     var swapUntil = 0L
+    // arqueiro: salto-dash (planta armadilha) e skills (1 = chuva de flechas, 2 = flecha trovão)
+    var hopping = false
+    var trapFx = false
+    var skillK = 0
+    var skillT = 0f
+    var skillDur = 1f
+    var rainReadyAt = 0L
+    var thunderReadyAt = 0L
+    val skilling: Boolean get() = skillK != 0
 
     fun canAttack(now: Long): Boolean {
-        if (rolling || now < swapUntil || leapCharging || leaping) return false
+        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else classe.cooldownAtaque
@@ -160,9 +173,10 @@ class Player(
             }
         }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
+        if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -191,15 +205,64 @@ class Player(
     /** Segundos até o orbe sair do cajado do mago (sincronizado com Mage3D.T_M). */
     fun castDelay(): Float = Mage3D.T_M / MAGE_RATE
 
+    /** Segundos até a flecha sair do arco do arqueiro (sincronizado com Archer3D.T_SHOT). */
+    fun shotDelay(): Float = Archer3D.T_SHOT / ARCHER_RATE
+
+    /** Salto-dash do arqueiro: pulinho baixo com cambalhota na direção que está olhando. */
+    fun startHop(now: Long): Boolean {
+        if (classe != Classe.ARQUEIRO || !alive || rolling || skillK != 0 || !grounded || now - lastRoll < 700L) return false
+        var dx = facingX
+        var dy = facingY
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l
+        dy /= l
+        rollDX = dx
+        rollDY = dy
+        rollT = HOP_TIME
+        rollDur = HOP_TIME
+        dashing = false
+        hopping = true
+        vz = 250f
+        alt = ground + 0.7f
+        lastRoll = now
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        return true
+    }
+
+    fun skillReady(k: Int, now: Long): Boolean =
+        classe == Classe.ARQUEIRO && alive && skillK == 0 && !rolling && grounded &&
+            now >= (if (k == 1) rainReadyAt else thunderReadyAt)
+
+    /** Segundos de recarga que faltam (0 = pronta). */
+    fun skillCd(k: Int, now: Long): Float =
+        (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
+
+    fun startSkill(k: Int, now: Long): Boolean {
+        if (!skillReady(k, now)) return false
+        skillK = k
+        skillDur = if (k == 1) Archer3D.RAIN_DUR else Archer3D.THUNDER_DUR
+        skillT = skillDur
+        if (k == 1) rainReadyAt = now + RAIN_CD else thunderReadyAt = now + THUNDER_CD
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        return true
+    }
+
+    /** Segundos desde o começo da skill até a flecha sair. */
+    fun skillReleaseAt(k: Int): Float = if (k == 1) Archer3D.RAIN_DUR * Archer3D.RAIN_REL else Archer3D.THUNDER_DUR * Archer3D.THUNDER_REL
+
     fun jump(): Boolean {
-        if (!alive || rolling || !grounded) return false
+        if (!alive || rolling || skillK != 0 || !grounded) return false
         vz = 340f
         alt = ground + 0.7f
         return true
     }
 
     fun startRoll(now: Long): Boolean {
-        if (!alive || rolling || !grounded || now - lastRoll < 700L) return false
+        if (!alive || rolling || skillK != 0 || !grounded || now - lastRoll < 700L) return false
         var dx = inX
         var dy = inY
         if (hypot(dx, dy) < 0.1f) {
@@ -317,9 +380,9 @@ class Player(
         }
         if (rollT > 0f) {
             rollT -= dt
-            if (rollT <= 0f) { rollT = 0f; dashing = false; landSquash = max(landSquash, 0.3f) }
+            if (rollT <= 0f) { rollT = 0f; dashing = false; hopping = false; landSquash = max(landSquash, 0.3f) }
             val q = 1f - rollT / rollDur
-            val spd = if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
+            val spd = if (hopping) 480f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
         } else if (leaping) {
@@ -327,7 +390,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) 0.3f else 1f)
             vx = inX * classe.velocidade * 60f * slow
             vy = inY * classe.velocidade * 60f * slow
         }
@@ -337,9 +400,13 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         if (tpT > 0f) tpT = (tpT - dt).coerceAtLeast(0f)
+        if (skillK != 0) {
+            skillT -= dt
+            if (skillT <= 0f) { skillT = 0f; skillK = 0 }
+        }
         if (classe == Classe.MAGO) {
             if (flying) {
                 fuel -= dt
@@ -409,6 +476,17 @@ class Player(
         Barbarian3D.airH = up
         Barbarian3D.airVz = vz
         Barbarian3D.swing = swing
+        Archer3D.hopP = if (hopping && rollT > 0f) 1f - rollT / rollDur else -1f
+        Archer3D.inAir = up > 1f
+        Archer3D.airH = up
+        Archer3D.airVz = vz
+        Archer3D.skillK = skillK
+        Archer3D.skillP = if (skillK != 0) 1f - skillT / skillDur else -1f
+        if (trapFx) {
+            trapFx = false
+            Archer3D.trapReq = true
+        }
+        Archer3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -448,6 +526,7 @@ class Enemy(
     var faceX = 0f
     var faceY = 1f
     var attackAnim = 0f
+    var stunT = 0f   // atordoado (armadilha / raio): fica parado
     var yaw = 0f
     private var yawInit = false
 
@@ -470,6 +549,10 @@ class Enemy(
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
         if (!alive) return
+        if (stunT > 0f) {
+            stunT = (stunT - dt).coerceAtLeast(0f)
+            return
+        }
         val dx = player.x - x
         val dy = player.y - y
         val dist = kotlin.math.sqrt(dx * dx + dy * dy)
@@ -546,6 +629,7 @@ class Enemy(
 
         val barW = if (tipo == 2) radius * 2.4f else radius * 2f
         drawBar(canvas, paint, sx, feet - 50f * s - 8f, barW, hp / maxHp, 0xFFE53935.toInt())
+        if (stunT > 0f) drawStunStars(canvas, paint, sx, feet - 50f * s - 20f, s, VoxelArt.time)
     }
 }
 

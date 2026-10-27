@@ -1,3 +1,13 @@
+#id 2026-10-27-c
+#titulo Arqueiro em 3D, salto com armadilha e 2 skills
+- Arqueiro refeito em blocos 3D articulados, no mesmo nível das outras classes: capuz verde com pena vermelha em mola, máscara, cachecol, capa curta em três partes, aljava nas costas com flechas, bolsa e adaga no cinto, botas com pele
+- Tiro com animação completa: a mão pega a flecha na aljava, encaixa, puxa a corda (os limbos do arco flexionam) e solta; a flecha só sai no instante do disparo, com a corda vibrando e o corpo recuando
+- O botão de rolar virou o Salto do Arqueiro: um pulo baixo com cambalhota na direção em que ele está olhando, deixando uma armadilha no chão; quem pisar nela fica atordoado por 1 segundo (estrelinhas na cabeça, para de andar e de atacar). Até 4 armadilhas ao mesmo tempo
+- O pulo normal continua o mesmo
+- Skill 1 - Chuva de Flechas (botão de cima, 7 s de recarga): ele ergue o arco e atira uma salva para o céu; um círculo verde marca a área e as flechas caem sobre os inimigos
+- Skill 2 - Flecha Trovão (botão de baixo, 9 s de recarga): carrega o arco com energia elétrica e dispara uma flecha de raio que atravessa todos os inimigos da linha, atordoa por um instante e salta em corrente para inimigos próximos
+- O número no botão mostra quantos segundos faltam para a skill voltar
+
 #id 2026-10-27-b
 #titulo Mago: teleporte e voo
 - O botão de rolar do mago agora é Teleporte (15 de mana): ele some num pilar de luz e reaparece até bem à frente, atravessando o que estiver no caminho (só não aparece dentro de parede ou penhasco); fica invulnerável no começo do teleporte

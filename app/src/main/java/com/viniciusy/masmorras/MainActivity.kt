@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnWeapon: android.widget.ImageButton
     private lateinit var ivManaSlot: View
     private lateinit var btnAttack: android.widget.ImageButton
+    private lateinit var btnSkill1: android.widget.ImageButton
+    private lateinit var btnSkill2: android.widget.ImageButton
+    private lateinit var tvSkill1Cd: TextView
+    private lateinit var tvSkill2Cd: TextView
     private lateinit var hudLayer: View
     private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
@@ -118,6 +122,10 @@ class MainActivity : AppCompatActivity() {
         mpRow = findViewById(R.id.mpRow)
         btnWeapon = findViewById(R.id.btnWeapon)
         btnAttack = findViewById(R.id.btnAttack)
+        btnSkill1 = findViewById(R.id.btnSkill1)
+        btnSkill2 = findViewById(R.id.btnSkill2)
+        tvSkill1Cd = findViewById(R.id.tvSkill1Cd)
+        tvSkill2Cd = findViewById(R.id.tvSkill2Cd)
         ivManaSlot = findViewById(R.id.ivManaSlot)
         hudLayer = findViewById(R.id.hudLayer)
         menuBg = findViewById(R.id.menuBg)
@@ -276,6 +284,8 @@ class MainActivity : AppCompatActivity() {
             true
         }
         btnWeapon.setOnClickListener { gameView.switchWeapon() }
+        btnSkill1.setOnClickListener { gameView.skill(1) }
+        btnSkill2.setOnClickListener { gameView.skill(2) }
         gameView.onWeapon = { w ->
             runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
@@ -323,6 +333,15 @@ class MainActivity : AppCompatActivity() {
                         tvMpNum.text = ""
                     }
                     tvInimigos.text = gameView.aliveEnemies().toString()
+                    if (p.classe == Classe.ARQUEIRO) {
+                        val nowMs = System.currentTimeMillis()
+                        val c1 = p.skillCd(1, nowMs)
+                        val c2 = p.skillCd(2, nowMs)
+                        tvSkill1Cd.text = if (c1 > 0f) Math.ceil(c1.toDouble()).toInt().toString() else ""
+                        tvSkill2Cd.text = if (c2 > 0f) Math.ceil(c2.toDouble()).toInt().toString() else ""
+                        btnSkill1.alpha = if (c1 > 0f) 0.45f else 1f
+                        btnSkill2.alpha = if (c2 > 0f) 0.45f else 1f
+                    }
                 }
                 gameView.postDelayed(this, 100)
             }
@@ -427,6 +446,11 @@ class MainActivity : AppCompatActivity() {
         )
         btnAttack.setImageResource(R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
+        val skillVis = if (classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
+        btnSkill1.visibility = skillVis
+        btnSkill2.visibility = skillVis
+        tvSkill1Cd.visibility = skillVis
+        tvSkill2Cd.visibility = skillVis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)

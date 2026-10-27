@@ -58,6 +58,16 @@ class GameView @JvmOverloads constructor(
     private var pendingCastT = -1f
     private var pendingBarbT = -1f
     private var pendingBarbSwing = 0
+    // arqueiro: flecha pendente, skills, armadilhas e efeitos
+    private var pendingShotT = -1f
+    private var pendingSkillT = -1f
+    private var pendingSkillK = 0
+    private var skillDX = 1f
+    private var skillDY = 0f
+    private val traps = ArrayList<Trap>()
+    private val rains = ArrayList<RainZone>()
+    private val bolts = ArrayList<ThunderBolt>()
+    private val zaps = ArrayList<ZapFx>()
     private var pendingThrow = false
     private var throwDX = 1f
     private var throwDY = 0f
@@ -148,6 +158,12 @@ class GameView @JvmOverloads constructor(
         pendingHitT = -1f
         pendingCastT = -1f
         pendingBarbT = -1f
+        pendingShotT = -1f
+        pendingSkillT = -1f
+        traps.clear()
+        rains.clear()
+        bolts.clear()
+        zaps.clear()
         pendingThrow = false
         aimTarget = null
         aimOn = false
@@ -190,7 +206,7 @@ class GameView @JvmOverloads constructor(
             val ny = dy / len
             p.inX = nx
             p.inY = ny
-            if (!p.rolling && !pendingThrow && !(aimOn && attackHeld)) {
+            if (!p.rolling && !p.skilling && !pendingThrow && !(aimOn && attackHeld)) {
                 p.facingX = nx
                 p.facingY = ny
             }
@@ -323,6 +339,19 @@ class GameView @JvmOverloads constructor(
             teleport(p)
             return
         }
+        if (p.classe == Classe.ARQUEIRO) {
+            val ox = p.x
+            val oy = p.y
+            val gz = p.ground
+            if (p.startHop(System.currentTimeMillis())) {
+                pendingShotT = -1f
+                traps.add(Trap(ox, oy, gz))
+                if (traps.size > 4) traps.removeAt(0)
+                p.trapFx = true
+                burst(ox, oy + p.radius * 0.55f - gz, 7, 0xFFB8B0A8.toInt())
+            }
+            return
+        }
         if (p.classe == Classe.BARBARO) {
             val ax = if (aimOn) aimX else p.facingX
             val ay = if (aimOn) aimY else p.facingY
@@ -346,6 +375,189 @@ class GameView @JvmOverloads constructor(
             cellBlocked(x, y + r, lim) || cellBlocked(x, y - r, lim)
     }
 
+    /** Skill do arqueiro: 1 = Chuva de Flechas, 2 = Flecha Trovão. */
+    fun skill(k: Int) {
+        val p = player ?: return
+        if (gameOver || p.classe != Classe.ARQUEIRO) return
+        if (!p.startSkill(k, System.currentTimeMillis())) return
+        pendingShotT = -1f
+        queuedAt = 0L
+        skillDX = p.facingX
+        skillDY = p.facingY
+        pendingSkillK = k
+        pendingSkillT = p.skillReleaseAt(k)
+    }
+
+    /** Instante em que a flecha sai do arco na skill. */
+    private fun releaseSkill(p: Player, k: Int) {
+        var dx = skillDX
+        var dy = skillDY
+        val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l0
+        dy /= l0
+        if (k == 1) {
+            // a chuva cai sobre o inimigo mais próximo à frente; sem inimigo, sobre o chão 210px adiante
+            var tx: Float
+            var ty: Float
+            var best = 340f
+            var tgt: Enemy? = null
+            for (e in enemies) {
+                if (!e.alive) continue
+                val ex = e.x - p.x
+                val ey = e.y - p.y
+                val d = hypot(ex, ey)
+                if (d in 20f..best && (ex * dx + ey * dy) / d > 0.35f) {
+                    best = d
+                    tgt = e
+                }
+            }
+            if (tgt != null) {
+                tx = tgt.x
+                ty = tgt.y
+            } else {
+                val r = rayLen(p.x, p.y, dx, dy, 210f)
+                tx = p.x + dx * r
+                ty = p.y + dy * r
+            }
+            tx = tx.coerceIn(40f, map.worldWidth() - 40f)
+            ty = ty.coerceIn(40f, map.worldHeight() - 40f)
+            rains.add(RainZone(tx, ty, map.heightAt(tx, ty), 100f))
+            shake = max(shake, 0.1f)
+        } else {
+            // leve ímã: se tem inimigo bem na linha, a flecha trovão corrige a mira
+            var bestDot = 0.94f
+            for (e in enemies) {
+                if (!e.alive) continue
+                val ex = e.x - p.x
+                val ey = e.y - p.y
+                val d = hypot(ex, ey)
+                if (d < 40f || d > 560f) continue
+                val dot = (ex * dx + ey * dy) / d
+                if (dot > bestDot) {
+                    bestDot = dot
+                    dx = ex / d
+                    dy = ey / d
+                }
+            }
+            bolts.add(ThunderBolt(p.x + dx * 24f, p.y + dy * 24f, dx, dy, p.classe.danoBase * 2.3f))
+            shake = max(shake, 0.2f)
+        }
+    }
+
+    private fun thunderHit(b: ThunderBolt, e: Enemy) {
+        damageEnemy(e, b.damage, b.x - b.dx * 20f, b.y - b.dy * 20f, 1.2f)
+        e.stunT = max(e.stunT, 0.5f)
+        burst(e.x, e.y - 14f - e.alt, 8, 0xFFFFF27A.toInt())
+        shake = max(shake, 0.12f)
+        // o raio salta para até 2 inimigos próximos
+        var prev = e
+        for (i in 0 until 2) {
+            var next: Enemy? = null
+            var nd = 150f
+            for (o in enemies) {
+                if (!o.alive || o in b.hit) continue
+                val d = hypot(o.x - prev.x, o.y - prev.y)
+                if (d < nd) {
+                    nd = d
+                    next = o
+                }
+            }
+            val n = next ?: break
+            b.hit.add(n)
+            zaps.add(ZapFx(prev.x, prev.y - 18f - prev.alt, n.x, n.y - 18f - n.alt))
+            damageEnemy(n, b.damage * 0.5f, prev.x, prev.y, 0.6f)
+            n.stunT = max(n.stunT, 0.4f)
+            burst(n.x, n.y - 14f - n.alt, 5, 0xFFFFF27A.toInt())
+            prev = n
+        }
+    }
+
+    private fun updateArcherFx(dt: Float, p: Player) {
+        // armadilhas: quem pisar leva stun de 1 segundo
+        for (t in traps) {
+            t.update(dt)
+            if (!t.armed) continue
+            var stepped = false
+            for (e in enemies) {
+                if (e.alive && abs(e.alt - t.gz) < 16f && hypot(e.x - t.x, e.y - t.y) < e.radius * 0.5f + 16f) {
+                    stepped = true
+                    break
+                }
+            }
+            if (stepped) {
+                t.trigger()
+                for (e in enemies) {
+                    if (e.alive && hypot(e.x - t.x, e.y - t.y) < e.radius + 40f) {
+                        e.stunT = max(e.stunT, 1f)
+                        texts.add(DmgText(e.x, e.y - e.radius - 30f - e.alt, "STUN", 0.8f, 0xFFFFD54F.toInt()))
+                    }
+                }
+                burst(t.x, t.y + 13.2f - t.gz, 10, 0xFF7CFF8A.toInt())
+                burst(t.x, t.y + 13.2f - t.gz, 6, 0xFFFFE08A.toInt())
+                shake = max(shake, 0.06f)
+            }
+        }
+        traps.removeAll { it.done }
+
+        // chuva de flechas
+        for (z in rains) {
+            z.update(dt)
+            if (z.age >= RainZone.DELAY && z.spawned < RainZone.COUNT) {
+                z.spawnT -= dt
+                while (z.spawnT <= 0f && z.spawned < RainZone.COUNT) {
+                    z.spawnT += RainZone.EVERY
+                    z.spawned++
+                    var tx: Float
+                    var ty: Float
+                    val near = enemies.filter { it.alive && hypot(it.x - z.x, it.y - z.y) < z.radius * 1.05f }
+                    if (near.isNotEmpty() && Random.nextFloat() < 0.55f) {
+                        val e = near[Random.nextInt(near.size)]
+                        tx = e.x + (Random.nextFloat() - 0.5f) * 20f
+                        ty = e.y + (Random.nextFloat() - 0.5f) * 14f
+                    } else {
+                        val a = Random.nextFloat() * 6.2832f
+                        val r = z.radius * kotlin.math.sqrt(Random.nextFloat())
+                        tx = z.x + cos(a) * r
+                        ty = z.y + sin(a) * r * 0.8f
+                    }
+                    z.arrows.add(RainArrow(tx, ty, z.gz))
+                }
+            }
+            for (a in z.arrows) {
+                if (a.landed || a.t < RainZone.FALL) continue
+                a.landed = true
+                burst(a.tx, a.ty + 13.2f - a.gz, 2, 0xFFB8B0A8.toInt())
+                for (e in enemies) {
+                    if (e.alive && hypot(e.x - a.tx, e.y - a.ty) < 34f + e.radius * 0.5f) {
+                        damageEnemy(e, p.classe.danoBase * 0.5f, z.x, z.y, 0.2f)
+                    }
+                }
+            }
+        }
+        rains.removeAll { it.done }
+
+        // flechas trovão: atravessam tudo, eletrocutam e saltam entre inimigos
+        for (b in bolts) {
+            if (!b.alive) continue
+            b.update(dt)
+            if (map.isWall(b.x, b.y)) {
+                b.alive = false
+                burst(b.x, b.y - 14f, 8, 0xFFFFF27A.toInt())
+                continue
+            }
+            for (e in enemies) {
+                if (e.alive && e !in b.hit && hypot(e.x - b.x, e.y - b.y) < e.radius + 12f) {
+                    b.hit.add(e)
+                    thunderHit(b, e)
+                }
+            }
+            if (!b.alive) burst(b.x, b.y - 14f, 6, 0xFFFFF27A.toInt())
+        }
+        bolts.removeAll { !it.alive }
+        zaps.forEach { it.update(dt) }
+        zaps.removeAll { it.life <= 0f }
+    }
+
     fun tryAttack() {
         val p = player ?: return
         if (!p.alive || gameOver) return
@@ -366,6 +578,11 @@ class GameView @JvmOverloads constructor(
             if (p.classe == Classe.MAGO) {
                 // o orbe só sai do cajado no instante do gesto (sincronizado com a animação)
                 pendingCastT = p.castDelay()
+                return
+            }
+            if (p.classe == Classe.ARQUEIRO) {
+                // a flecha só sai do arco no instante do gesto (sincronizado com Archer3D.T_SHOT)
+                pendingShotT = p.shotDelay()
                 return
             }
             val speed = 280f
@@ -831,6 +1048,28 @@ class GameView @JvmOverloads constructor(
                 }
             }
         }
+        if (pendingShotT >= 0f) {
+            pendingShotT -= dt
+            if (pendingShotT <= 0f) {
+                pendingShotT = -1f
+                if (p.alive && !p.rolling && !p.skilling) {
+                    val arrow = Projectile(
+                        p.x + p.facingX * 20f, p.y + p.facingY * 20f,
+                        p.facingX * 380f, p.facingY * 380f,
+                        p.classe.danoBase, 0xFF8D6E63.toInt(), true, 1
+                    )
+                    arrow.life = 1.4f
+                    projectiles.add(arrow)
+                }
+            }
+        }
+        if (pendingSkillT >= 0f) {
+            pendingSkillT -= dt
+            if (pendingSkillT <= 0f) {
+                pendingSkillT = -1f
+                if (p.alive && p.skilling) releaseSkill(p, pendingSkillK)
+            }
+        }
         if (pendingThrow && p.attackAnim <= 0.70f) {
             pendingThrow = false
             releaseSpear()
@@ -924,7 +1163,7 @@ class GameView @JvmOverloads constructor(
             e.ground = map.heightAt(e.x, e.y)
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
-            if (!p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+            if (e.stunT <= 0f && !p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage)
                 e.lastHit = now
                 shake = 0.3f
@@ -956,6 +1195,8 @@ class GameView @JvmOverloads constructor(
                 }
             }
         }
+
+        updateArcherFx(dt, p)
 
         projectiles.forEach { pr ->
             if (!pr.alive) return@forEach
@@ -1032,6 +1273,8 @@ class GameView @JvmOverloads constructor(
         }
 
         map.drawFloor(canvas, paint, camX, camY, w, h)
+        traps.forEach { it.draw(canvas, paint, camX, camY, time) }
+        rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
 
         drawList.clear()
         for (e in enemies) {
@@ -1065,6 +1308,9 @@ class GameView @JvmOverloads constructor(
         }
 
         projectiles.forEach { it.draw(canvas, paint, camX, camY) }
+        rains.forEach { it.drawArrows(canvas, paint, camX, camY) }
+        bolts.forEach { it.draw(canvas, paint, camX, camY) }
+        zaps.forEach { it.draw(canvas, paint, camX, camY) }
         thrown?.draw(canvas, paint, camX, camY, time)
         player?.let { p ->
             if (p.alive && p.charging && p.weapon == 1 && p.classe == Classe.GUERREIRO) drawAim(canvas, p)
