@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="primary">#2E7D32</color>
+    <color name="primary_dark">#1B5E20</color>
+    <color name="accent">#F2B63D</color>
+    <color name="background">#0E0D0C</color>
+    <color name="surface">#2B2927</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#CFC8BC</color>
+    <color name="hp_green">#4CAF50</color>
+    <color name="hp_red">#E53935</color>
+    <color name="mp_blue">#42A5F5</color>
+    <color name="guerreiro">#C62828</color>
+    <color name="mago">#1565C0</color>
+    <color name="arqueiro">#2E7D32</color>
+    <color name="barbaro">#E65100</color>
+
+    <!-- paleta "masmorra" -->
+    <color name="mc_gold">#F2B63D</color>
+    <color name="mc_gold_dark">#8F5A10</color>
+    <color name="mc_ink">#2A1600</color>
+    <color name="mc_stone">#55514C</color>
+    <color name="mc_stone_dark">#2B2927</color>
+    <color name="mc_frame">#0C0B0A</color>
+    <color name="mc_red">#E53935</color>
+    <color name="mc_emerald">#17DD62</color>
+</resources>

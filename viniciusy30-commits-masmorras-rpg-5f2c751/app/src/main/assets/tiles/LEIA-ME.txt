@@ -1,0 +1,15 @@
+TEXTURAS DO EDITOR DE MAPAS
+===========================
+Todas as texturas do editor ficam nesta pasta (PNG). Se quiser trocar alguma por arte sua, basta
+substituir o arquivo mantendo o nome e o formato. Qualquer tamanho quadrado funciona (32, 64...).
+
+floor_*.png  : chão, quadrado (64x64 nas novas; as antigas eram 32x32). Animados (floor_water,
+               floor_lava, floor_slime, floor_magma, floor_rune) são uma tira horizontal com 8 quadros (512x64).
+wall_*.png   : parede = topo quadrado (64x64) + face frontal embaixo (64x40). Total 64x104.
+               Em 32px: topo 32x32 + face 32x20.
+prop_*.png   : objetos, 64x96 por quadro (os antigos eram 32x48). Animados são tiras horizontais
+               (ex.: 6 quadros = 384x96).
+
+wall_door*.png / wall_gate_castle.png : portas animadas = topo + 4 faces empilhadas
+               (fechada, 35%, 70%, aberta). A altura da face é sempre 5/8 da largura.
+Paredes empilhadas usam a mesma textura em cada andar; o botão "Topo" do editor escolhe outra parede para os andares de cima.
