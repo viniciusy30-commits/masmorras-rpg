@@ -402,8 +402,7 @@ class Player(
         Warrior3D.weapon = weapon
         Warrior3D.spearGone = weapon == 1 && spearOut
         Warrior3D.charge = if (charging) chargeT else -1f
-        Barbarian3D.rollP = -1f
-        Barbarian3D.dashP = if (rollT > 0f && dashing) 1f - rollT / rollDur else -1f
+        Barbarian3D.rollP = if (rollT > 0f) 1f - rollT / rollDur else -1f
         Barbarian3D.leapCharge = if (leapCharging) leapChargeT else -1f
         Barbarian3D.leaping = leaping && leapAir
         Barbarian3D.inAir = up > 1f

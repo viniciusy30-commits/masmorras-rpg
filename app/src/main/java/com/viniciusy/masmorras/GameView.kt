@@ -32,8 +32,6 @@ class GameView @JvmOverloads constructor(
     private val enemies = mutableListOf<Enemy>()
     private val projectiles = mutableListOf<Projectile>()
     private val particles = mutableListOf<Particle>()
-    private val groundFx = mutableListOf<GroundFx>()
-    private val fxPath = android.graphics.Path()
     private var chargeFxT = 0f
     private val texts = mutableListOf<DmgText>()
     private val drawList = ArrayList<Entity>()
@@ -154,7 +152,6 @@ class GameView @JvmOverloads constructor(
         aimTarget = null
         aimOn = false
         particles.clear()
-        groundFx.clear()
         texts.clear()
         enemies.addAll(map.createEnemies())
         hadEnemies = enemies.isNotEmpty()
@@ -263,7 +260,7 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         if (p.leapCharging) {
             if (p.releaseLeap()) {
-                groundSmash(p, 62f, 0.6f, 1.2f, 12, 0.14f)
+                groundSmash(p, 62f, 0.6f, 1.2f, 6)
             }
             return
         }
@@ -330,7 +327,7 @@ class GameView @JvmOverloads constructor(
             val ax = if (aimOn) aimX else p.facingX
             val ay = if (aimOn) aimY else p.facingY
             if (p.startDash(System.currentTimeMillis(), ax, ay)) {
-                groundSmash(p, 58f, 0.5f, 1f, 12, 0.12f)
+                groundSmash(p, 58f, 0.5f, 1f, 6)
             }
             return
         }
@@ -415,14 +412,10 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    /** Destrói o chão ao redor do bárbaro: rachaduras, pedras voando, dano em área e empurrão. */
-    private fun groundSmash(p: Player, radius: Float, dmgMul: Float, kb: Float, stones: Int, shk: Float) {
+    /** Impacto do bárbaro: só levanta poeira (nada de rachaduras/pedras) e causa dano em área com empurrão. */
+    private fun groundSmash(p: Player, radius: Float, dmgMul: Float, kb: Float, dust: Int) {
         val gy = p.y + p.radius * 0.55f - p.ground
-        groundFx.add(GroundFx(p.x, gy, radius, 2.4f, Random.nextInt()))
-        burst(p.x, gy, stones, 0xFF8A7B6A.toInt())
-        burst(p.x, gy, stones / 2, 0xFF4A3F34.toInt())
-        burst(p.x, gy, 4, 0xFFFF9A3D.toInt())
-        shake = max(shake, shk)
+        burst(p.x, gy, dust, 0xFFB8B0A8.toInt())
         val dmg = p.classe.danoBase * dmgMul
         enemies.forEach { e ->
             if (!e.alive) return@forEach
@@ -432,12 +425,10 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    /** Pouso do salto: grande destruição ao redor. */
+    /** Pouso do salto: levanta poeira e causa dano em área. */
     private fun leapLand(p: Player) {
         Barbarian3D.slamReq = true
-        groundSmash(p, 110f, 1.8f, 2.2f, 26, 0.4f)
-        val gy = p.y + p.radius * 0.55f - p.ground
-        groundFx.add(GroundFx(p.x, gy, 70f, 2.0f, Random.nextInt()))
+        groundSmash(p, 110f, 1.8f, 2.2f, 10)
     }
 
     /** Movimento especial do bárbaro: carga do salto e detecção do pouso. */
@@ -792,8 +783,6 @@ class GameView @JvmOverloads constructor(
         if (shake > 0f) shake = (shake - dt).coerceAtLeast(0f)
         particles.forEach { it.update(dt) }
         particles.removeAll { it.life <= 0f }
-        groundFx.forEach { it.age += dt }
-        groundFx.removeAll { it.age >= it.life }
         texts.forEach {
             it.y -= 40f * dt
             it.life -= dt
@@ -1043,7 +1032,6 @@ class GameView @JvmOverloads constructor(
         }
 
         map.drawFloor(canvas, paint, camX, camY, w, h)
-        groundFx.forEach { it.draw(canvas, paint, camX, camY, fxPath) }
 
         drawList.clear()
         for (e in enemies) {
