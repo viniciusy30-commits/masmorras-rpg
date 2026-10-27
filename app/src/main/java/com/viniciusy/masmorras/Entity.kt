@@ -62,6 +62,11 @@ class Player(
     companion object {
         const val ROLL_TIME = 0.46f
         const val MAGE_RATE = 2.3f
+        const val TP_TIME = 0.34f   // duração da animação do teleporte
+        const val TP_COST = 15f     // mana gasta no teleporte
+        const val TP_DIST = 165f    // alcance máximo do teleporte
+        const val FLY_MAX = 2.8f    // segundos de voo por carga
+        const val FLY_H = 70f       // altura do voo
     }
 
     var mp = classe.maxMp
@@ -93,6 +98,16 @@ class Player(
     private var attackRate = 2.5f
     var charging = false
     var chargeT = 0f
+    // mago: teleporte (no lugar do rolamento) e voo limitado (segurar o botão de pular)
+    var tpT = 0f
+    var tpFromX = 0f
+    var tpFromY = 0f
+    var lastTp = 0L
+    var flying = false
+    var glide = false
+    var fuel = FLY_MAX
+    private var flyClock = 0f
+    val phased: Boolean get() = tpT > 0.14f
     var weapon = 0 // 0 espada e escudo, 1 lança
     var spearOut = false // lança arremessada, ainda no chão esperando ser recolhida
     var swapUntil = 0L
@@ -176,13 +191,28 @@ class Player(
         return true
     }
 
+    fun canTeleport(now: Long): Boolean =
+        classe == Classe.MAGO && alive && now - lastTp >= 900L && mp >= TP_COST && !flyingBusy()
+
+    private fun flyingBusy(): Boolean = false
+
     /** Gravidade e acompanhamento do relevo. */
     fun updateVertical(dt: Float, groundPx: Float) {
         ground = groundPx
+        if (flying) {
+            // voo: flutua acima do chão com leve balanço
+            flyClock += dt
+            val target = groundPx + FLY_H + sin(flyClock * 2.6f) * 3f
+            alt += (target - alt) * min(1f, dt * 3.5f)
+            vz = 0f
+            return
+        }
         if (alt > groundPx + 0.01f || vz > 0f) {
             vz -= 1500f * dt
+            if (glide && vz < -170f) vz = -170f // desce flutuando depois do voo
             alt += vz * dt
             if (alt <= groundPx) {
+                glide = false
                 if (vz < -210f) {
                     landed = (-vz) / 400f
                     landSquash = ((-vz) / 380f).coerceIn(0.15f, 0.55f)
@@ -206,7 +236,7 @@ class Player(
             vx = rollDX * spd
             vy = rollDY * spd
         } else {
-            val slow = if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f)
             vx = inX * classe.velocidade * 60f * slow
             vy = inY * classe.velocidade * 60f * slow
         }
@@ -217,6 +247,19 @@ class Player(
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
             attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO) attackRate else 2.8f)).coerceAtLeast(0f)
+        }
+        if (tpT > 0f) tpT = (tpT - dt).coerceAtLeast(0f)
+        if (classe == Classe.MAGO) {
+            if (flying) {
+                fuel -= dt
+                if (fuel <= 0f) {
+                    fuel = 0f
+                    flying = false
+                    glide = true
+                }
+            } else if (grounded) {
+                fuel = (fuel + dt * 0.9f).coerceAtMost(FLY_MAX)
+            }
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
@@ -231,8 +274,10 @@ class Player(
         // Squash horizontal + stretch vertical no push do ataque / aterrissagem
         val up = (alt - ground).coerceAtLeast(0f)
         val airStretch = if (up > 1f) (vz / 340f).coerceIn(-1f, 1f) * 0.07f else 0f
-        val squashX = 1f + landSquash * 0.22f - attackPunch * 0.08f - airStretch * 0.6f
-        val squashY = 1f - landSquash * 0.18f + attackPunch * 0.12f + airStretch
+        val tpU = if (classe == Classe.MAGO && tpT > 0f) 1f - tpT / TP_TIME else 1f
+        val tpE = tpU * tpU * (3f - 2f * tpU)
+        val squashX = (1f + landSquash * 0.22f - attackPunch * 0.08f - airStretch * 0.6f) * (0.35f + 0.65f * tpE)
+        val squashY = (1f - landSquash * 0.18f + attackPunch * 0.12f + airStretch) * (1.6f - 0.6f * tpE)
         val s = (radius / 24f) * ((squashX + squashY) * 0.5f)
         val gy = sy + radius * 0.55f - ground
         val feet = sy + radius * 0.55f - alt
@@ -270,6 +315,11 @@ class Player(
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
         Mage3D.airVz = vz
+        Mage3D.flying = flying
+        Mage3D.tpP = if (classe == Classe.MAGO && tpT > 0f) tpU else -1f
+        Mage3D.tpOffX = tpFromX - x
+        Mage3D.tpOffY = tpFromY - y
+        Mage3D.alphaV = if (classe == Classe.MAGO && tpT > 0f) 0.12f + 0.88f * min(1f, tpU * 1.7f) else 1f
         canvas.save()
         canvas.scale(squashX, squashY, drawX, drawY)
         Sprites.drawHero(canvas, paint, classe, drawX, drawY, s / ((squashX + squashY) * 0.5f), walkPhase, moving, facingX, facingY, attackAnim)
@@ -281,6 +331,9 @@ class Player(
         }
 
         drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
+            drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
+        }
     }
 }
 

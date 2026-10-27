@@ -1,3 +1,10 @@
+#id 2026-10-27-b
+#titulo Mago: teleporte e voo
+- O botão de rolar do mago agora é Teleporte (15 de mana): ele some num pilar de luz e reaparece até bem à frente, atravessando o que estiver no caminho (só não aparece dentro de parede ou penhasco); fica invulnerável no começo do teleporte
+- Segurar o botão de pular no ar faz o mago voar por até 2,8 segundos: asas de luz batendo, jatos de energia nos pés, anel rúnico no chão e corpo inclinado, andando mais rápido e fora do alcance dos golpes corpo a corpo
+- A barra azul embaixo da vida mostra o combustível do voo; ela recarrega no chão
+- Ao soltar o botão (ou acabar a energia) ele desce flutuando
+
 #id 2026-10-27-a
 #titulo Mago em 3D, no mesmo nível do Guerreiro
 - Mago refeito em blocos 3D articulados: chapéu pontudo com a ponta em mola, barba longa, túnica com saia, manto de ombros, capa comprida com estrelas, grimório e poção no cinto, botas de bico curvo e cristal flutuando sobre o ombro

@@ -233,9 +233,82 @@ class GameView @JvmOverloads constructor(
         if (p.jump()) burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
     }
 
+    private var jumpHeld = false
+    private var jumpHoldT = 0f
+
+    /** Botão de pular apertado: o mago, se continuar segurando no ar, passa a voar. */
+    fun jumpDown() {
+        val p = player ?: return
+        if (gameOver) return
+        jumpHeld = true
+        jumpHoldT = 0f
+        if (p.classe == Classe.MAGO && p.flying) return
+        jump()
+    }
+
+    fun jumpUp() {
+        jumpHeld = false
+        jumpHoldT = 0f
+        val p = player ?: return
+        if (p.flying) {
+            p.flying = false
+            p.glide = true
+        }
+    }
+
+    /** Teleporte do mago: salta instantaneamente para a frente (até onde houver chão livre). */
+    private fun teleport(p: Player) {
+        val now = System.currentTimeMillis()
+        if (!p.canTeleport(now) || p.rolling) return
+        var dx = p.inX
+        var dy = p.inY
+        if (hypot(dx, dy) < 0.1f) {
+            dx = p.facingX
+            dy = p.facingY
+        }
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l
+        dy /= l
+        var d = Player.TP_DIST
+        var nx = p.x
+        var ny = p.y
+        var ok = false
+        while (d >= 40f) {
+            val tx = (p.x + dx * d).coerceIn(p.radius, map.worldWidth() - p.radius)
+            val ty = (p.y + dy * d).coerceIn(p.radius, map.worldHeight() - p.radius)
+            if (!playerBlocked(p, tx, ty)) {
+                nx = tx
+                ny = ty
+                ok = true
+                break
+            }
+            d -= 15f
+        }
+        if (!ok) return
+        p.mp -= Player.TP_COST
+        p.lastTp = now
+        p.tpFromX = p.x
+        p.tpFromY = p.y
+        p.tpT = Player.TP_TIME
+        p.facingX = dx
+        p.facingY = dy
+        p.x = nx
+        p.y = ny
+        p.attackAnim = 0f
+        p.charging = false
+        p.chargeT = 0f
+        burst(p.tpFromX, p.tpFromY + p.radius * 0.55f - p.alt, 10, 0xFF5FD4FF.toInt())
+        burst(nx, ny + p.radius * 0.55f - p.alt, 10, 0xFFC4F4FF.toInt())
+        shake = max(shake, 0.08f)
+    }
+
     fun roll() {
         val p = player ?: return
         if (gameOver) return
+        if (p.classe == Classe.MAGO) {
+            teleport(p)
+            return
+        }
         if (p.startRoll(System.currentTimeMillis())) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
         }
@@ -698,6 +771,14 @@ class GameView @JvmOverloads constructor(
             }
         }
 
+        if (p.classe == Classe.MAGO && jumpHeld) {
+            jumpHoldT += dt
+            if (!p.flying && jumpHoldT > 0.22f && p.fuel > 0.25f && p.alt > p.ground + 2f && !p.rolling) {
+                p.flying = true
+                p.glide = false
+                burst(p.x, p.y + p.radius * 0.55f - p.alt, 8, 0xFF5FD4FF.toInt())
+            }
+        }
         val oldX = p.x
         val oldY = p.y
         p.update(dt)
@@ -742,7 +823,7 @@ class GameView @JvmOverloads constructor(
             e.ground = map.heightAt(e.x, e.y)
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
-            if (!p.rolling && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+            if (!p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage)
                 e.lastHit = now
                 shake = 0.3f

@@ -441,6 +441,7 @@ object Mage3D {
         b.setPixels(cb, 0, rw, 0, 0, rw, rh)
         srcR.set(0, 0, rw, rh)
         dstR.set(bx0, by0, bx0 + rw / ss, by0 + rh / ss)
+        bmpPaint.alpha = (alphaV.coerceIn(0f, 1f) * 255f).toInt()
         c.drawBitmap(b, srcR, dstR, bmpPaint)
     }
 
@@ -508,6 +509,11 @@ object Mage3D {
     var inAir = false
     var airVz = 0f
     var airH = 0f
+    var flying = false          // voando (segurando o botão de pular)
+    var tpP = -1f               // 0..1 durante o teleporte; <0 = sem teleporte
+    var tpOffX = 0f             // origem do teleporte (px de tela, relativa ao herói)
+    var tpOffY = 0f
+    var alphaV = 1f             // transparência do herói (materialização)
 
     // ───────────── estado de animação ─────────────
     private var yaw = 0f
@@ -531,6 +537,9 @@ object Mage3D {
     private val sp = FloatArray(12)
     private val sv = FloatArray(12)
     private var castW = 0f
+    private var flyW = 0f
+    private var prevTp = -1f
+    private var jetT = 0f
     private var released = false
     private var flashV = 0f
     private var prevAtk = 0f
@@ -799,7 +808,28 @@ object Mage3D {
         pop()
     }
 
-    private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, flare: Float, breath: Float, bookSw: Float) {
+    /** Asas de luz (só aparecem voando): quatro penas emissivas por lado que batem. */
+    private fun wings(w: Float, flap: Float) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            push()
+                translate(sd * 3f, 11.5f, -4.8f)
+                rotY(-sd * 0.45f)
+                cube(0f, 0f, 0f, 0.8f * w, 0.8f * w, 0.8f * w, GOLD)
+                for (i in 0..3) {
+                    val len = (12f - i * 1.8f) * w
+                    val col = if (i == 0) ARC_L else if (i == 1) ARC else if (i == 2) ARC_D else VIO
+                    push()
+                        rotZ(-sd * (0.35f + flap + i * 0.33f))
+                        cube(0f, len * 0.5f + 0.8f, 0f, 1.1f * w, len * 0.5f, 0.22f, col, true)
+                        cube(0f, len + 1.2f, 0f, 0.7f * w, 0.5f * w, 0.22f, ARC_L, true)
+                    pop()
+                }
+            pop()
+        }
+    }
+
+    private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, flare: Float, breath: Float, bookSw: Float, wingW: Float, flap: Float) {
         // cinto, fivela, grimório e poção
         cube(0f, 0.6f, 0f, 5.2f, 1.2f, 3.4f, LEATHER)
         cube(0f, 0.7f, 3.45f, 1.6f, 1.1f, 0.5f, GOLD)
@@ -876,6 +906,7 @@ object Mage3D {
             cube(0f, 13.4f, 4.5f, 0.5f, 0.5f, 0.15f, orbC, true)
             cube(-3.6f, 14.2f, 3.5f, 0.3f, 0.3f, 0.12f, ARC_L, true)
             cube(3.6f, 14.2f, 3.5f, 0.3f, 0.3f, 0.12f, ARC_L, true)
+            if (wingW > 0.05f) wings(wingW, flap)
             // capuz dobrado nas costas
             cube(0f, 13f, -3.2f, 3.8f, 1.7f, 1.4f, ROBE_D)
             cube(0f, 13.6f, -4.2f, 3f, 1.1f, 0.5f, ROBE_DD)
@@ -910,6 +941,29 @@ object Mage3D {
                 cube(4.2f, -6.7f, -0.4f, 1.3f, 1.2f, 0.35f, VIO_D)
             pop()
         pop()
+    }
+
+    private fun rune(c: Canvas, p: Paint, cx: Float, cy: Float, ca: Float, r0: Float) {
+        val rr = r0 * rs
+        val ry = rr * SINP
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = max(1.6f, rs * 1.1f)
+        p.color = (((ca * 0.75f * 255f).toInt()) shl 24) or 0x005FD4FF
+        c.drawOval(cx - rr, cy - ry, cx + rr, cy + ry, p)
+        p.strokeWidth = max(1.2f, rs * 0.7f)
+        p.color = (((ca * 0.6f * 255f).toInt()) shl 24) or 0x009B6BFF
+        c.drawOval(cx - rr * 0.72f, cy - ry * 0.72f, cx + rr * 0.72f, cy + ry * 0.72f, p)
+        p.strokeWidth = max(1.8f, rs * 1.3f)
+        p.strokeCap = Paint.Cap.ROUND
+        p.color = (((ca * 0.9f * 255f).toInt()) shl 24) or 0x00C4F4FF
+        for (k in 0..5) {
+            val ang = clock * 1.8f + k * 1.0472f
+            val cx0 = cos(ang)
+            val sy0 = sin(ang)
+            c.drawLine(cx + cx0 * rr * 0.80f, cy + sy0 * ry * 0.80f, cx + cx0 * rr * 0.96f, cy + sy0 * ry * 0.96f, p)
+        }
+        p.strokeCap = Paint.Cap.BUTT
+        p.style = Paint.Style.FILL
     }
 
     // ───────────── desenho principal ─────────────
@@ -1007,6 +1061,9 @@ object Mage3D {
         val still = 1f - max(rollW, airW)
         val mvs = still * (if (attacking) blend * 0.35f else blend)
         castW += ((if (attacking) 1f else 0f) - castW) * min(1f, dt * (if (attacking) 14f else 4f))
+        val flyOn = flying && !rolling
+        flyW += ((if (flyOn) 1f else 0f) - flyW) * min(1f, dt * (if (flyOn) 6f else 5f))
+        val flap = sin(clock * (9f + 5f * blend)) * (0.18f + 0.12f * blend)
 
         // ── poses (cajado na mão direita, mão esquerda livre) ──
         kI[0] = -0.55f + sin(phase) * 0.15f * mvs + sin(clock * 1.3f) * 0.04f * (1f - mvs)
@@ -1066,11 +1123,21 @@ object Mage3D {
             lel = lerp(lel, -0.4f, airW)
         }
 
+        if (flyW > 0.001f && !attacking) {
+            // voo: braço do cajado aponta para a frente, a outra mão varre para trás
+            sh = lerp(sh, -1.7f, flyW)
+            shZ = lerp(shZ, 0.15f, flyW)
+            el = lerp(el, -0.25f, flyW)
+            wrist = lerp(wrist, 2.2f, flyW)
+            lsh = lerp(lsh, 0.5f, flyW)
+            lshZ = lerp(lshZ, 0.6f, flyW)
+            lel = lerp(lel, -0.2f, flyW)
+        }
         // ── molas (manto, barba, saia, chapéu, cabeça, inclinação) ──
         val bankT = (-yawVel * 0.03f).coerceIn(-0.22f, 0.22f) * spN
         spring(0, 0.12f * spN, 90f, 12f, sdt)
         spring(1, bankT, 80f, 9f, sdt)
-        val capeBase = 0.12f + 0.30f * spN + airW * (0.35f - 0.3f * vzN) +
+        val capeBase = 0.12f + 0.30f * spN + flyW * 0.7f + airW * (0.35f - 0.3f * vzN) +
             0.09f * sin(clock * 3f + phase * 2f) * (0.4f + spN)
         spring(2, capeBase, 36f, 5.5f, sdt)
         spring(3, capeBase * 0.8f + 0.08f, 27f, 4.5f, sdt)
@@ -1079,14 +1146,14 @@ object Mage3D {
         spring(6, 0.2f * spN + 0.25f * airW, 40f, 4.5f, sdt)
         spring(7, 0.03f - 0.2f * mvs * abs(sin(phase)) - 0.1f * airW, 60f, 7f, sdt)
         spring(8, (yawVel * 0.03f).coerceIn(-0.35f, 0.35f), 70f, 9f, sdt)
-        spring(9, 0.12f + 0.35f * spN + 0.25f * airW + 0.2f * castW, 30f, 4f, sdt)
-        spring(10, 0.06f + 0.5f * spN + 0.5f * airW, 45f, 5.5f, sdt)
+        spring(9, 0.12f + 0.35f * spN + 0.25f * airW + 0.2f * castW + 0.4f * flyW, 30f, 4f, sdt)
+        spring(10, 0.06f + 0.5f * spN + 0.5f * airW + 0.6f * flyW, 45f, 5.5f, sdt)
 
         val bob = (0.5f + 0.5f * cos(phase * 2f)) * 1.2f * mvs + sin(clock * 2.2f) * 0.3f * (1f - mvs)
         val breath = sin(clock * 2.2f) * 0.26f * (1f - mvs * 0.6f)
         val sway = sin(phase) * 0.8f * mvs + sin(clock * 0.9f) * 0.3f * (1f - mvs)
         crouch = max(crouch, max(rollW * 0.9f, landDip * 0.9f))
-        val lean = sp[0] + leanAtk * 0.5f - hitKick * 0.3f + rollW * 0.25f + landDip * 0.2f
+        val lean = sp[0] + leanAtk * 0.5f - hitKick * 0.3f + rollW * 0.25f + landDip * 0.2f + flyW * (0.18f + 0.45f * blend)
         val hipY = 12.6f + bob - crouch * 3f - hitKick * 0.9f
         val wob = sin(phase) * 0.12f * mvs
         val chestTw = tw - hipTw * 0.5f - wob - sin(phase) * 0.18f * mvs
@@ -1106,7 +1173,7 @@ object Mage3D {
         orbBob = sin(clock * 2.6f) * 0.7f + sin(phase * 2f) * 0.5f * mvs
         crystalBob = sin(clock * 2.1f + 1.3f) * 0.8f
         handGlow = castW * (0.6f + 0.4f * sin(clock * 20f))
-        val oq = (0.5f + 0.5f * sin(clock * 3.6f) + castW * 0.6f).coerceIn(0f, 1f)
+        val oq = (0.5f + 0.5f * sin(clock * 3.6f) + castW * 0.6f + flyW * 0.5f).coerceIn(0f, 1f)
         orbC = rgb((70 + 60 * oq).toInt(), (190 + 50 * oq).toInt(), 255)
         orbL = rgb((225 + 30 * oq).toInt(), 255, 255)
         val eq = (0.4f + 0.3f * sin(clock * 2f) + castW * 0.7f).coerceIn(0f, 1f)
@@ -1140,7 +1207,7 @@ object Mage3D {
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
             var a = sin(pp) * 0.62f * mvs
             var kn = max(0f, -cos(pp)) * 0.95f * mvs + 0.08f + crouch * 0.9f
-            val ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             if (sd > 0f) {
                 a -= 0.35f * lk
             } else {
@@ -1149,6 +1216,11 @@ object Mage3D {
             }
             a = a * (1f - airW) - tuck + sd * 0.3f * airW
             kn = (kn + tuck * 1.5f + (if (sd > 0f) 0.5f else -0.1f) * airW).coerceAtLeast(0f)
+            if (flyW > 0.001f) {
+                a = lerp(a, 0.5f + sd * 0.12f + 0.06f * sin(clock * 3f + sd), flyW)
+                kn = lerp(kn, 0.25f, flyW)
+                ft = lerp(ft, 0.7f, flyW)
+            }
             leg(sd, a, kn, hipY, ft)
         }
 
@@ -1160,7 +1232,7 @@ object Mage3D {
         push()
         val flare = 0.04f + 0.10f * spN + 0.3f * airW
         val bookSw = (0.05f + 0.12f * spN) * sin(clock * 2.2f) - 0.2f * sp[7]
-        torso(chestTw, sp[2], sp[3], sp[4], sp[7].coerceIn(-0.2f, 0.2f), sp[10], flare, breath, bookSw)
+        torso(chestTw, sp[2], sp[3], sp[4], sp[7].coerceIn(-0.2f, 0.2f), sp[10], flare, breath, bookSw, flyW, flap)
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)
@@ -1171,30 +1243,67 @@ object Mage3D {
         pop()
         pop()
 
-        // ── anel rúnico no chão durante o feitiço (atrás do herói) ──
-        if (castW > 0.03f) {
-            val ca = castW
-            val rr = (13f + 5f * ca) * rs
-            val ry = rr * SINP
-            p.style = Paint.Style.STROKE
-            p.strokeWidth = max(1.6f, rs * 1.1f)
-            p.color = (((ca * 0.75f * 255f).toInt()) shl 24) or 0x005FD4FF
-            c.drawOval(fx - rr, fy - ry, fx + rr, fy + ry, p)
-            p.strokeWidth = max(1.2f, rs * 0.7f)
-            p.color = (((ca * 0.6f * 255f).toInt()) shl 24) or 0x009B6BFF
-            c.drawOval(fx - rr * 0.72f, fy - ry * 0.72f, fx + rr * 0.72f, fy + ry * 0.72f, p)
-            p.strokeWidth = max(1.8f, rs * 1.3f)
-            p.strokeCap = Paint.Cap.ROUND
-            p.color = (((ca * 0.9f * 255f).toInt()) shl 24) or 0x00C4F4FF
-            for (k in 0..5) {
-                val ang = clock * 1.8f + k * 1.0472f
-                val cx0 = cos(ang)
-                val sy0 = sin(ang)
-                c.drawLine(
-                    fx + cx0 * rr * 0.80f, fy + sy0 * ry * 0.80f,
-                    fx + cx0 * rr * 0.96f, fy + sy0 * ry * 0.96f, p
+        // ── anéis rúnicos no chão: feitiço (sob os pés) e voo (no chão, sob o herói no ar) ──
+        if (castW > 0.03f) rune(c, p, fx, fy, castW, 13f + 5f * castW)
+        if (flyW > 0.03f) rune(c, p, fx, fy + airH, flyW * 0.9f, 17f)
+
+        // ── teleporte: sumiço na origem e materialização no destino ──
+        val tpOn = tpP >= 0f && tpP < 1f
+        if (tpOn && prevTp < 0f) {
+            val rr0 = kotlin.random.Random
+            for (i in 0..15) {
+                val ang = rr0.nextFloat() * TWO_PI
+                val sp1 = (10f + rr0.nextFloat() * 30f) * rs
+                emitSpark(
+                    fx + tpOffX, fy + tpOffY - 6f * rs, cos(ang) * sp1, sin(ang) * sp1 * 0.6f - rs * 30f,
+                    0.4f + rr0.nextFloat() * 0.25f, rs * 40f,
+                    if (i % 2 == 0) 0xFFC4F4FF.toInt() else 0xFF5FD4FF.toInt(), 1.1f
                 )
             }
+            for (i in 0..11) {
+                val ang = i * 0.5236f
+                emitSpark(
+                    fx + cos(ang) * 22f * rs, fy - 6f * rs + sin(ang) * 15f * rs,
+                    -cos(ang) * 60f * rs, -sin(ang) * 40f * rs, 0.3f, 0f,
+                    if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFB596FF.toInt(), 1f
+                )
+            }
+            trN = 0
+        }
+        prevTp = if (tpOn) tpP else -1f
+        if (tpOn) {
+            val u = tpP
+            val inv = 1f - u
+            val ox0 = fx + tpOffX
+            val oy0 = fy + tpOffY
+            p.style = Paint.Style.STROKE
+            p.strokeCap = Paint.Cap.ROUND
+            // rastro entre a origem e o destino
+            p.strokeWidth = max(2f, rs * 2.6f * inv)
+            p.color = (((inv * inv * 0.35f * 255f).toInt()) shl 24) or 0x005FD4FF
+            c.drawLine(ox0, oy0 - 8f * rs, fx, fy - 8f * rs, p)
+            p.strokeWidth = max(1f, rs * 0.9f)
+            p.color = (((inv * inv * 0.8f * 255f).toInt()) shl 24) or 0x00FFFFFF
+            c.drawLine(ox0, oy0 - 8f * rs, fx, fy - 8f * rs, p)
+            // origem: anel que se abre e pilar de luz que fecha
+            val ro = (6f + 24f * u) * rs
+            p.strokeWidth = max(1.6f, rs * 1.6f)
+            p.color = (((inv * 0.85f * 255f).toInt()) shl 24) or 0x005FD4FF
+            c.drawOval(ox0 - ro, oy0 - ro * SINP, ox0 + ro, oy0 + ro * SINP, p)
+            p.color = (((inv * 0.7f * 255f).toInt()) shl 24) or 0x009B6BFF
+            c.drawOval(ox0 - ro * 0.65f, oy0 - ro * 0.65f * SINP, ox0 + ro * 0.65f, oy0 + ro * 0.65f * SINP, p)
+            p.style = Paint.Style.FILL
+            val wcol = (10f * inv * inv + 1f) * rs
+            p.color = (((inv * 0.25f * 255f).toInt()) shl 24) or 0x005FD4FF
+            c.drawRect(ox0 - wcol * 1.8f, oy0 - 46f * rs * (0.5f + 0.5f * inv), ox0 + wcol * 1.8f, oy0, p)
+            p.color = (((inv * 0.6f * 255f).toInt()) shl 24) or 0x00DFF8FF
+            c.drawRect(ox0 - wcol * 0.7f, oy0 - 46f * rs * (0.5f + 0.5f * inv), ox0 + wcol * 0.7f, oy0, p)
+            // destino: anel que se fecha sobre o herói
+            val rd0 = (26f - 20f * u) * rs
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(1.6f, rs * 1.8f)
+            p.color = (((min(1f, inv * 1.6f) * 0.85f * 255f).toInt()) shl 24) or 0x00C4F4FF
+            c.drawOval(fx - rd0, fy - rd0 * SINP, fx + rd0, fy + rd0 * SINP, p)
             p.strokeCap = Paint.Cap.BUTT
             p.style = Paint.Style.FILL
         }
@@ -1244,6 +1353,31 @@ object Mage3D {
         }
 
         flushZ(c)
+
+        // ── voo: jatos de energia saindo dos pés ──
+        if (flyW > 0.5f) {
+            jetT -= dt
+            if (jetT <= 0f) {
+                jetT = 0.035f
+                for (k in 0..1) {
+                    emitSpark(
+                        fx + (rnd.nextFloat() - 0.5f) * 6f * rs, fy + rnd.nextFloat() * 2f * rs,
+                        (rnd.nextFloat() - 0.5f) * rs * 14f, rs * (30f + rnd.nextFloat() * 40f),
+                        0.28f + rnd.nextFloat() * 0.2f, 0f,
+                        if (rnd.nextFloat() > 0.5f) 0xFF8FE3FF.toInt() else 0xFFB596FF.toInt(), 0.9f
+                    )
+                }
+            }
+        }
+        // clarão da materialização
+        if (tpOn && tpP < 0.6f) {
+            val k = 1f - tpP / 0.6f
+            p.style = Paint.Style.FILL
+            p.color = (((k * 0.55f * 255f).toInt()) shl 24) or 0x00FFFFFF
+            c.drawCircle(fx, fy - 14f * rs, rs * (6f + 14f * (1f - k)), p)
+            p.color = (((k * 0.3f * 255f).toInt()) shl 24) or 0x005FD4FF
+            c.drawCircle(fx, fy - 14f * rs, rs * (12f + 18f * (1f - k)), p)
+        }
 
         // ── partículas: poeira arcana subindo do orbe, energia sendo sugada na preparação, explosão no disparo ──
         val orbOk = !rolling

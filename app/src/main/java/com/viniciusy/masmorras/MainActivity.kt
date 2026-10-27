@@ -262,8 +262,18 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
-        findViewById<View>(R.id.btnJump).setOnClickListener {
-            gameView.jump()
+        findViewById<View>(R.id.btnJump).setOnTouchListener { v, ev ->
+            when (ev.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    v.isPressed = true
+                    gameView.jumpDown()
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    v.isPressed = false
+                    gameView.jumpUp()
+                }
+            }
+            true
         }
         btnWeapon.setOnClickListener { gameView.switchWeapon() }
         gameView.onWeapon = { w ->
