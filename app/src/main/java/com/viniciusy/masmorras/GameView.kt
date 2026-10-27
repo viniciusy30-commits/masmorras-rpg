@@ -55,6 +55,8 @@ class GameView @JvmOverloads constructor(
     private var pendingHitT = -1f
     private var pendingHitSwing = 0
     private var pendingCastT = -1f
+    private var pendingBarbT = -1f
+    private var pendingBarbSwing = 0
     private var pendingThrow = false
     private var throwDX = 1f
     private var throwDY = 0f
@@ -144,6 +146,7 @@ class GameView @JvmOverloads constructor(
         thrown = null
         pendingHitT = -1f
         pendingCastT = -1f
+        pendingBarbT = -1f
         pendingThrow = false
         aimTarget = null
         aimOn = false
@@ -333,7 +336,7 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (!p.canAttack(now)) {
-            if (p.classe == Classe.GUERREIRO && !p.rolling) queuedAt = now
+            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO) && !p.rolling) queuedAt = now
             return
         }
 
@@ -359,6 +362,12 @@ class GameView @JvmOverloads constructor(
             )
         } else {
             p.doAttack(now)
+            if (p.classe == Classe.BARBARO) {
+                // o machado só acerta no instante do impacto (sincronizado com a animação)
+                pendingBarbT = p.barbDelay()
+                pendingBarbSwing = p.swing
+                return
+            }
             if (p.classe == Classe.GUERREIRO && p.weapon == 1) {
                 pendingHitT = p.strikeDelay()
                 pendingHitSwing = p.swing
@@ -382,6 +391,27 @@ class GameView @JvmOverloads constructor(
             }
             if (thrust) shake = max(shake, if (spear && p.swing == 2) 0.16f else 0.1f)
         }
+    }
+
+    /** Golpe dos machados do bárbaro; chamado no instante do impacto. O 3º golpe (batida dupla) é mais forte e mais largo. */
+    private fun barbStrike(sw: Int) {
+        val p = player ?: return
+        val slam = sw == 2
+        val reach = p.classe.alcance * (if (slam) 1.25f else 1f)
+        val dmg = p.classe.danoBase * (if (slam) 1.5f else 1f)
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (dist < reach + e.radius) {
+                val dx = e.x - p.x
+                val dy = e.y - p.y
+                val dot = dx * p.facingX + dy * p.facingY
+                val inArc = if (slam) (dot > -0.25f * dist || dist < 50f) else (dot > 0 || dist < 40f)
+                if (inArc) damageEnemy(e, dmg, p.x, p.y, if (slam) 1.5f else 1f)
+            }
+        }
+        shake = max(shake, if (slam) 0.16f else 0.07f)
+        if (slam) burst(p.x + p.facingX * 26f, p.y + p.facingY * 26f + p.radius * 0.55f - p.ground, 7, 0xFFB8B0A8.toInt())
     }
 
     /** Botão de ataque apertado. Guerreiro espera para saber se é toque (combo) ou segurar (golpe forte). */
@@ -712,6 +742,13 @@ class GameView @JvmOverloads constructor(
             if (pendingHitT <= 0f) {
                 pendingHitT = -1f
                 spearStrike(pendingHitSwing)
+            }
+        }
+        if (pendingBarbT >= 0f) {
+            pendingBarbT -= dt
+            if (pendingBarbT <= 0f) {
+                pendingBarbT = -1f
+                if (p.alive && !p.rolling) barbStrike(pendingBarbSwing)
             }
         }
         if (pendingCastT >= 0f) {

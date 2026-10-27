@@ -115,6 +115,7 @@ class Player(
     fun canAttack(now: Long): Boolean {
         if (rolling || now < swapUntil) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
+        else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -132,6 +133,17 @@ class Player(
                 0 -> 1.65f
                 1 -> 1.95f
                 else -> 1.55f
+            }
+        }
+        if (classe == Classe.BARBARO) {
+            // combo: machado direito, machado esquerdo, batida dupla
+            val inWindow = comboStep >= 0 && now - lastAttack < 1000L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = when (swing) {
+                0 -> 1.7f
+                1 -> 1.7f
+                else -> 1.35f
             }
         }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
@@ -159,6 +171,9 @@ class Player(
         2 -> 0.42f / 1.4f
         else -> 0.30f / 0.95f
     }
+
+    /** Segundos até o machado do bárbaro acertar (sincronizado com Barbarian3D.impactAt). */
+    fun barbDelay(): Float = Barbarian3D.impactAt(swing) / attackRate
 
     /** Segundos até o orbe sair do cajado do mago (sincronizado com Mage3D.T_M). */
     fun castDelay(): Float = Mage3D.T_M / MAGE_RATE
@@ -246,7 +261,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         if (tpT > 0f) tpT = (tpT - dt).coerceAtLeast(0f)
         if (classe == Classe.MAGO) {
@@ -311,6 +326,11 @@ class Player(
         Warrior3D.weapon = weapon
         Warrior3D.spearGone = weapon == 1 && spearOut
         Warrior3D.charge = if (charging) chargeT else -1f
+        Barbarian3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Barbarian3D.inAir = up > 1f
+        Barbarian3D.airH = up
+        Barbarian3D.airVz = vz
+        Barbarian3D.swing = swing
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -326,11 +346,11 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged && classe != Classe.GUERREIRO) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }

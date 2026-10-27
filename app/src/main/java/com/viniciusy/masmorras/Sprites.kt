@@ -46,7 +46,7 @@ object Sprites {
             Classe.GUERREIRO -> Warrior3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.MAGO -> Mage3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.ARQUEIRO -> archer(c, p, fx, fy, s, phase, moving, faceX, faceY, back, attack)
-            Classe.BARBARO -> barbarian(c, p, fx, fy, s, phase, moving, faceX, back, attack)
+            Classe.BARBARO -> Barbarian3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
         }
     }
 
