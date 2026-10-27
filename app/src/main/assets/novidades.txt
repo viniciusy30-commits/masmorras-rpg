@@ -1,3 +1,12 @@
+#id 2026-10-27-a
+#titulo Mago em 3D, no mesmo nível do Guerreiro
+- Mago refeito em blocos 3D articulados: chapéu pontudo com a ponta em mola, barba longa, túnica com saia, manto de ombros, capa comprida com estrelas, grimório e poção no cinto, botas de bico curvo e cristal flutuando sobre o ombro
+- Cajado com orbe flutuante que gira, satélites em órbita e partículas arcanas subindo
+- Feitiço com animação completa: ergue o cajado, a mão livre junta energia e o corpo agacha; o orbe só sai no instante do gesto, com clarão, onda de choque, faíscas e rastro de luz
+- Anel rúnico brilhando no chão enquanto conjura, olhos e mão brilhando
+- Andar, correr, pular, rolar, aterrissar e tomar dano com reação própria: túnica, capa, barba e chapéu balançam em molas
+- Projétil mágico agora deixa rastro luminoso
+
 #id 2026-10-26-k
 #titulo Editor de mapas: mais ferramentas
 - Recortar: marca uma área, ela some do lugar e fica pronta para colocar em outro (mover construções inteiras)

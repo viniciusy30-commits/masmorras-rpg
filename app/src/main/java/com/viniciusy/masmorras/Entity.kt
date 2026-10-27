@@ -61,6 +61,7 @@ class Player(
 
     companion object {
         const val ROLL_TIME = 0.46f
+        const val MAGE_RATE = 2.3f
     }
 
     var mp = classe.maxMp
@@ -118,9 +119,10 @@ class Player(
                 else -> 1.55f
             }
         }
+        if (classe == Classe.MAGO) attackRate = MAGE_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -142,6 +144,9 @@ class Player(
         2 -> 0.42f / 1.4f
         else -> 0.30f / 0.95f
     }
+
+    /** Segundos até o orbe sair do cajado do mago (sincronizado com Mage3D.T_M). */
+    fun castDelay(): Float = Mage3D.T_M / MAGE_RATE
 
     fun jump(): Boolean {
         if (!alive || rolling || !grounded) return false
@@ -211,7 +216,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
@@ -261,6 +266,10 @@ class Player(
         Warrior3D.weapon = weapon
         Warrior3D.spearGone = weapon == 1 && spearOut
         Warrior3D.charge = if (charging) chargeT else -1f
+        Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Mage3D.inAir = up > 1f
+        Mage3D.airH = up
+        Mage3D.airVz = vz
         canvas.save()
         canvas.scale(squashX, squashY, drawX, drawY)
         Sprites.drawHero(canvas, paint, classe, drawX, drawY, s / ((squashX + squashY) * 0.5f), walkPhase, moving, facingX, facingY, attackAnim)
@@ -271,7 +280,7 @@ class Player(
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - 68f * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
     }
 }
 
@@ -435,6 +444,10 @@ class Projectile(
             canvas.restore()
         } else {
             val pulse = 1f + 0.12f * sin(VoxelArt.time * 18f)
+            for (i in 1..4) {
+                paint.color = VoxelArt.alpha(color, 0.30f - i * 0.06f)
+                canvas.drawCircle(sx - vx * 0.016f * i, sy - vy * 0.016f * i, radius * (1.15f - i * 0.17f), paint)
+            }
             paint.color = VoxelArt.alpha(color, 0.18f)
             canvas.drawCircle(sx, sy, radius * 2.4f * pulse, paint)
             paint.color = VoxelArt.alpha(color, 0.45f)

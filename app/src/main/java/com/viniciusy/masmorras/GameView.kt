@@ -54,6 +54,7 @@ class GameView @JvmOverloads constructor(
     private var thrown: ThrownSpear? = null
     private var pendingHitT = -1f
     private var pendingHitSwing = 0
+    private var pendingCastT = -1f
     private var pendingThrow = false
     private var throwDX = 1f
     private var throwDY = 0f
@@ -142,6 +143,7 @@ class GameView @JvmOverloads constructor(
         projectiles.clear()
         thrown = null
         pendingHitT = -1f
+        pendingCastT = -1f
         pendingThrow = false
         aimTarget = null
         aimOn = false
@@ -266,6 +268,11 @@ class GameView @JvmOverloads constructor(
             if (p.classe == Classe.MAGO && p.mp < 12f) return
             if (p.classe == Classe.MAGO) p.mp -= 12f
             p.doAttack(now)
+            if (p.classe == Classe.MAGO) {
+                // o orbe só sai do cajado no instante do gesto (sincronizado com a animação)
+                pendingCastT = p.castDelay()
+                return
+            }
             val speed = 280f
             val vx = p.facingX * speed
             val vy = p.facingY * speed
@@ -632,6 +639,23 @@ class GameView @JvmOverloads constructor(
             if (pendingHitT <= 0f) {
                 pendingHitT = -1f
                 spearStrike(pendingHitSwing)
+            }
+        }
+        if (pendingCastT >= 0f) {
+            pendingCastT -= dt
+            if (pendingCastT <= 0f) {
+                pendingCastT = -1f
+                if (p.alive && !p.rolling) {
+                    projectiles.add(
+                        Projectile(
+                            p.x + p.facingX * 18f, p.y + p.facingY * 18f,
+                            p.facingX * 280f, p.facingY * 280f,
+                            p.classe.danoBase, 0xFF42A5F5.toInt(), true, 0
+                        )
+                    )
+                } else {
+                    p.mp = (p.mp + 12f).coerceAtMost(p.classe.maxMp) // feitiço interrompido: devolve a mana
+                }
             }
         }
         if (pendingThrow && p.attackAnim <= 0.70f) {
