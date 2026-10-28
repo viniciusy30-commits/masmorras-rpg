@@ -436,7 +436,16 @@ object HeroCreator {
             p.color = 0x66000000
             c.drawOval(RectF(w * 0.22f, h * 0.80f, w * 0.78f, h * 0.91f), p)
             if (!arrastando) ang += 0.012f
-            Sprites.drawHero(c, p, classe, w / 2f, h * 0.84f, h / 95f, 0f, false, sin(ang), cos(ang), 0f)
+            val z0 = VoxelArt.zoom
+            val l0 = VoxelArt.bufLimit
+            VoxelArt.zoom = 1f
+            VoxelArt.bufLimit = 150000
+            try {
+                Sprites.drawHero(c, p, classe, w / 2f, h * 0.84f, h / 105f, 0f, false, sin(ang), cos(ang), 0f)
+            } finally {
+                VoxelArt.zoom = z0
+                VoxelArt.bufLimit = l0
+            }
             if (vivo) postInvalidateOnAnimation()
         }
 

@@ -88,14 +88,19 @@ object HeroKit {
         Classe.NINJA -> Cranio(9.5f, 4.5f, 4.3f, 0xFF1C1626.toInt(), 0.8f)
     }
 
-    /** Calota de cabelo: tampa de cima, costas e laterais curtas. */
-    private fun calota(g: HeroGfx, k: Cranio, col: Int, colD: Int) {
-        g.cube(0f, k.top + 0.3f, -0.2f, k.hw + 0.25f, 0.6f, k.hd + 0.25f, col)
-        g.cube(0f, k.top - 3.0f, -k.hd - 0.2f, k.hw + 0.2f, 3.2f, 0.5f, colD)
+    /** Base de todo penteado: topo com brilho, testa, costeletas e nuca (em camadas, no estilo dos blocos). */
+    private fun base(g: HeroGfx, k: Cranio, col: Int, colL: Int, colD: Int) {
+        g.cube(0f, k.top + 0.45f, -0.1f, k.hw + 0.35f, 0.85f, k.hd + 0.35f, col)
+        g.cube(0f, k.top + 1.35f, -0.2f, k.hw * 0.72f, 0.15f, k.hd * 0.78f, colL)
+        g.cube(0f, k.top - 1.0f, k.hd + 0.2f, k.hw + 0.1f, 0.9f, 0.3f, col)
+        g.cube(0f, k.top - 1.95f, k.hd + 0.25f, k.hw * 0.78f, 0.12f, 0.25f, colD)
         for (i in 0..1) {
             val sd = if (i == 0) 1f else -1f
-            g.cube(sd * (k.hw + 0.15f), k.top - 1.6f, -0.9f, 0.35f, 1.9f, k.hd * 0.8f, colD)
+            g.cube(sd * (k.hw + 0.25f), k.top - 2.3f, -0.5f, 0.4f, 2.3f, k.hd * 0.55f, colD)
+            g.cube(sd * (k.hw + 0.55f), k.top - 1.4f, -0.5f, 0.12f, 1.2f, k.hd * 0.45f, col)
         }
+        g.cube(0f, k.top - 2.9f, -k.hd - 0.25f, k.hw + 0.25f, 3.3f, 0.5f, colD)
+        g.cube(0f, k.top - 1.4f, -k.hd - 0.55f, k.hw * 0.8f, 1.6f, 0.15f, col)
     }
 
     fun cabelo(g: HeroGfx, c: Classe) {
@@ -105,75 +110,96 @@ object HeroKit {
         val colL = HeroLook.hairL(k.base)
         val colD = HeroLook.hairD(k.base)
         val elmo = HeroLook.elmo
+        val t = System.nanoTime() / 1_000_000_000f
+        val bal = sin(t * 1.7f) * 0.05f
         if (st == 0) {
-            // sem chapéu/elmo e sem cabelo próprio: coloca uma calota para a cabeça não ficar pelada
-            if (!elmo && (c == Classe.GUERREIRO || c == Classe.BARBARO || c == Classe.MAGO)) {
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 1.3f, k.hd + 0.1f, k.hw * 0.9f, 0.9f, 0.3f, col)
-            }
+            // sem chapéu/elmo e sem cabelo próprio: coloca o penteado básico para a cabeça não ficar pelada
+            if (!elmo && (c == Classe.GUERREIRO || c == Classe.BARBARO || c == Classe.MAGO)) base(g, k, col, colL, colD)
             return
         }
         if (st == 1) return
         when (st) {
             2 -> { // curto
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
+                base(g, k, col, colL, colD)
+                g.cube(-k.hw * 0.45f, k.top - 2.2f, k.hd + 0.3f, k.hw * 0.3f, 0.5f, 0.25f, col)
+                g.cube(k.hw * 0.35f, k.top - 2.0f, k.hd + 0.3f, k.hw * 0.4f, 0.4f, 0.25f, colL)
             }
-            3 -> { // longo
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
-                g.cube(0f, k.top - 6.5f, -k.hd - 0.3f, k.hw + 0.2f, 6.5f, 0.6f, col)
+            3 -> { // longo, liso, caindo pelas costas e pelos lados
+                base(g, k, col, colL, colD)
+                g.push()
+                g.translate(0f, k.top - 5.8f, -k.hd - 0.3f)
+                g.rotX(0.06f + bal)
+                g.cube(0f, -3.2f, 0f, k.hw + 0.1f, 3.4f, 0.55f, col)
+                g.cube(0f, -3.2f, -0.5f, k.hw * 0.8f, 3.0f, 0.1f, colL)
+                g.cube(0f, -6.6f, 0f, k.hw * 0.85f, 0.7f, 0.5f, colD)
+                g.pop()
                 for (i in 0..1) {
                     val sd = if (i == 0) 1f else -1f
-                    g.cube(sd * (k.hw + 0.3f), k.top - 5.5f, -1.4f, 0.4f, 5.0f, 1.6f, colD)
+                    g.cube(sd * (k.hw + 0.35f), k.top - 5.8f, -1.8f, 0.5f, 3.6f, 1.9f, colD)
+                    g.cube(sd * (k.hw + 0.65f), k.top - 5.0f, -1.8f, 0.12f, 2.8f, 1.5f, col)
                 }
             }
-            4 -> { // moicano
-                g.cube(0f, k.top + 0.3f, -0.2f, 0.9f, 0.6f, k.hd * 0.95f, col)
-                if (!elmo) for (j in 0..4) {
-                    val h = 2.2f - j * 0.25f
-                    g.cube(0f, k.top + 0.8f + h * 0.5f, 3.2f - j * 1.6f, 0.8f, h, 0.8f, if (j % 2 == 0) col else colL)
+            4 -> { // moicano: laterais raspadas, crista no meio
+                g.cube(0f, k.top + 0.4f, -0.2f, 0.85f, 0.7f, k.hd * 0.95f, col)
+                for (j in 0..5) {
+                    val h = (if (elmo) 0.3f else 2.4f) - j * 0.2f
+                    if (h > 0.2f) g.cube(0f, k.top + 1.1f + h * 0.5f, 3.4f - j * 1.35f, 0.75f, h, 0.55f, if (j % 2 == 0) col else colL)
                 }
-                g.cube(0f, k.top - 3.0f, -k.hd - 0.2f, 0.9f, 3.2f, 0.4f, colD)
+                g.cube(0f, k.top - 1.0f, k.hd + 0.2f, 0.85f, 0.9f, 0.3f, col)
+                g.cube(0f, k.top - 3.2f, -k.hd - 0.25f, 0.85f, 3.0f, 0.4f, colD)
             }
-            5 -> { // rabo de cavalo
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 0.4f, -k.hd - 0.6f, 1.0f, 0.7f, 0.7f, colD)
+            5 -> { // rabo de cavalo alto
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top - 0.3f, -k.hd - 0.65f, 0.95f, 0.8f, 0.55f, colD)
                 g.push()
-                g.translate(0f, k.top - 1.0f, -k.hd - 1.0f)
-                g.rotX(0.55f)
-                g.cube(0f, -2.4f, -0.4f, 1.1f, 2.6f, 0.9f, col)
-                g.cube(0f, -5.4f, -0.9f, 0.8f, 1.4f, 0.7f, colD)
+                g.translate(0f, k.top - 0.3f, -k.hd - 1.0f)
+                g.rotX(-1.0f + bal * 2f)
+                g.cube(0f, 1.8f, 0f, 1.15f, 1.9f, 1.0f, col)
+                g.cube(0f, 0.2f, 0f, 1.3f, 0.3f, 1.2f, colD)
+                g.translate(0f, 3.6f, 0f)
+                g.rotX(0.7f + bal * 3f)
+                g.cube(0f, 1.8f, 0f, 0.95f, 2.0f, 0.85f, colL)
+                g.translate(0f, 3.8f, 0f)
+                g.rotX(0.8f + bal * 4f)
+                g.cube(0f, 1.4f, 0f, 0.7f, 1.6f, 0.65f, col)
                 g.pop()
             }
             6 -> { // coque
-                calota(g, k, col, colD)
-                g.cube(0f, k.top + 1.1f, -0.4f, 1.6f, 1.1f, 1.6f, col)
-                g.cube(0f, k.top + 2.4f, -0.4f, 1.1f, 0.5f, 1.1f, colL)
-                g.cube(0f, k.top + 0.55f, -0.4f, 1.8f, 0.2f, 1.8f, colD)
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top + 2.0f, -1.3f, 1.9f, 1.3f, 1.9f, col)
+                g.cube(0f, k.top + 3.0f, -1.3f, 1.4f, 0.45f, 1.4f, colL)
+                g.cube(0f, k.top + 1.45f, -1.3f, 2.1f, 0.18f, 2.1f, colD)
             }
-            7 -> { // trança
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
-                for (j in 0..7) {
-                    val wv = if (j % 2 == 0) 0.3f else -0.3f
-                    g.cube(wv, k.top - 2.0f - j * 1.25f, -k.hd - 0.9f, 0.9f, 0.7f, 0.7f, if (j % 2 == 0) col else colD)
+            7 -> { // trança grossa
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top - 5.7f, -k.hd - 0.7f, 1.0f, 0.5f, 0.5f, colD)
+                g.push()
+                g.translate(0f, k.top - 6.0f, -k.hd - 1.0f)
+                g.rotX(0.05f + bal * 2f)
+                for (j in 0..5) {
+                    val wv = if (j % 2 == 0) 0.35f else -0.35f
+                    g.cube(wv, -0.9f - j * 1.55f, 0f, 0.95f, 0.8f, 0.8f, if (j % 2 == 0) col else colD)
+                    g.cube(-wv, -1.7f - j * 1.55f, 0f, 0.85f, 0.8f, 0.75f, if (j % 2 == 0) colD else colL)
                 }
-                g.cube(0f, k.top - 12.3f, -k.hd - 0.9f, 0.6f, 0.4f, 0.6f, colL)
+                g.cube(0f, -10.6f, 0f, 0.7f, 0.5f, 0.7f, colD)
+                g.pop()
             }
             8 -> { // espetado
-                calota(g, k, col, colD)
-                if (!elmo) for (i in -2..2) {
-                    val h = 1.2f + (2 - kotlin.math.abs(i)) * 0.7f
-                    g.cube(i * 1.6f, k.top + 0.9f + h * 0.5f, -0.4f, 0.75f, h, 0.75f, if (i % 2 == 0) col else colL)
-                    g.cube(i * 1.6f, k.top + 0.9f + h * 0.5f, 2.2f, 0.65f, h * 0.8f, 0.65f, if (i % 2 == 0) colL else col)
+                base(g, k, col, colL, colD)
+                for (i in -2..2) for (r in 0..1) {
+                    val h = (if (elmo) 0.4f else 1.5f + (2 - kotlin.math.abs(i)) * 0.7f)
+                    g.cube(i * (k.hw * 0.4f), k.top + 1.4f + h * 0.5f, if (r == 0) 2.4f else -2.2f, 0.8f, h, 0.8f, if ((i + r) % 2 == 0) col else colL)
                 }
             }
-            9 -> { // franja
-                calota(g, k, col, colD)
-                g.cube(0f, k.top - 1.7f, k.hd + 0.2f, k.hw * 0.95f, 1.3f, 0.35f, col)
-                g.cube(-k.hw * 0.55f, k.top - 3.0f, k.hd + 0.25f, 1.1f, 0.9f, 0.3f, colD)
-                g.cube(k.hw * 0.7f, k.top - 3.0f, k.hd + 0.25f, 0.9f, 0.7f, 0.3f, colD)
+            9 -> { // franja longa, cobrindo a testa e uma lateral
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top - 2.3f, k.hd + 0.35f, k.hw * 0.98f, 1.3f, 0.3f, col)
+                g.cube(-k.hw * 0.5f, k.top - 3.6f, k.hd + 0.4f, k.hw * 0.5f, 0.7f, 0.25f, colL)
+                g.cube(k.hw * 0.55f, k.top - 4.0f, k.hd + 0.4f, k.hw * 0.4f, 1.0f, 0.25f, colD)
+                for (i in 0..1) {
+                    val sd = if (i == 0) 1f else -1f
+                    g.cube(sd * (k.hw + 0.4f), k.top - 4.6f, 0.9f, 0.4f, 2.6f, 1.2f, col)
+                }
             }
         }
     }

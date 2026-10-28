@@ -11,6 +11,8 @@ object VoxelArt {
     var time = 0f
     /** zoom atual da câmera (o GameView atualiza): os heróis aumentam a resolução interna para não ficar borrado */
     @JvmField var zoom = 1f
+    /** limite de pixels do buffer 3D dos heróis (a tela de criação usa menos para rodar fluida) */
+    @JvmField var bufLimit = 300000
     var flash = 0f
     private val path = Path()
 
