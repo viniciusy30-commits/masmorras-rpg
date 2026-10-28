@@ -35,5 +35,11 @@ enum class Classe(
         "Fúria selvagem. Dano massivo em área curta, vida alta.",
         0xFFE65100.toInt(),
         200f, 0f, 3.0f, 32f, 70f, 600L, false
+    ),
+    NINJA(
+        "Ninja",
+        "Assassino das sombras. Corta rápido, deixa uma Sombra Viva e marca alvos para a morte.",
+        0xFFB71C1C.toInt(),
+        120f, 100f, 3.5f, 24f, 64f, 330L, false
     )
 }

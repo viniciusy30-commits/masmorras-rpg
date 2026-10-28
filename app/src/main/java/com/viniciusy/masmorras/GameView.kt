@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.ScaleGestureDetector
 import android.view.View
 import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
@@ -72,6 +73,16 @@ class GameView @JvmOverloads constructor(
     private val rains = ArrayList<RainZone>()
     private val bolts = ArrayList<ThunderBolt>()
     private val zaps = ArrayList<ZapFx>()
+    // ninja: sombra, shurikens, cortes, golpe pendente e Marca da Morte
+    private var ninjaShadow: NinjaShadow? = null
+    private val shurikens = ArrayList<Shuriken>()
+    private val slashFx = ArrayList<SlashFx>()
+    private var pendingNinjaT = -1f
+    private var pendingNinjaSwing = 0
+    private var markTarget: Enemy? = null
+    private var markT = 0f
+    private var markDmg = 0f
+    private val markTotal = 3.0f
     private var pendingThrow = false
     private var throwDX = 1f
     private var throwDY = 0f
@@ -144,6 +155,7 @@ class GameView @JvmOverloads constructor(
     private fun swingSound(p: Player) {
         when (p.classe) {
             Classe.BARBARO -> snd("axe1", 1f, if (p.swing == 2) 0.78f else if (p.swing == 1) 0.92f else 1.02f)
+            Classe.NINJA -> snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.8f, 1.22f * vary())
             Classe.GUERREIRO -> if (p.weapon == 1) {
                 when (p.swing) {
                     0 -> snd("spear_thrust", 0.9f, vary())
@@ -206,6 +218,13 @@ class GameView @JvmOverloads constructor(
         rains.clear()
         bolts.clear()
         zaps.clear()
+        ninjaShadow = null
+        shurikens.clear()
+        slashFx.clear()
+        pendingNinjaT = -1f
+        markTarget = null
+        markT = 0f
+        markDmg = 0f
         pendingThrow = false
         aimTarget = null
         aimOn = false
@@ -304,7 +323,14 @@ class GameView @JvmOverloads constructor(
         if (gameOver) return
         val wasAir = !p.grounded
         if (p.jump()) {
-            if (wasAir) {
+            if (wasAir && p.classe == Classe.NINJA) {
+                // pulo-dash do ninja: some o golpe que estava saindo e deixa um rastro de fumaça sombria
+                pendingNinjaT = -1f
+                burst(p.x, p.y + p.radius * 0.55f - p.alt, 8, 0xFF6A4A9A.toInt())
+                burst(p.x, p.y + p.radius * 0.55f - p.alt, 4, 0xFFB3202D.toInt())
+                snd("dash", 0.9f, 1.25f * vary())
+                shake = max(shake, 0.04f)
+            } else if (wasAir) {
                 // pulo duplo: cancela o tiro que estava saindo e solta um anel de poeira no ar
                 pendingShotT = -1f
                 burst(p.x, p.y + p.radius * 0.55f - p.alt, 7, 0xFFD6FFD9.toInt())
@@ -444,7 +470,12 @@ class GameView @JvmOverloads constructor(
     /** Skill do arqueiro: 1 = Chuva de Flechas, 2 = Flecha Trovão. */
     fun skill(k: Int) {
         val p = player ?: return
-        if (gameOver || p.classe != Classe.ARQUEIRO) return
+        if (gameOver) return
+        if (p.classe == Classe.NINJA) {
+            ninjaSkill(p, k)
+            return
+        }
+        if (p.classe != Classe.ARQUEIRO) return
         if (!p.startSkill(k, System.currentTimeMillis())) {
             snd("ui_error", 0.5f)
             return
@@ -460,6 +491,10 @@ class GameView @JvmOverloads constructor(
 
     /** Instante em que a flecha sai do arco na skill. */
     private fun releaseSkill(p: Player, k: Int) {
+        if (p.classe == Classe.NINJA) {
+            ninjaRelease(p, k)
+            return
+        }
         var dx = skillDX
         var dy = skillDY
         val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
@@ -658,7 +693,7 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (!p.canAttack(now)) {
-            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO) && !p.rolling) queuedAt = now
+            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA) && !p.rolling) queuedAt = now
             return
         }
 
@@ -696,6 +731,12 @@ class GameView @JvmOverloads constructor(
         } else {
             p.doAttack(now)
             swingSound(p)
+            if (p.classe == Classe.NINJA) {
+                // a lâmina só acerta no instante do impacto (sincronizado com Ninja3D.impactAt)
+                pendingNinjaT = p.ninjaDelay()
+                pendingNinjaSwing = p.swing
+                return
+            }
             if (p.classe == Classe.BARBARO) {
                 // o machado só acerta no instante do impacto (sincronizado com a animação)
                 pendingBarbT = p.barbDelay()
@@ -793,6 +834,273 @@ class GameView @JvmOverloads constructor(
         shake = max(shake, if (slam) 0.16f else 0.07f)
         if (slam) snd("axe_slam", 1f, vary())
         if (slam) burst(p.x + p.facingX * 26f, p.y + p.facingY * 26f + p.radius * 0.55f - p.ground, 7, 0xFFB8B0A8.toInt())
+    }
+
+    // ───────────────────────── NINJA ─────────────────────────
+
+    /** Golpe das lâminas; chamado no instante do impacto. O 3º golpe (corte cruzado) é mais largo e mais forte. */
+    private fun ninjaStrike(sw: Int) {
+        val p = player ?: return
+        val cross = sw == 2
+        val reach = p.classe.alcance * (if (cross) 1.3f else 1f)
+        val dmg = p.danoH * (if (cross) 1.35f else 0.8f)
+        var hits = 0
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (dist < reach + e.radius) {
+                val dx = e.x - p.x
+                val dy = e.y - p.y
+                val dot = dx * p.facingX + dy * p.facingY
+                val inArc = if (cross) (dot > -0.2f * dist || dist < 50f) else (dot > 0 || dist < 40f)
+                if (inArc) {
+                    damageEnemy(e, dmg, p.x, p.y, if (cross) 1.4f else 0.8f)
+                    hits++
+                }
+            }
+        }
+        shake = max(shake, if (cross) 0.1f else 0.04f)
+        val fx = p.x + p.facingX * 30f
+        val fy = p.y + p.facingY * 30f + p.radius * 0.55f - p.alt - 8f
+        burst(fx, fy, if (hits > 0) 5 else 2, if (hits > 0) 0xFFD8354A.toInt() else 0xFFE0E6EC.toInt())
+    }
+
+    /** Pode usar uma skill do ninja? Gasta a mana/recarga e começa a pose; a skill sai no instante de soltar. */
+    private fun ninjaSkill(p: Player, k: Int) {
+        if (k == 2) {
+            val sh = ninjaShadow
+            if (sh != null && sh.canSwap && p.skillK == 0 && p.alive) {
+                ninjaSwap(p, sh)
+                return
+            }
+        }
+        val now = System.currentTimeMillis()
+        if (k == 4 && findMarkTarget(p) == null) {
+            snd("ui_error", 0.5f)
+            if (p.skillReady(4, now)) texts.add(DmgText(p.x, p.y - p.radius - 40f - p.alt, "Sem alvo!", 0.8f, 0xFFFF8A80.toInt()))
+            return
+        }
+        if (!p.startSkill(k, now)) {
+            snd("ui_error", 0.5f)
+            return
+        }
+        pendingNinjaT = -1f
+        queuedAt = 0L
+        skillDX = p.facingX
+        skillDY = p.facingY
+        pendingSkillK = k
+        pendingSkillT = p.skillReleaseAt(k)
+        snd(when (k) {
+            1 -> "bow_draw"
+            2 -> "teleport_in"
+            3 -> "heavy_swing"
+            else -> "thunder_cast"
+        }, 0.8f, if (k == 1) 1.7f else 1f)
+    }
+
+    /** Instante em que a skill do ninja sai. */
+    private fun ninjaRelease(p: Player, k: Int) {
+        var dx = skillDX
+        var dy = skillDY
+        val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l0
+        dy /= l0
+        val gy = p.y + p.radius * 0.55f - p.alt
+        when (k) {
+            1 -> {
+                // Shuriken Navalha: o ninja e a sombra atiram juntos, na mesma direção
+                shurikens.add(Shuriken(p.x + dx * 22f, p.y + dy * 22f, dx, dy, p.danoH * 1.5f, p.ground))
+                val sh = ninjaShadow
+                if (sh != null && sh.alive && sh.age >= NinjaShadow.DASH_T) {
+                    sh.faceDir(dx, dy)
+                    sh.setMode(1, 0.34f)
+                    shurikens.add(Shuriken(sh.x + dx * 22f, sh.y + dy * 22f, dx, dy, p.danoH * 1.5f, sh.gz))
+                    burst(sh.x, sh.y + sh.radius * 0.55f - sh.gz, 3, 0xFF9B5DE5.toInt())
+                }
+                snd("bow_shot", 0.9f, 1.5f * vary())
+                shake = max(shake, 0.04f)
+            }
+            2 -> {
+                // Sombra Viva: a sombra dispara para a frente e fica no lugar (W de novo troca de lugar)
+                var d = rayLen(p.x, p.y, dx, dy, 200f).coerceAtLeast(0f)
+                var tx = p.x + dx * d
+                var ty = p.y + dy * d
+                while (d > 0f && playerBlocked(p, tx, ty)) {
+                    d -= 15f
+                    tx = p.x + dx * d.coerceAtLeast(0f)
+                    ty = p.y + dy * d.coerceAtLeast(0f)
+                }
+                if (d <= 0f) {
+                    tx = p.x
+                    ty = p.y
+                }
+                ninjaShadow = NinjaShadow(p.x, p.y, tx, ty, map.heightAt(tx, ty), atan2(dx, dy))
+                burst(p.x, gy, 6, 0xFF6A4A9A.toInt())
+                snd("teleport_out", 0.7f, 1.3f)
+            }
+            3 -> {
+                // Corte Sombrio: giro de lâminas ao redor do ninja e da sombra (cada inimigo só leva uma vez)
+                val hitSet = HashSet<Enemy>()
+                val dmg = p.danoH * 1.3f
+                ninjaSlashAt(p.x, p.y, p.ground, p.alt, 108f, dmg, hitSet)
+                val sh = ninjaShadow
+                if (sh != null && sh.alive && sh.age >= NinjaShadow.DASH_T) {
+                    sh.setMode(2, 0.45f)
+                    ninjaSlashAt(sh.x, sh.y, sh.gz, sh.gz, 108f, dmg, hitSet)
+                }
+                snd("heavy_swing", 0.95f, 1.15f)
+                shake = max(shake, 0.1f)
+            }
+            else -> {
+                // Marca da Morte: some, aparece atrás do alvo e deixa a sombra onde estava
+                val tgt = findMarkTarget(p)
+                if (tgt == null || !tgt.alive) {
+                    p.refundNinja(4)
+                    pendingSkillT = -1f
+                    snd("ui_error", 0.5f)
+                    return
+                }
+                val ox = p.x
+                val oy = p.y
+                val ex = tgt.x - ox
+                val ey = tgt.y - oy
+                val d = hypot(ex, ey).coerceAtLeast(1f)
+                val ux = ex / d
+                val uy = ey / d
+                ninjaShadow = NinjaShadow(ox, oy, ox, oy, p.ground, atan2(ux, uy))
+                val off = tgt.radius + p.radius * 0.7f
+                var nx = tgt.x + ux * off
+                var ny = tgt.y + uy * off
+                if (playerBlocked(p, nx, ny)) {
+                    nx = tgt.x - ux * off
+                    ny = tgt.y - uy * off
+                }
+                if (playerBlocked(p, nx, ny)) {
+                    nx = ox
+                    ny = oy
+                }
+                burst(ox, oy + p.radius * 0.55f - p.alt, 10, 0xFF6A4A9A.toInt())
+                burst(nx, ny + p.radius * 0.55f - p.alt, 10, 0xFFB3202D.toInt())
+                p.x = nx
+                p.y = ny
+                p.facingX = -ux
+                p.facingY = -uy
+                p.phaseT = 0.55f
+                markTarget = tgt
+                markT = markTotal
+                markDmg = 0f
+                damageEnemy(tgt, p.danoH * 0.9f, ox, oy, 0.6f)
+                snd("teleport_out", 0.9f, 1.1f)
+                snd("teleport_in", 0.9f, 1.1f)
+                shake = max(shake, 0.18f)
+                texts.add(DmgText(tgt.x, tgt.y - tgt.radius - 48f - tgt.alt, "MARCA", 0.9f, 0xFFFF5A68.toInt()))
+            }
+        }
+    }
+
+    private fun ninjaSlashAt(x: Float, y: Float, gz: Float, alt: Float, rad: Float, dmg: Float, hitSet: HashSet<Enemy>) {
+        slashFx.add(SlashFx(x, y, gz, rad))
+        burst(x, y + 13.2f - alt, 5, 0xFFD8354A.toInt())
+        for (e in enemies) {
+            if (!e.alive || e in hitSet) continue
+            if (e.alt - alt > 40f) continue
+            if (hypot(e.x - x, e.y - y) < rad + e.radius * 0.5f) {
+                hitSet.add(e)
+                damageEnemy(e, dmg, x, y, 1.1f)
+                e.slowT = max(e.slowT, 2.2f)
+            }
+        }
+    }
+
+    /** Troca de lugar com a Sombra Viva (a sombra fica onde o ninja estava). */
+    private fun ninjaSwap(p: Player, sh: NinjaShadow) {
+        val ox = p.x
+        val oy = p.y
+        val oz = p.ground
+        burst(ox, oy + p.radius * 0.55f - p.alt, 8, 0xFF9B5DE5.toInt())
+        burst(sh.x, sh.y + p.radius * 0.55f - sh.gz, 8, 0xFFB3202D.toInt())
+        p.x = sh.x
+        p.y = sh.y
+        p.vz = 0f
+        p.phaseT = 0.3f
+        p.facingX = sin(sh.yaw)
+        p.facingY = cos(sh.yaw)
+        sh.x = ox
+        sh.y = oy
+        sh.gz = oz
+        sh.swapFlash = 1f
+        pendingNinjaT = -1f
+        snd("teleport_out", 0.8f, 1.2f)
+        snd("teleport_in", 0.8f, 1.2f)
+        shake = max(shake, 0.08f)
+    }
+
+    /** Melhor alvo para a Marca da Morte: dentro de 400 px, de preferência na frente e perto. */
+    private fun findMarkTarget(p: Player): Enemy? {
+        var best: Enemy? = null
+        var bestScore = -1f
+        for (e in enemies) {
+            if (!e.alive) continue
+            val ex = e.x - p.x
+            val ey = e.y - p.y
+            val d = hypot(ex, ey)
+            if (d > 400f) continue
+            val dot = if (d > 1f) (ex * p.facingX + ey * p.facingY) / d else 1f
+            val score = (dot + 1f) * 0.3f + (1f - d / 400f) * 0.4f
+            if (score > bestScore) {
+                bestScore = score
+                best = e
+            }
+        }
+        return best
+    }
+
+    private fun updateNinjaFx(dt: Float, p: Player) {
+        val sh = ninjaShadow
+        if (sh != null) {
+            sh.update(dt)
+            if (!sh.alive) ninjaShadow = null
+        }
+        for (s in shurikens) {
+            if (!s.alive) continue
+            s.update(dt)
+            if (map.isWall(s.x, s.y)) {
+                s.alive = false
+                burst(s.x, s.y - 14f, 4, 0xFFB0BEC5.toInt())
+                sndAt("arrow_wall", s.x, s.y, 0.7f, 1.3f)
+                continue
+            }
+            for (e in enemies) {
+                if (e.alive && e !in s.hit && hypot(e.x - s.x, e.y - s.y) < e.radius + 10f) {
+                    s.hit.add(e)
+                    damageEnemy(e, s.damage, s.x - s.dx * 20f, s.y - s.dy * 20f, 0.6f)
+                    burst(e.x, e.y - 14f - e.alt, 3, 0xFFD8354A.toInt())
+                }
+            }
+        }
+        shurikens.removeAll { !it.alive }
+        slashFx.forEach { it.update(dt) }
+        slashFx.removeAll { it.done }
+        // Marca da Morte: conta o tempo e explode causando dano extra
+        val mt = markTarget
+        if (mt != null) {
+            if (!mt.alive) {
+                markTarget = null
+            } else {
+                markT -= dt
+                if (markT <= 0f) {
+                    markTarget = null
+                    val boom = p.danoH * 1.8f + markDmg * 0.4f
+                    damageEnemy(mt, boom, mt.x, mt.y, 1.5f, "hit_heavy")
+                    sndAt("thunder_hit", mt.x, mt.y, 1f, 0.8f)
+                    burst(mt.x, mt.y - 14f - mt.alt, 16, 0xFFD8354A.toInt())
+                    burst(mt.x, mt.y - 14f - mt.alt, 8, 0xFFFFE9E9.toInt())
+                    slashFx.add(SlashFx(mt.x, mt.y, mt.alt, 90f))
+                    shake = max(shake, 0.28f)
+                    markDmg = 0f
+                }
+            }
+        }
     }
 
     /** Botão de ataque apertado. Guerreiro espera para saber se é toque (combo) ou segurar (golpe forte). */
@@ -1114,7 +1422,10 @@ class GameView @JvmOverloads constructor(
     private fun damageEnemy(e: Enemy, dmg0: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
         val pl = player
         val crit = pl != null && pl.critH > 0f && Math.random() < pl.critH.toDouble()
-        val dmg = if (crit && pl != null) dmg0 * pl.critMulH else dmg0
+        // passiva do ninja (Desprezo pelos Fracos): bate mais forte em quem está com menos da metade da vida
+        val weak = if (pl != null && pl.classe == Classe.NINJA && e.hp < e.maxHp * 0.5f) 1.12f else 1f
+        val dmg = (if (crit && pl != null) dmg0 * pl.critMulH else dmg0) * weak
+        if (e === markTarget) markDmg += dmg
         e.takeDamage(dmg)
         val big = dmg >= 28f || crit
         if (hitSnd != "") {
@@ -1190,6 +1501,13 @@ class GameView @JvmOverloads constructor(
             if (pendingBarbT <= 0f) {
                 pendingBarbT = -1f
                 if (p.alive && !p.rolling) barbStrike(pendingBarbSwing)
+            }
+        }
+        if (pendingNinjaT >= 0f) {
+            pendingNinjaT -= dt
+            if (pendingNinjaT <= 0f) {
+                pendingNinjaT = -1f
+                if (p.alive && !p.rolling && !p.skilling && p.dashT <= 0f) ninjaStrike(pendingNinjaSwing)
             }
         }
         if (pendingCastT >= 0f) {
@@ -1334,6 +1652,7 @@ class GameView @JvmOverloads constructor(
             if (!playerBlocked(p, tx2, oldY)) p.x = tx2
             if (!playerBlocked(p, p.x, ty2)) p.y = ty2
             if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
+            if (p.dashT > 0f && !p.dashUp) p.dashT = (p.dashT - dt * 2f).coerceAtLeast(0f)
         }
         p.updateVertical(dt, map.heightAt(p.x, p.y))
         if (p.classe == Classe.BARBARO) barbMotion(p, dt)
@@ -1423,6 +1742,7 @@ class GameView @JvmOverloads constructor(
         }
 
         updateArcherFx(dt, p)
+        updateNinjaFx(dt, p)
 
         projectiles.forEach { pr ->
             if (!pr.alive) return@forEach
@@ -1512,6 +1832,7 @@ class GameView @JvmOverloads constructor(
             if (e.x + 140f > camX && e.x - 140f < camX + w && e.y + 140f > camY && e.y - 220f < camY + h) drawList.add(e)
         }
         player?.let { drawList.add(it) }
+        ninjaShadow?.let { if (it.alive) drawList.add(it) }
         drawList.sortBy { it.y }
         var i = 0
         val startRow = (camY / map.tileSize).toInt().coerceAtLeast(0)
@@ -1542,6 +1863,9 @@ class GameView @JvmOverloads constructor(
         rains.forEach { it.drawArrows(canvas, paint, camX, camY) }
         bolts.forEach { it.draw(canvas, paint, camX, camY) }
         zaps.forEach { it.draw(canvas, paint, camX, camY) }
+        slashFx.forEach { it.draw(canvas, paint, camX, camY) }
+        shurikens.forEach { it.draw(canvas, paint, camX, camY) }
+        markTarget?.let { if (it.alive) DeathMarkFx.draw(canvas, paint, camX, camY, it, markT, markTotal, time) }
         thrown?.draw(canvas, paint, camX, camY, time)
         player?.let { p ->
             if (p.alive && p.charging && p.weapon == 1 && p.classe == Classe.GUERREIRO) drawAim(canvas, p)
@@ -1574,6 +1898,9 @@ class GameView @JvmOverloads constructor(
     }
 
     fun aliveEnemies(): Int = enemies.count { it.alive }
+
+    /** Ninja: a Sombra Viva está no ar e dá para trocar de lugar com ela. */
+    fun swapReady(): Boolean = ninjaShadow?.canSwap == true
 
     fun getPlayer(): Player? = player
 }

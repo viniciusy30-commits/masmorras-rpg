@@ -59,9 +59,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnSkill2: android.widget.ImageButton
     private lateinit var tvSkill1Cd: TextView
     private lateinit var tvSkill2Cd: TextView
+    private lateinit var btnSkill3: android.widget.ImageButton
+    private lateinit var btnSkill4: android.widget.ImageButton
+    private lateinit var tvSkill3Cd: TextView
+    private lateinit var tvSkill4Cd: TextView
     private lateinit var hudLayer: View
-    private var prevCd1 = 0f
-    private var prevCd2 = 0f
+    private val prevCd = FloatArray(4)
     private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
     private lateinit var tvFim: TextView
@@ -131,6 +134,10 @@ class MainActivity : AppCompatActivity() {
         btnSkill2 = findViewById(R.id.btnSkill2)
         tvSkill1Cd = findViewById(R.id.tvSkill1Cd)
         tvSkill2Cd = findViewById(R.id.tvSkill2Cd)
+        btnSkill3 = findViewById(R.id.btnSkill3)
+        btnSkill4 = findViewById(R.id.btnSkill4)
+        tvSkill3Cd = findViewById(R.id.tvSkill3Cd)
+        tvSkill4Cd = findViewById(R.id.tvSkill4Cd)
         ivManaSlot = findViewById(R.id.ivManaSlot)
         hudLayer = findViewById(R.id.hudLayer)
         menuBg = findViewById(R.id.menuBg)
@@ -176,7 +183,7 @@ class MainActivity : AppCompatActivity() {
     // ───────────────────────── sons de interface ─────────────────────────
 
     private val silentIds: Set<Int> by lazy {
-        setOf(R.id.btnAttack, R.id.btnJump, R.id.btnRoll, R.id.btnWeapon, R.id.btnSkill1, R.id.btnSkill2, R.id.joystickArea)
+        setOf(R.id.btnAttack, R.id.btnJump, R.id.btnRoll, R.id.btnWeapon, R.id.btnSkill1, R.id.btnSkill2, R.id.btnSkill3, R.id.btnSkill4, R.id.joystickArea)
     }
 
     /** Qualquer toque num botão/cartão da interface faz um "clique"; os botões de combate têm sons próprios. */
@@ -329,6 +336,8 @@ class MainActivity : AppCompatActivity() {
         btnWeapon.setOnClickListener { gameView.switchWeapon() }
         btnSkill1.setOnClickListener { gameView.skill(1) }
         btnSkill2.setOnClickListener { gameView.skill(2) }
+        btnSkill3.setOnClickListener { gameView.skill(3) }
+        btnSkill4.setOnClickListener { gameView.skill(4) }
         gameView.onWeapon = { w ->
             runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
@@ -376,17 +385,23 @@ class MainActivity : AppCompatActivity() {
                         tvMpNum.text = ""
                     }
                     tvInimigos.text = gameView.aliveEnemies().toString()
-                    if (p.classe == Classe.ARQUEIRO) {
+                    if (p.classe == Classe.ARQUEIRO || p.classe == Classe.NINJA) {
                         val nowMs = System.currentTimeMillis()
-                        val c1 = p.skillCd(1, nowMs)
-                        val c2 = p.skillCd(2, nowMs)
-                        if ((prevCd1 > 0f && c1 <= 0f) || (prevCd2 > 0f && c2 <= 0f)) Sfx.play("ui_ping", 0.6f)
-                        prevCd1 = c1
-                        prevCd2 = c2
-                        tvSkill1Cd.text = if (c1 > 0f) Math.ceil(c1.toDouble()).toInt().toString() else ""
-                        tvSkill2Cd.text = if (c2 > 0f) Math.ceil(c2.toDouble()).toInt().toString() else ""
-                        btnSkill1.alpha = if (c1 > 0f) 0.45f else 1f
-                        btnSkill2.alpha = if (c2 > 0f) 0.45f else 1f
+                        val ninja = p.classe == Classe.NINJA
+                        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
+                        val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd)
+                        var ping = false
+                        for (i in 0 until (if (ninja) 4 else 2)) {
+                            val c = p.skillCd(i + 1, nowMs)
+                            if (prevCd[i] > 0f && c <= 0f) ping = true
+                            prevCd[i] = c
+                            // W do ninja: com a sombra no ar, o botão fica pronto para trocar de lugar
+                            val swap = ninja && i == 1 && gameView.swapReady()
+                            val semMana = ninja && !swap && c <= 0f && p.mp < Player.NINJA_COST[i + 1]
+                            tvs[i].text = if (c > 0f && !swap) Math.ceil(c.toDouble()).toInt().toString() else ""
+                            btns[i].alpha = if ((c > 0f && !swap) || semMana) 0.45f else 1f
+                        }
+                        if (ping) Sfx.play("ui_ping", 0.6f)
                     }
                 }
                 gameView.postDelayed(this, 100)
@@ -513,15 +528,37 @@ class MainActivity : AppCompatActivity() {
                 Classe.MAGO -> R.drawable.hd_ic_c_mago
                 Classe.ARQUEIRO -> R.drawable.hd_ic_c_arqueiro
                 Classe.BARBARO -> R.drawable.hd_ic_c_barbaro
+                Classe.NINJA -> R.drawable.hd_ic_c_ninja
             }
         )
         btnAttack.setImageResource(R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
-        val skillVis = if (classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
+        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA) View.VISIBLE else View.GONE
+        val skill34Vis = if (classe == Classe.NINJA) View.VISIBLE else View.GONE
+        if (classe == Classe.NINJA) {
+            btnSkill1.setImageResource(R.drawable.hd_ic_nin_q)
+            btnSkill2.setImageResource(R.drawable.hd_ic_nin_w)
+            btnSkill1.contentDescription = "Shuriken Navalha"
+            btnSkill2.contentDescription = "Sombra Viva"
+        } else {
+            btnSkill1.setImageResource(R.drawable.hd_ic_rain)
+            btnSkill2.setImageResource(R.drawable.hd_ic_thunder)
+            btnSkill1.contentDescription = "Chuva de Flechas"
+            btnSkill2.contentDescription = "Flecha Trovão"
+        }
+        for (i in prevCd.indices) prevCd[i] = 0f
+        btnSkill1.alpha = 1f
+        btnSkill2.alpha = 1f
+        btnSkill3.alpha = 1f
+        btnSkill4.alpha = 1f
         btnSkill1.visibility = skillVis
         btnSkill2.visibility = skillVis
         tvSkill1Cd.visibility = skillVis
         tvSkill2Cd.visibility = skillVis
+        btnSkill3.visibility = skill34Vis
+        btnSkill4.visibility = skill34Vis
+        tvSkill3Cd.visibility = skill34Vis
+        tvSkill4Cd.visibility = skill34Vis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)

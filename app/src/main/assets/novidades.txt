@@ -1,3 +1,15 @@
+#id 2026-10-28-h
+#titulo Nova classe: Ninja das sombras
+- Ninja estilo Zed: máscara de olhos vermelhos, armadura escura, cachecol e rabo de cavalo ao vento, com duas lâminas curvas que deixam rastro
+- Ataque em combo de 3 golpes: lâmina direita, lâmina esquerda e corte cruzado
+- Pulo-dash: aperte o pulo 2 vezes. Andando, ele dispara veloz e suave para onde você está indo; parado, salta reto para cima
+- Q Shuriken Navalha: atravessa todos os inimigos da linha; a sombra atira junto
+- W Sombra Viva: a sombra corre para a frente e fica no lugar copiando suas skills; aperte W de novo para trocar de lugar com ela
+- E Corte Sombrio: giro de lâminas em volta de você e da sombra, que deixa os inimigos lentos
+- R Marca da Morte: some, aparece atrás do alvo e o marca; depois de 3 segundos a marca explode com dano extra pelo que ele sofreu
+- Passiva: bate 12% mais forte em quem está com menos da metade da vida
+- As skills gastam mana e têm recarga; a sombra some depois de uns 5 segundos
+
 #id 2026-10-28-g
 #titulo Criação de herói: mais raças, rosto e altura
 - 4 raças novas: Meio-elfo, Gnomo, Halfling e Aasimar (13 no total). Gnomo e Halfling são bem menores; o Aasimar tem pele dourada e cura aos poucos

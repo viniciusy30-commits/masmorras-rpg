@@ -12,6 +12,8 @@ import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+private const val PI_F = 3.1415927f
+
 abstract class Entity(
     var x: Float,
     var y: Float,
@@ -74,6 +76,13 @@ class Player(
         const val TP_DIST = 165f    // alcance máximo do teleporte
         const val FLY_MAX = 2.8f    // segundos de voo por carga
         const val FLY_H = 70f       // altura do voo
+        const val NINJA_DASH_DIST = 270f   // alcance do pulo-dash do ninja
+        const val NINJA_DASH_T = 0.36f     // duração do pulo-dash para a frente
+        const val NINJA_UP_T = 0.55f       // duração do pulo-dash reto para cima
+        const val NINJA_RATE_1 = 2.7f      // velocidade dos 2 primeiros golpes do combo
+        const val NINJA_RATE_3 = 2.2f      // velocidade do 3º golpe
+        val NINJA_COST = floatArrayOf(0f, 18f, 22f, 20f, 35f)          // mana de Q, W, E, R
+        val NINJA_CD = longArrayOf(0L, 5000L, 9000L, 6500L, 20000L)    // recarga de Q, W, E, R (ms)
     }
 
     // herói escolhido na criação de personagem (raça + atributos)
@@ -141,7 +150,7 @@ class Player(
     var glide = false
     var fuel = FLY_MAX
     private var flyClock = 0f
-    val phased: Boolean get() = tpT > 0.14f
+    val phased: Boolean get() = tpT > 0.14f || phaseT > 0f
     var weapon = 0 // 0 espada e escudo, 1 lança
     var spearOut = false // lança arremessada, ainda no chão esperando ser recolhida
     var swapUntil = 0L
@@ -171,10 +180,20 @@ class Player(
     var thunderReadyAt = 0L
     val skilling: Boolean get() = skillK != 0
 
+    // ninja: pulo-dash (2º toque no ar), invulnerabilidade curta e recarga das 4 skills
+    var dashT = 0f
+    var dashDur = NINJA_DASH_T
+    var dashDX = 0f
+    var dashDY = 0f
+    var dashUp = false
+    var phaseT = 0f
+    private val ninjaReadyAt = LongArray(5)
+
     fun canAttack(now: Long): Boolean {
-        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping || flipT > 0f) return false
+        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
+        else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -205,11 +224,18 @@ class Player(
                 else -> 1.35f
             }
         }
+        if (classe == Classe.NINJA) {
+            // combo de 3: lâmina direita, lâmina esquerda e corte cruzado
+            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = if (swing == 2) NINJA_RATE_3 else NINJA_RATE_1
+        }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
         if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -241,6 +267,9 @@ class Player(
     /** Segundos até a flecha sair do arco do arqueiro (sincronizado com Archer3D.T_SHOT). */
     fun shotDelay(): Float = Archer3D.T_SHOT / ARCHER_RATE
 
+    /** Segundos até a lâmina do ninja acertar (sincronizado com Ninja3D.impactAt). */
+    fun ninjaDelay(): Float = Ninja3D.impactAt(swing) / attackRate
+
     /** Salto-dash do arqueiro: pulinho baixo com cambalhota na direção que está olhando. */
     fun startHop(now: Long): Boolean {
         if (classe != Classe.ARQUEIRO || !alive || rolling || skillK != 0 || !grounded || now - lastRoll < 700L) return false
@@ -270,28 +299,64 @@ class Player(
         return true
     }
 
-    fun skillReady(k: Int, now: Long): Boolean =
-        classe == Classe.ARQUEIRO && alive && skillK == 0 && !rolling && grounded &&
+    fun skillReady(k: Int, now: Long): Boolean {
+        if (classe == Classe.NINJA) {
+            return k in 1..4 && alive && skillK == 0 && !rolling && grounded && dashT <= 0f && now >= ninjaReadyAt[k] && mp >= NINJA_COST[k]
+        }
+        return classe == Classe.ARQUEIRO && alive && skillK == 0 && !rolling && grounded &&
             now >= (if (k == 1) rainReadyAt else thunderReadyAt)
+    }
 
     /** Segundos de recarga que faltam (0 = pronta). */
-    fun skillCd(k: Int, now: Long): Float =
-        (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
+    fun skillCd(k: Int, now: Long): Float {
+        if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
+        return (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
+    }
 
     fun startSkill(k: Int, now: Long): Boolean {
         if (!skillReady(k, now)) return false
         skillK = k
-        skillDur = if (k == 1) Archer3D.RAIN_DUR else Archer3D.THUNDER_DUR
+        if (classe == Classe.NINJA) {
+            skillDur = when (k) {
+                1 -> Ninja3D.Q_DUR
+                2 -> Ninja3D.W_DUR
+                3 -> Ninja3D.E_DUR
+                else -> Ninja3D.R_DUR
+            }
+            mp -= NINJA_COST[k]
+            ninjaReadyAt[k] = now + NINJA_CD[k]
+        } else {
+            skillDur = if (k == 1) Archer3D.RAIN_DUR else Archer3D.THUNDER_DUR
+            if (k == 1) rainReadyAt = now + RAIN_CD else thunderReadyAt = now + THUNDER_CD
+        }
         skillT = skillDur
-        if (k == 1) rainReadyAt = now + RAIN_CD else thunderReadyAt = now + THUNDER_CD
         attackAnim = 0f
         charging = false
         chargeT = 0f
         return true
     }
 
-    /** Segundos desde o começo da skill até a flecha sair. */
-    fun skillReleaseAt(k: Int): Float = if (k == 1) Archer3D.RAIN_DUR * Archer3D.RAIN_REL else Archer3D.THUNDER_DUR * Archer3D.THUNDER_REL
+    /** Devolve a mana e zera a recarga de uma skill do ninja que não chegou a sair (sem alvo, por exemplo). */
+    fun refundNinja(k: Int) {
+        if (classe != Classe.NINJA || k !in 1..4) return
+        mp = (mp + NINJA_COST[k]).coerceAtMost(maxMpH)
+        ninjaReadyAt[k] = 0L
+        skillK = 0
+        skillT = 0f
+    }
+
+    /** Segundos desde o começo da skill até ela sair (flecha, shuriken, sombra, corte ou salto). */
+    fun skillReleaseAt(k: Int): Float {
+        if (classe == Classe.NINJA) {
+            return when (k) {
+                1 -> Ninja3D.Q_DUR * Ninja3D.Q_REL
+                2 -> Ninja3D.W_DUR * Ninja3D.W_REL
+                3 -> Ninja3D.E_DUR * Ninja3D.E_REL
+                else -> Ninja3D.R_DUR * Ninja3D.R_REL
+            }
+        }
+        return if (k == 1) Archer3D.RAIN_DUR * Archer3D.RAIN_REL else Archer3D.THUNDER_DUR * Archer3D.THUNDER_REL
+    }
 
     fun jump(): Boolean {
         if (!alive || rolling || skillK != 0) return false
@@ -305,6 +370,7 @@ class Player(
 
     /** Segundo pulo do arqueiro, no ar: impulso novo e mortal para a frente que termina de pé antes de pousar. */
     private fun airJump(): Boolean {
+        if (classe == Classe.NINJA) return ninjaDash()
         if (classe != Classe.ARQUEIRO || airJumped || flying) return false
         val up = (alt - ground).coerceAtLeast(0f)
         if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
@@ -317,6 +383,40 @@ class Player(
         attackAnim = 0f
         charging = false
         chargeT = 0f
+        return true
+    }
+
+    /**
+     * Pulo-dash do ninja (2º toque no pulo, no ar): andando, dispara veloz e suave para onde está indo;
+     * parado, salta reto para cima.
+     */
+    private fun ninjaDash(): Boolean {
+        if (airJumped || !alive) return false
+        val up = (alt - ground).coerceAtLeast(0f)
+        if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
+        airJumped = true
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        val l = hypot(inX, inY)
+        if (l > 0.1f) {
+            dashDX = inX / l
+            dashDY = inY / l
+            facingX = dashDX
+            facingY = dashDY
+            dashUp = false
+            dashDur = NINJA_DASH_T
+            vz = 150f
+            phaseT = NINJA_DASH_T * 0.85f
+        } else {
+            dashDX = 0f
+            dashDY = 0f
+            dashUp = true
+            dashDur = NINJA_UP_T
+            vz = 650f
+            phaseT = 0.12f
+        }
+        dashT = dashDur
         return true
     }
 
@@ -413,7 +513,7 @@ class Player(
             return
         }
         if (alt > groundPx + 0.01f || vz > 0f) {
-            vz -= 1500f * dt
+            vz -= (if (dashT > 0f && !dashUp) 380f else 1500f) * dt
             if (glide && vz < -170f) vz = -170f // desce flutuando depois do voo
             alt += vz * dt
             if (alt <= groundPx) {
@@ -426,6 +526,7 @@ class Player(
                 vz = 0f
                 airJumped = false
                 flipT = 0f
+                dashT = 0f
             }
         } else {
             airJumped = false
@@ -437,6 +538,8 @@ class Player(
 
     override fun update(dt: Float) {
         if (flipT > 0f) flipT = max(0f, flipT - dt)
+        if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
+        if (dashT > 0f) dashT = max(0f, dashT - dt)
         if (leaping) {
             leapClock += dt
             if (leapClock > 2.5f) leaping = false
@@ -455,6 +558,12 @@ class Player(
             val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
+        } else if (dashT > 0f && !dashUp) {
+            // pulo-dash: acelera e freia suave (meio seno), deslizando pelo ar
+            val q = 1f - dashT / dashDur
+            val spd = NINJA_DASH_DIST * (PI_F / (2f * NINJA_DASH_T)) * sin(q * PI_F)
+            vx = dashDX * spd
+            vy = dashDY * spd
         } else if (leaping) {
             vx = leapDX * leapSpd
             vy = leapDY * leapSpd
@@ -470,7 +579,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         // arco puxado: congela a animação logo antes do disparo até o botão ser solto
         if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
@@ -565,6 +674,16 @@ class Player(
             Archer3D.trapReq = true
         }
         Archer3D.alphaV = 1f
+        Ninja3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
+        Ninja3D.inAir = up > 1f
+        Ninja3D.airH = up
+        Ninja3D.airVz = vz
+        Ninja3D.swing = swing
+        Ninja3D.dashP = if (classe == Classe.NINJA && dashT > 0f) 1f - dashT / dashDur else -1f
+        Ninja3D.dashUp = dashUp
+        Ninja3D.skillK = if (classe == Classe.NINJA) skillK else 0
+        Ninja3D.skillP = if (classe == Classe.NINJA && skillK != 0) 1f - skillT / skillDur else -1f
+        Ninja3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -580,7 +699,7 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
@@ -607,6 +726,7 @@ class Enemy(
     var alertFx = false  // o GameView consome: som de "viu o jogador"
     var swingFx = false  // o GameView consome: som do golpe do inimigo
     var stunT = 0f   // atordoado (armadilha / raio): fica parado
+    var slowT = 0f   // lento (corte sombrio do ninja)
     var yaw = 0f
     private var yawInit = false
 
@@ -629,6 +749,7 @@ class Enemy(
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
         if (!alive) return
+        if (slowT > 0f) slowT = (slowT - dt).coerceAtLeast(0f)
         if (stunT > 0f) {
             stunT = (stunT - dt).coerceAtLeast(0f)
             return
@@ -666,9 +787,10 @@ class Enemy(
         if (sp > 0f && (mx != 0f || my != 0f)) {
             faceX = mx
             faceY = my
-            x += mx * sp * dt * 60f
-            y += my * sp * dt * 60f
-            walkPhase += sp * dt * 4.2f
+            val slowM = if (slowT > 0f) 0.45f else 1f
+            x += mx * sp * dt * 60f * slowM
+            y += my * sp * dt * 60f * slowM
+            walkPhase += sp * dt * 4.2f * slowM
         }
         // giro suave
         val target = atan2(faceX, faceY)
