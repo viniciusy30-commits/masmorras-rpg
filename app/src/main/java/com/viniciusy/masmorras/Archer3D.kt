@@ -449,6 +449,11 @@ object Archer3D {
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
+    private fun sstep(a: Float, b: Float, x: Float): Float {
+        val t = ((x - a) / (b - a)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
     private fun ease(t: Float): Float {
         val x = t.coerceIn(0f, 1f)
         return x * x * (3f - 2f * x)
@@ -621,6 +626,17 @@ object Archer3D {
             cube(0.85f, -9.3f, 1.0f, 0.3f, 0.55f, 0.35f, SKIN)
             cube(0f, -9.95f, 1.0f, 1.2f, 0.18f, 0.38f, LEATHER)
             cube(-1.6f, -8.5f, 0.6f, 0.3f, 0.7f, 0.5f, SKIN_D)
+            if (trapHold > 0.5f) {
+                // armadilha de urso fechada na mão, antes do arremesso
+                cube(0f, -10.4f, 1.8f, 1.7f, 0.5f, 2.0f, STEEL_D)
+                cube(0f, -11.0f, 1.8f, 1.3f, 0.3f, 1.7f, STEEL)
+                cube(-1.4f, -10.5f, 1.8f, 0.2f, 0.55f, 1.8f, STEEL_L)
+                cube(1.4f, -10.5f, 1.8f, 0.2f, 0.55f, 1.8f, STEEL_L)
+                cube(0f, -10.0f, 3.9f, 0.5f, 0.4f, 0.2f, BRASS)
+                cube(0f, -10.2f, -0.6f, 0.3f, 0.3f, 0.9f, STEEL_D)
+                cube(-0.9f, -11.5f, 1.8f, 0.2f, 0.2f, 1.6f, STEEL_L)
+                cube(0.9f, -11.5f, 1.8f, 0.2f, 0.2f, 1.6f, STEEL_L)
+            }
         }
         if (gl > 0.04f) {
             cube(0f, -8.0f, 0.5f, 0.9f + 0.8f * gl, 0.9f + 0.8f * gl, 0.9f + 0.8f * gl, magL, true)
@@ -1035,6 +1051,8 @@ object Archer3D {
     var inAir = false
     var airH = 0f
     var airVz = 0f
+    const val HOP_THROW = 0.40f   // instante (0..1 do salto) em que a armadilha sai da mão
+    private var trapHold = 0f
     var hopP = -1f              // 0..1 durante o salto-dash; <0 = sem salto
     var trapReq = false         // o Player liga isso no instante em que a armadilha é solta
     var skillK = 0              // 0 nada, 1 chuva de flechas, 2 flecha trovão
@@ -1562,6 +1580,14 @@ object Archer3D {
             gRX = lerp(gRX, 10.0f, hopW); gRY = lerp(gRY, 7.0f, hopW); gRZ = lerp(gRZ, 6.5f, hopW)
             rRX = lerp(rRX, -9.5f, hopW); rRY = lerp(rRY, 7.5f, hopW); rRZ = lerp(rRZ, 5.5f, hopW)
         }
+        if (hopping) {
+            // arremesso: a mão sobe e recua (preparação), varre para a frente do corpo (solta) e volta
+            val hr = hopP.coerceIn(0f, 1f)
+            val wUp = sstep(0.05f, 0.24f, hr) * (1f - sstep(0.24f, 0.33f, hr))
+            val wTh = sstep(0.24f, 0.40f, hr) * (1f - sstep(0.47f, 0.72f, hr))
+            rRX = lerp(rRX, -8.5f, wUp); rRY = lerp(rRY, 15.0f, wUp); rRZ = lerp(rRZ, -3.0f, wUp)
+            rRX = lerp(rRX, -3.5f, wTh); rRY = lerp(rRY, 9.0f, wTh); rRZ = lerp(rRZ, 12.5f, wTh)
+        }
         val gX = lerp(gRX, gAimX, aimW)
         val gY = lerp(gRY, gAimY, aimW)
         val gZ = lerp(gRZ, gAimZ, aimW)
@@ -1644,12 +1670,15 @@ object Archer3D {
         rotY(yaw)
         rotZ(sp[1])
         translate(0f, 0f, lunge - hitKick * 1.6f)
+        trapHold = if (hopping && hopP < HOP_THROW) 1f else 0f
         if (hopping) {
-            val r = ((hopP - 0.08f) / 0.80f).coerceIn(0f, 1f)
-            val ang = (r * 0.55f + r * r * (3f - 2f * r) * 0.45f) * TWO_PI
-            val lift = 3.5f * sin(r * PI.toFloat())
+            // salto para a frente: o corpo gira para trás (eixo vertical), arremessa a armadilha e volta a olhar para a frente
+            val hr = hopP.coerceIn(0f, 1f)
+            val tw = PI.toFloat() * (sstep(0.04f, 0.36f, hr) - sstep(0.60f, 0.94f, hr))
+            val lift = 3.5f * sin(hr * PI.toFloat())
             translate(0f, 10f + lift, 0f)
-            rotX(ang)
+            rotY(tw)
+            rotX(-0.20f * sin(hr * PI.toFloat()))
             translate(0f, -11f, 0f)
         }
 

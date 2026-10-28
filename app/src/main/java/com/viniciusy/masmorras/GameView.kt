@@ -345,9 +345,6 @@ class GameView @JvmOverloads constructor(
             val gz = p.ground
             if (p.startHop(System.currentTimeMillis())) {
                 pendingShotT = -1f
-                traps.add(Trap(ox, oy, gz))
-                if (traps.size > 4) traps.removeAt(0)
-                p.trapFx = true
                 burst(ox, oy + p.radius * 0.55f - gz, 7, 0xFFB8B0A8.toInt())
             }
             return
@@ -473,9 +470,22 @@ class GameView @JvmOverloads constructor(
     }
 
     private fun updateArcherFx(dt: Float, p: Player) {
+        // armadilha de urso arremessada no meio do salto: cai atrás, onde ele saltou
+        if (p.trapThrowReq) {
+            p.trapThrowReq = false
+            val dl = hypot(p.rollDX, p.rollDY).coerceAtLeast(0.001f)
+            traps.add(Trap(p.hopX0 + p.rollDX / dl * 6f, p.hopY0 + p.rollDY / dl * 6f, p.ground, p.trapRelX, p.trapRelY, p.trapRelUp + 22f))
+            if (traps.size > 4) traps.removeAt(0)
+            p.trapFx = true
+        }
         // armadilhas: quem pisar leva stun de 1 segundo
         for (t in traps) {
             t.update(dt)
+            if (t.landedFx) {
+                t.landedFx = false
+                burst(t.x, t.y + 13.2f - t.gz, 8, 0xFFB8B0A8.toInt())
+                shake = max(shake, 0.05f)
+            }
             if (!t.armed) continue
             var stepped = false
             for (e in enemies) {

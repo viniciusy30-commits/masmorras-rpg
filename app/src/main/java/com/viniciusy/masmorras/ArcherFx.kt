@@ -7,6 +7,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
@@ -20,18 +21,33 @@ private fun alphaCol(col: Int, a: Float): Int =
     (((a.coerceIn(0f, 1f) * 255f).toInt()) shl 24) or (col and 0x00FFFFFF)
 
 /**
- * Armadilha plantada pelo salto do arqueiro. Fica armada no chão (runas verdes pulsando);
- * quem pisar leva stun de 1 segundo e as garras fecham com um estalo.
+ * Armadilha de urso arremessada pelo salto do arqueiro: voa em arco até o chão (atrás de onde ele saltou),
+ * quica e balança com o impacto, abre as mandíbulas e fica armada. Quem pisar leva stun de 1 segundo
+ * e as mandíbulas fecham com um estalo.
  */
-class Trap(val x: Float, val y: Float, val gz: Float) {
+class Trap(
+    val x: Float, val y: Float, val gz: Float,
+    private val fromX: Float = x, private val fromY: Float = y, private val fromH: Float = 0f
+) {
+    companion object {
+        const val FLY_T = 0.30f
+    }
+
     var age = 0f
     var snapT = -1f
+    var landedFx = false           // o GameView consome: poeira + tremida no impacto
+    private val fly = if (fromH > 0f) FLY_T else 0f
+    private var landed = fly <= 0f
 
-    val armed: Boolean get() = age > 0.45f && snapT < 0f
+    val armed: Boolean get() = age > fly + 0.32f && snapT < 0f
     val done: Boolean get() = snapT > 0.9f || age > 18f
 
     fun update(dt: Float) {
         age += dt
+        if (!landed && age >= fly) {
+            landed = true
+            landedFx = true
+        }
         if (snapT >= 0f) snapT += dt
     }
 
@@ -40,66 +56,105 @@ class Trap(val x: Float, val y: Float, val gz: Float) {
     }
 
     fun draw(c: Canvas, p: Paint, camX: Float, camY: Float, time: Float) {
-        val cx = x - camX
-        val cy = y - camY + FOOT - gz
-        val plant = (age / 0.22f).coerceIn(0f, 1f)
-        val drop = if (age < 0.22f) (1f - plant) * 26f else 0f
-        val pop = if (age in 0.22f..0.42f) 1f + 0.18f * sin((age - 0.22f) / 0.2f * PI.toFloat()) else 1f
+        val inFlight = age < fly
+        val u = if (fly > 0f) (age / fly).coerceIn(0f, 1f) else 1f
+        val gx = if (inFlight) fromX + (x - fromX) * u else x
+        val gy = if (inFlight) fromY + (y - fromY) * u else y
+        val groundY = gy - camY + FOOT - gz
+        val gxs = gx - camX
+        val w = max(0f, age - fly)                       // tempo desde o impacto
+        val hAir = if (inFlight) fromH * (1f - u) + 30f * sin(u * PI.toFloat()) else 0f
+        val decay = exp(-w * 7f)
+        val bounce = if (inFlight) 0f else 9f * abs(sin(w * 21f)) * decay
+        val wob = if (inFlight) 0f else sin(w * 34f) * exp(-w * 5.5f)
         val fade = if (snapT > 0.45f) (1f - (snapT - 0.45f) / 0.45f).coerceIn(0f, 1f) else 1f
-        val open = if (snapT < 0f) 1f else (1f - snapT / 0.1f).coerceIn(0f, 1f)
-        val pulse = 0.5f + 0.5f * sin(time * 5f)
-        val rx = 21f * pop
-        val ry = 10f * pop
-        val oy = cy - drop
+        val closing = if (snapT < 0f) 0f else (snapT / 0.1f).coerceIn(0f, 1f)
+        // mandíbulas: fechadas no ar, abrem com uma mola ao bater no chão (com sobra e vibração)
+        val springOpen = if (inFlight) 0.12f else (1f - exp(-w * 20f) + 0.22f * wob).coerceIn(0f, 1.25f)
+        val open = springOpen * (1f - closing)
+        val rx = 21f
+        val ry = 10.5f
 
         p.style = Paint.Style.FILL
-        // brilho verde no chão
-        if (snapT < 0f && age > 0.3f) {
-            p.color = alphaCol(0xFF7CFF8A.toInt(), (0.10f + 0.12f * pulse) * fade)
-            c.drawOval(cx - rx * 1.5f, oy - ry * 1.5f, cx + rx * 1.5f, oy + ry * 1.5f, p)
+        // sombra no chão (some quando está alto)
+        val sh = (1f - (hAir + bounce) / 60f).coerceIn(0.3f, 1f)
+        p.color = alphaCol(0xFF000000.toInt(), 0.32f * fade * sh)
+        c.drawOval(gxs - rx * 1.05f * sh, groundY - ry * 0.7f * sh, gxs + rx * 1.05f * sh, groundY + ry * 1.1f * sh, p)
+
+        c.save()
+        c.translate(gxs, groundY - hAir - bounce)
+        if (inFlight) {
+            c.rotate(u * 520f)
+            c.scale(0.8f, 0.8f)
+        } else {
+            val squash = 1f - 0.20f * exp(-w * 16f)
+            c.rotate(9f * wob)
+            c.scale(1f + 0.10f * (1f - squash), squash)
         }
-        // sombra e placa de madeira
-        p.color = alphaCol(0xFF000000.toInt(), 0.35f * fade)
-        c.drawOval(cx - rx * 1.05f, oy - ry * 0.7f, cx + rx * 1.05f, oy + ry * 1.2f, p)
-        p.color = alphaCol(0xFF45301B.toInt(), fade)
-        c.drawOval(cx - rx, oy - ry, cx + rx, oy + ry, p)
-        p.color = alphaCol(0xFF6E4727.toInt(), fade)
-        c.drawOval(cx - rx * 0.86f, oy - ry * 0.86f, cx + rx * 0.86f, oy + ry * 0.86f, p)
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = 2.6f
-        p.color = alphaCol(0xFFD4A94A.toInt(), fade)
-        c.drawOval(cx - rx, oy - ry, cx + rx, oy + ry, p)
-        p.style = Paint.Style.FILL
-        // runa central
-        p.color = alphaCol(if (snapT < 0f) 0xFF7CFF8A.toInt() else 0xFFFFE08A.toInt(), (0.55f + 0.4f * pulse) * fade)
-        c.drawRect(cx - 2.5f, oy - 1.6f, cx + 2.5f, oy + 1.6f, p)
 
-        // duas garras de aço com dentes: abertas quando armada, fechadas depois do estalo
+        // corrente com argola de estaca
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 2.2f
+        p.color = alphaCol(0xFF59616A.toInt(), fade)
+        for (i in 0..3) {
+            val lx = rx * 0.55f + i * 5.2f
+            val ly = -ry * 0.1f - i * 2.1f + sin(w * 30f + i) * 0.8f * decay
+            c.drawOval(lx - 2.6f, ly - 1.7f, lx + 2.6f, ly + 1.7f, p)
+        }
+        p.style = Paint.Style.FILL
+
+        // moldura de aço, mola e placa de pressão
+        p.color = alphaCol(0xFF2E343A.toInt(), fade)
+        c.drawOval(-rx, -ry, rx, ry, p)
+        p.color = alphaCol(0xFF4B545D.toInt(), fade)
+        c.drawOval(-rx * 0.9f, -ry * 0.88f, rx * 0.9f, ry * 0.88f, p)
+        p.style = Paint.Style.STROKE
+        p.strokeWidth = 1.8f
+        p.color = alphaCol(0xFF8C98A3.toInt(), fade)
+        c.drawOval(-rx, -ry, rx, ry, p)
+        p.style = Paint.Style.FILL
+        p.color = alphaCol(0xFF8E5A2B.toInt(), fade)
+        c.drawOval(-rx * 0.2f, -ry * 0.28f, rx * 0.2f, ry * 0.28f, p)
+        p.color = alphaCol(0xFFD4A94A.toInt(), fade)
+        c.drawOval(-rx * 0.12f, -ry * 0.18f, rx * 0.12f, ry * 0.18f, p)
+
+        // duas mandíbulas de semicírculo com dentes; juntas = interligadas
+        val jr = 0.62f
         for (side in intArrayOf(-1, 1)) {
-            val jx = cx + side * (rx * 0.55f) * open
-            val jy = oy - ry * 0.1f - (1f - open) * 0f
+            val jx = side * rx * 0.46f * open
+            val jrx = rx * jr
+            val jry = ry * jr * 1.35f
+            val start = if (side < 0) 90f else 270f
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = 3.4f
             p.color = alphaCol(0xFF7C8A96.toInt(), fade)
-            c.drawOval(jx - rx * 0.42f, jy - ry * 0.55f, jx + rx * 0.42f, jy + ry * 0.55f, p)
-            p.color = alphaCol(0xFFB7C2CC.toInt(), fade)
-            c.drawOval(jx - rx * 0.34f, jy - ry * 0.45f, jx + rx * 0.34f, jy + ry * 0.2f, p)
-            // dentes apontando para o centro
+            c.drawArc(jx - jrx, -jry, jx + jrx, jry, start, 180f, false, p)
+            p.strokeWidth = 1.4f
+            p.color = alphaCol(0xFFD7E0E8.toInt(), fade)
+            c.drawArc(jx - jrx, -jry * 0.97f, jx + jrx, jry * 0.97f, start, 180f, false, p)
+            p.style = Paint.Style.FILL
             p.color = alphaCol(0xFFEAF1F6.toInt(), fade)
             val path = Path()
-            for (i in 0..3) {
-                val tx = jx - side * rx * 0.30f
-                val ty = jy - ry * 0.45f + i * ry * 0.32f
-                path.moveTo(tx, ty - ry * 0.14f)
-                path.lineTo(tx - side * rx * (0.34f + 0.1f * open), ty)
-                path.lineTo(tx, ty + ry * 0.14f)
+            val teeth = 7
+            for (i in 0 until teeth) {
+                val a0 = (start + 180f * (i + 0.22f) / teeth) * PI.toFloat() / 180f
+                val a1 = (start + 180f * (i + 0.78f) / teeth) * PI.toFloat() / 180f
+                val am = (start + 180f * (i + 0.5f) / teeth) * PI.toFloat() / 180f
+                path.moveTo(jx + jrx * cos(a0), jry * sin(a0))
+                path.lineTo(jx + jrx * 0.62f * cos(am), jry * 0.62f * sin(am))
+                path.lineTo(jx + jrx * cos(a1), jry * sin(a1))
                 path.close()
             }
             c.drawPath(path, p)
         }
+        c.restore()
+
         // clarão do estalo
         if (snapT in 0f..0.2f) {
             val a = 1f - snapT / 0.2f
+            p.style = Paint.Style.FILL
             p.color = alphaCol(0xFFFFFFFF.toInt(), 0.6f * a)
-            c.drawOval(cx - rx * (1f + snapT * 4f), oy - ry * (1f + snapT * 4f), cx + rx * (1f + snapT * 4f), oy + ry * (1f + snapT * 4f), p)
+            c.drawOval(gxs - rx * (1f + snapT * 4f), groundY - ry * (1f + snapT * 4f), gxs + rx * (1f + snapT * 4f), groundY + ry * (1f + snapT * 4f), p)
         }
     }
 }

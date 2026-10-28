@@ -64,7 +64,7 @@ class Player(
         const val DASH_TIME = 0.34f  // impulso do bárbaro
         const val MAGE_RATE = 2.3f
         const val ARCHER_RATE = 2.6f // velocidade da animação do tiro (T_SHOT sincroniza a saída da flecha)
-        const val HOP_TIME = 0.34f   // salto-dash do arqueiro
+        const val HOP_TIME = 0.44f   // salto-dash do arqueiro
         const val RAIN_CD = 7000L    // recarga da Chuva de Flechas (ms)
         const val THUNDER_CD = 9000L // recarga da Flecha Trovão (ms)
         const val TP_TIME = 0.34f   // duração da animação do teleporte
@@ -131,6 +131,14 @@ class Player(
     // arqueiro: salto-dash (planta armadilha) e skills (1 = chuva de flechas, 2 = flecha trovão)
     var hopping = false
     var trapFx = false
+    // armadilha arremessada no meio do salto (o GameView cria o objeto quando trapThrowReq liga)
+    var trapThrown = false
+    var trapThrowReq = false
+    var hopX0 = 0f
+    var hopY0 = 0f
+    var trapRelX = 0f
+    var trapRelY = 0f
+    var trapRelUp = 0f
     var skillK = 0
     var skillT = 0f
     var skillDur = 1f
@@ -222,9 +230,13 @@ class Player(
         rollDur = HOP_TIME
         dashing = false
         hopping = true
-        vz = 250f
+        vz = 330f
         alt = ground + 0.7f
         lastRoll = now
+        hopX0 = x
+        hopY0 = y
+        trapThrown = false
+        trapThrowReq = false
         attackAnim = 0f
         charging = false
         chargeT = 0f
@@ -382,7 +394,14 @@ class Player(
             rollT -= dt
             if (rollT <= 0f) { rollT = 0f; dashing = false; hopping = false; landSquash = max(landSquash, 0.3f) }
             val q = 1f - rollT / rollDur
-            val spd = if (hopping) 480f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
+            if (hopping && !trapThrown && q >= Archer3D.HOP_THROW) {
+                trapThrown = true
+                trapThrowReq = true
+                trapRelX = x
+                trapRelY = y
+                trapRelUp = (alt - ground).coerceAtLeast(0f)
+            }
+            val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
         } else if (leaping) {
