@@ -290,10 +290,10 @@ class Player(
         val up = (alt - ground).coerceAtLeast(0f)
         if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
         airJumped = true
-        vz = 315f
+        vz = 520f
         // tempo até o chão com a gravidade de 1500: o mortal dura um pouco menos, para fechar a pose antes do pouso
         val land = (vz + sqrt(vz * vz + 3000f * up)) / 1500f
-        flipDur = (land * 0.88f).coerceIn(0.38f, 0.72f)
+        flipDur = (land * 0.88f).coerceIn(0.45f, 1.05f)
         flipT = flipDur
         attackAnim = 0f
         charging = false

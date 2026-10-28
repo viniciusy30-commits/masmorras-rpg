@@ -1,3 +1,10 @@
+#id 2026-10-28-b
+#titulo Arqueiro agora é um elfo (estilo Legolas) e o segundo pulo é bem mais alto
+- Visual novo: elfo de cabelo loiro-platinado liso e longo, com risca no meio, trancinhas nos templos, orelhas longas e pontudas, olhos azul-gelo e rosto fino e pálido
+- Sem capa, sem capuz, sem máscara e sem cachecol: túnica cinza-esverdeada, colete e braçadeiras de couro, broche de folha prateada, botas altas de couro, aljava nas costas e duas facas élficas cruzadas na cintura
+- O cabelo balança com os movimentos, com o vento do pulo e no mortal
+- Segundo pulo (mortal) bem mais alto: o impulso subiu de 315 para 520 e o mortal dura mais para acompanhar a subida
+
 #id 2026-10-28-a
 #titulo Arqueiro: arco inclinado e armadilha de urso corrigida
 - Armadilha de urso: corrigido o bug em que o corpo do arqueiro aparecia dentro dela (a armadilha e o herói usavam a mesma imagem interna); agora cada desenho tem a sua e a armadilha aparece inteira, com placa, corrente e mandíbulas
