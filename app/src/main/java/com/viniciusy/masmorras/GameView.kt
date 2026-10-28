@@ -51,6 +51,10 @@ class GameView @JvmOverloads constructor(
     private val MAX_ZOOM = 3.6f
     private var userZoom = 1f
     private var attackHeld = false
+    // arqueiro: botão de ataque segurado (mira) e força do arco
+    private var bowHeld = false
+    private var bowT = 0f
+    private var pendingShotPow = 0f
     // lança: golpe pendente (dano sai no instante da estocada), arremesso pendente e a lança no chão
     private var thrown: ThrownSpear? = null
     private var pendingHitT = -1f
@@ -176,6 +180,8 @@ class GameView @JvmOverloads constructor(
         running = true
         shake = 0f
         attackHeld = false
+        bowHeld = false
+        bowT = 0f
         queuedAt = 0L
         camVX = 0f
         camVY = 0f
@@ -206,7 +212,7 @@ class GameView @JvmOverloads constructor(
             val ny = dy / len
             p.inX = nx
             p.inY = ny
-            if (!p.rolling && !p.skilling && !pendingThrow && !(aimOn && attackHeld)) {
+            if (!p.rolling && !p.skilling && !pendingThrow && !(aimOn && (attackHeld || bowHeld))) {
                 p.facingX = nx
                 p.facingY = ny
             }
@@ -219,7 +225,7 @@ class GameView @JvmOverloads constructor(
     /** Mira da lança: direção do arrasto do dedo no botão de ataque (já normalizada na tela). */
     fun setAim(dx: Float, dy: Float) {
         val p = player ?: return
-        if (p.classe != Classe.GUERREIRO || p.weapon != 1) return
+        if (!(p.classe == Classe.GUERREIRO && p.weapon == 1) && p.classe != Classe.ARQUEIRO) return
         val l = hypot(dx, dy)
         if (l < 0.001f) return
         aimX = dx / l
@@ -717,6 +723,12 @@ class GameView @JvmOverloads constructor(
     fun attackDown() {
         val p = player ?: return
         if (!p.alive || gameOver) return
+        if (p.classe == Classe.ARQUEIRO) {
+            bowHeld = true
+            bowT = 0f
+            bowBegin(p)
+            return
+        }
         if (p.classe == Classe.GUERREIRO) {
             if (p.weapon == 1 && p.spearOut) {
                 spearHint(p)
@@ -729,8 +741,38 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    /** Começa a puxar o arco (se já puder atacar): a animação para no ponto de mira e espera soltar o botão. */
+    private fun bowBegin(p: Player) {
+        if (p.bowHold || p.attackAnim > 0f) return
+        val now = System.currentTimeMillis()
+        if (!p.canAttack(now)) return
+        p.doAttack(now)
+        p.bowHold = true
+        bowT = 0f
+    }
+
+    /** Solta a corda: a flecha sai no instante do gesto, com força proporcional ao tempo que ficou mirando. */
+    private fun bowRelease(p: Player) {
+        bowHeld = false
+        aimOn = false
+        if (p.bowHold) {
+            p.bowHold = false
+            val tNow = 1f - p.attackAnim
+            pendingShotPow = ((bowT - 0.25f) / 0.9f).coerceIn(0f, 1f)
+            pendingShotT = ((Archer3D.T_SHOT - tNow) / Player.ARCHER_RATE).coerceAtLeast(0f)
+        } else if (p.alive && !gameOver) {
+            pendingShotPow = 0f
+            tryAttack()
+        }
+        p.bowPow = 0f
+    }
+
     fun attackUp() {
         val p = player ?: return
+        if (p.classe == Classe.ARQUEIRO) {
+            if (bowHeld) bowRelease(p)
+            return
+        }
         if (!attackHeld) return
         attackHeld = false
         if (!p.alive || gameOver) {
@@ -1072,12 +1114,13 @@ class GameView @JvmOverloads constructor(
             if (pendingShotT <= 0f) {
                 pendingShotT = -1f
                 if (p.alive && !p.rolling && !p.skilling) {
+                    val pw = pendingShotPow
                     val arrow = Projectile(
                         p.x + p.facingX * 20f, p.y + p.facingY * 20f,
-                        p.facingX * 380f, p.facingY * 380f,
-                        p.classe.danoBase, 0xFF8D6E63.toInt(), true, 1
+                        p.facingX * 380f * (1f + 0.35f * pw), p.facingY * 380f * (1f + 0.35f * pw),
+                        p.classe.danoBase * (1f + 0.5f * pw), 0xFF8D6E63.toInt(), true, 1
                     )
-                    arrow.life = 1.4f
+                    arrow.life = 1.4f * (1f + 0.25f * pw)
                     projectiles.add(arrow)
                 }
             }
@@ -1095,6 +1138,27 @@ class GameView @JvmOverloads constructor(
         }
         updateThrown(dt, p)
 
+        // arqueiro segurando o ataque: mira (gira pelo arrasto do dedo) e carrega a força do arco
+        if (p.classe == Classe.ARQUEIRO && (bowHeld || p.bowHold)) {
+            if (!p.alive || p.rolling || p.skilling || p.flipT > 0f) {
+                bowHeld = false
+                p.bowHold = false
+                p.bowPow = 0f
+                p.attackAnim = 0f
+                aimOn = false
+            } else {
+                if (aimOn && bowHeld) {
+                    p.facingX = aimX
+                    p.facingY = aimY
+                }
+                if (bowHeld && !p.bowHold) {
+                    bowBegin(p) // recarrega a mira se ainda segura o botão depois de um disparo
+                } else if (p.bowHold) {
+                    bowT += dt
+                    p.bowPow = ((bowT - 0.25f) / 0.9f).coerceIn(0f, 1f)
+                }
+            }
+        }
         // segurar o ataque (guerreiro): levanta a espada; soltar = golpe forte
         if (aimOn && attackHeld && !p.rolling && p.weapon == 1) {
             p.facingX = aimX
@@ -1113,7 +1177,7 @@ class GameView @JvmOverloads constructor(
                 }
             }
         }
-        val chargeNow = if (p.charging) p.chargeT else 0f
+        val chargeNow = if (p.charging) p.chargeT else if (p.bowHold) p.bowPow else 0f
         if (chargeNow != lastChargeSent) {
             lastChargeSent = chargeNow
             onCharge?.invoke(chargeNow)

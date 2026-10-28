@@ -1,3 +1,19 @@
+#id 2026-10-28-d
+#titulo Arqueiro: segurar o ataque para mirar, adagas novas
+- Segure o botão de ataque: o elfo puxa o arco e fica mirando (anda mais devagar e a corda vibra). Solte para atirar. Quanto mais tempo mirando, mais forte o tiro: a flecha vai mais rápida, mais longe e causa até 50% mais dano. O anel de carga do botão mostra a força
+- Arraste o dedo a partir do botão de ataque para apontar a direção da mira; sem arrastar, ele mira para onde está virado
+- Toque rápido continua atirando como antes
+- Mirar é cancelado se você rolar, usar uma skill ou der o pulo duplo
+- Adagas refeitas: duas facas élficas brancas em X nas costas, em bainhas de couro com chape de prata, frisos de latão, guarda em forma de folha, empunhadura enrolada em couro e gema verde no pomo; um anel de latão prende o cruzamento
+- Aljava mais para fora e mais inclinada no ombro, longe do cabelo e das adagas
+
+#id 2026-10-28-c
+#titulo Elfo: cabelo e aljava refeitos
+- A aljava ficou sobre o ombro esquerdo, afastada do cabelo, e não atravessa mais as costas do elfo
+- Aljava nova: couro afunilado com costuras, faixas de latão, emblema de folha prateada, ponta que balança, borla pendurada, tira de couro solta e flechas em leque com penas prateadas, brancas e verdes
+- Cabeça: o cabelo agora cobre toda a lateral (acabou o espaço careca), com fios no topo e nas costas e uma cauda mais fina em três partes que ondula
+- A trança fininha virou uma trança grossa e trançada de verdade, com laço de latão e fio de prata, que balança com o movimento
+
 #id 2026-10-28-b
 #titulo Arqueiro agora é um elfo (estilo Legolas) e o segundo pulo é bem mais alto
 - Visual novo: elfo de cabelo loiro-platinado liso e longo, com risca no meio, trancinhas nos templos, orelhas longas e pontudas, olhos azul-gelo e rosto fino e pálido

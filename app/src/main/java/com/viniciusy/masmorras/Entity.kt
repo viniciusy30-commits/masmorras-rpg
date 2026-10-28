@@ -64,6 +64,7 @@ class Player(
         const val ROLL_TIME = 0.46f
         const val DASH_TIME = 0.34f  // impulso do bárbaro
         const val MAGE_RATE = 2.3f
+        const val BOW_HOLD_AT = 0.44f // ponto da animação (0..1) em que o arco fica puxado esperando soltar
         const val ARCHER_RATE = 2.6f // velocidade da animação do tiro (T_SHOT sincroniza a saída da flecha)
         const val HOP_TIME = 0.44f   // salto-dash do arqueiro
         const val RAIN_CD = 7000L    // recarga da Chuva de Flechas (ms)
@@ -134,6 +135,9 @@ class Player(
     // pulo duplo do arqueiro: segundo toque no ar = mortal (flipT conta de flipDur até 0)
     var airJumped = false
     var flipT = 0f
+    // arqueiro: segurando o botão de ataque ele fica com o arco puxado, mirando (solta = atira)
+    var bowHold = false
+    var bowPow = 0f
     var flipDur = 0.5f
     val flipping: Boolean get() = flipT > 0f
     var trapFx = false
@@ -441,7 +445,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) 0.3f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) 0.3f else 1f) * (if (bowHold) 0.5f else 1f)
             vx = inX * classe.velocidade * 60f * slow
             vy = inY * classe.velocidade * 60f * slow
         }
@@ -453,6 +457,8 @@ class Player(
         if (attackAnim > 0f) {
             attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
+        // arco puxado: congela a animação logo antes do disparo até o botão ser solto
+        if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
         if (tpT > 0f) tpT = (tpT - dt).coerceAtLeast(0f)
         if (skillK != 0) {
             skillT -= dt
@@ -534,6 +540,8 @@ class Player(
         Archer3D.airVz = vz
         Archer3D.skillK = skillK
         Archer3D.skillP = if (skillK != 0) 1f - skillT / skillDur else -1f
+        Archer3D.holdOn = bowHold && classe == Classe.ARQUEIRO
+        Archer3D.holdPow = bowPow
         if (trapFx) {
             trapFx = false
             Archer3D.trapReq = true

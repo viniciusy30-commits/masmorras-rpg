@@ -834,27 +834,75 @@ object Archer3D {
 
     private fun quiver(sw: Float, arrows: Float) {
         push()
-        translate(-2.3f, 9.2f, -5.2f)
-        rotZ(0.34f)
+        // sobre o ombro esquerdo, afastada do cabelo
+        translate(-5.0f, 10.0f, -5.9f)
+        rotZ(0.38f)
         rotX(sw)
-        cube(0f, 0f, 0f, 1.9f, 5.4f, 1.8f, LEATHER)
-        cube(0f, 0f, 1.85f, 1.3f, 4.8f, 0.1f, LEATHER_L)
-        cube(0f, 3.4f, 1.95f, 1.5f, 0.3f, 0.1f, LEATHER_D)
-        cube(0f, -1.0f, 1.95f, 1.5f, 0.3f, 0.1f, LEATHER_D)
-        cube(0f, 5.4f, 0f, 2.1f, 0.5f, 1.95f, BRASS)
-        cube(0f, 5.45f, 0f, 1.5f, 0.1f, 1.3f, LEATHER_D)
-        cube(0f, -5.4f, 0f, 2.0f, 0.45f, 1.9f, LEATHER_D)
-        cube(0f, -5.9f, 0f, 1.0f, 0.4f, 0.9f, BRASS_D)
-        cube(0f, 1.6f, 1.95f, 0.9f, 0.9f, 0.12f, BRASS)
-        cube(0f, 1.6f, 2.05f, 0.4f, 0.4f, 0.1f, magC, true)
+        // parte de cima: couro curtido com costuras, faixas de latão e emblema de folha
+        cube(0f, 2.7f, 0f, 2.0f, 2.7f, 1.85f, LEATHER)
+        cube(0f, 2.7f, 1.9f, 1.45f, 2.4f, 0.1f, LEATHER_L)
+        cube(-2.02f, 2.7f, 0f, 0.06f, 2.6f, 1.6f, LEATHER_D)
+        cube(2.02f, 2.7f, 0f, 0.06f, 2.6f, 1.6f, LEATHER_D)
+        cube(0f, 2.7f, -1.88f, 1.7f, 2.4f, 0.06f, LEATHER_D)
+        for (k in 0..4) {
+            cube(-1.55f + k * 0.78f, 4.4f, 2.02f, 0.06f, 0.18f, 0.05f, LEATHER_D)
+            cube(-1.55f + k * 0.78f, 1.0f, 2.02f, 0.06f, 0.18f, 0.05f, LEATHER_D)
+        }
+        cube(0f, 5.45f, 0f, 2.2f, 0.4f, 2.05f, LEATHER_D)
+        cube(0f, 5.8f, 0f, 2.0f, 0.12f, 1.85f, BRASS)
+        cube(-1.5f, 5.5f, 2.05f, 0.18f, 0.18f, 0.08f, BRASS_L)
+        cube(0f, 5.5f, 2.05f, 0.18f, 0.18f, 0.08f, BRASS_L)
+        cube(1.5f, 5.5f, 2.05f, 0.18f, 0.18f, 0.08f, BRASS_L)
+        cube(0f, 3.9f, 2.0f, 2.05f, 0.25f, 0.1f, BRASS_D)
+        cube(0f, 0.3f, 2.0f, 1.95f, 0.25f, 0.1f, BRASS_D)
+        push()
+        translate(0f, 2.1f, 2.05f)
+        rotZ(0.6f)
+        cube(0f, 0f, 0f, 0.5f, 1.0f, 0.08f, STEEL_L)
+        cube(0f, 0f, 0.07f, 0.1f, 0.8f, 0.05f, STEEL_D)
+        cube(0f, -0.15f, 0.12f, 0.2f, 0.2f, 0.06f, magC, true)
+        pop()
+        // parte do meio, mais estreita
+        cube(0f, -1.4f, 0f, 1.8f, 1.3f, 1.7f, LEATHER)
+        cube(0f, -1.4f, 1.75f, 1.3f, 1.1f, 0.1f, LEATHER_L)
+        cube(-1.82f, -1.4f, 0f, 0.06f, 1.2f, 1.4f, LEATHER_D)
+        cube(1.82f, -1.4f, 0f, 0.06f, 1.2f, 1.4f, LEATHER_D)
+        // ponta de baixo balança um pouco mais que o resto
+        push()
+        translate(0f, -2.7f, 0f)
+        rotX(sw * 0.7f)
+        cube(0f, -1.4f, 0f, 1.5f, 1.4f, 1.45f, LEATHER_D)
+        cube(0f, -1.4f, 1.5f, 1.1f, 1.2f, 0.1f, LEATHER)
+        cube(0f, -2.9f, 0f, 1.35f, 0.3f, 1.3f, BRASS_D)
+        cube(0f, -3.4f, 0f, 0.7f, 0.35f, 0.7f, BRASS)
+        // borla pendurada na ponta
+        push()
+        translate(0f, -3.7f, 0.3f)
+        rotX(sw * 1.6f)
+        cube(0f, -0.7f, 0f, 0.14f, 0.7f, 0.14f, LEATHER_L)
+        cube(0f, -1.6f, 0f, 0.3f, 0.3f, 0.3f, BRASS_L)
+        cube(0f, -2.5f, 0f, 0.4f, 0.6f, 0.2f, TUNIC_L)
+        cube(0f, -2.5f, 0f, 0.2f, 0.6f, 0.4f, HAIR_L)
+        pop()
+        pop()
+        // tira de couro solta no topo, que flutua
+        push()
+        translate(1.5f, 5.6f, -1.2f)
+        rotX(-0.5f + sw * 1.2f)
+        cube(0f, 0.9f, 0f, 0.35f, 1.0f, 0.08f, LEATHER_D)
+        cube(0f, 1.95f, 0f, 0.3f, 0.2f, 0.08f, BRASS)
+        pop()
+        // flechas em leque, penas prateadas, brancas e verdes
         for (k in 0..4) {
             if (k.toFloat() < arrows) {
-                val ax = -1.0f + k * 0.5f
+                val ax = -1.2f + k * 0.6f
                 val az = if (k % 2 == 0) 0.5f else -0.4f
-                cube(ax, 7.2f, az, 0.18f, 2.2f, 0.18f, SHAFT)
-                val fl = if (k % 3 == 0) RED else if (k % 3 == 1) WHITE else GLOW_D
-                cube(ax, 9.3f, az, 0.7f, 1.1f, 0.07f, fl)
-                cube(ax, 9.3f, az, 0.07f, 1.1f, 0.7f, WHITE)
+                val ty = 7.2f + (k % 2) * 0.5f
+                cube(ax, ty, az, 0.18f, 2.4f, 0.18f, SHAFT)
+                val fl = if (k % 3 == 0) STEEL_L else if (k % 3 == 1) WHITE else TUNIC_L
+                cube(ax, ty + 2.2f, az, 0.7f, 1.1f, 0.07f, fl)
+                cube(ax, ty + 2.2f, az, 0.07f, 1.1f, 0.7f, WHITE)
+                cube(ax, ty + 1.1f, az, 0.24f, 0.12f, 0.24f, LEATHER_D)
             }
         }
         pop()
@@ -943,19 +991,39 @@ object Archer3D {
         cube(0f, 0f, 0.2f, 0.12f, 0.8f, 0.08f, STEEL_D)
         cube(0f, -0.2f, 0.28f, 0.22f, 0.22f, 0.08f, magC, true)
         pop()
-        // duas facas élficas cruzadas na parte baixa das costas
+        // duas facas élficas brancas em X nas costas, em bainhas de couro presas ao cinto
+        push()
+        translate(0f, 0.9f, -4.35f)
+        cube(0f, 0f, 0.15f, 3.0f, 0.22f, 0.22f, LEATHER_D)
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             push()
-            translate(0f, 3.3f, -3.8f)
-            rotZ(sd * 1.3f)
-            cube(0f, 3.0f, 0f, 0.5f, 1.5f, 0.35f, LEATHER_D)
-            cube(0f, 4.6f, 0f, 0.62f, 0.25f, 0.4f, STEEL_D)
-            cube(0f, 1.4f, 0f, 1.5f, 0.22f, 0.4f, BRASS)
-            cube(0f, -2.4f, 0f, 0.7f, 3.4f, 0.2f, STEEL_L)
-            cube(0f, -2.4f, 0.12f, 0.2f, 3.3f, 0.06f, STEEL)
+            rotZ(-sd * 0.55f)
+            // bainha de couro com chape de prata e frisos de latão
+            cube(0f, -1.2f, 0f, 0.62f, 2.0f, 0.3f, LEATHER_D)
+            cube(0f, -1.2f, -0.2f, 0.2f, 1.8f, 0.07f, LEATHER)
+            cube(0f, -0.1f, 0f, 0.68f, 0.14f, 0.34f, BRASS)
+            cube(0f, -2.3f, 0f, 0.68f, 0.14f, 0.34f, BRASS)
+            cube(0f, -3.35f, 0f, 0.45f, 0.35f, 0.34f, STEEL_D)
+            cube(0f, -3.8f, 0f, 0.24f, 0.2f, 0.28f, STEEL_L)
+            // garganta de prata e guarda em forma de folha
+            cube(0f, 0.95f, 0f, 0.72f, 0.28f, 0.4f, STEEL)
+            cube(0f, 1.4f, 0f, 1.3f, 0.18f, 0.34f, STEEL_L)
+            cube(-1.25f, 1.65f, 0f, 0.2f, 0.28f, 0.3f, STEEL_L)
+            cube(1.25f, 1.65f, 0f, 0.2f, 0.28f, 0.3f, STEEL_L)
+            // empunhadura branca enrolada em couro e pomo com gema verde
+            cube(0f, 2.55f, 0f, 0.42f, 0.95f, 0.34f, WHITE)
+            cube(0f, 2.0f, 0f, 0.47f, 0.1f, 0.38f, LEATHER_L)
+            cube(0f, 2.55f, 0f, 0.47f, 0.1f, 0.38f, LEATHER_L)
+            cube(0f, 3.1f, 0f, 0.47f, 0.1f, 0.38f, LEATHER_L)
+            cube(0f, 3.65f, 0f, 0.55f, 0.2f, 0.42f, STEEL_L)
+            cube(0f, 3.95f, 0f, 0.25f, 0.2f, 0.25f, magC, true)
             pop()
         }
+        // anel de latão onde as bainhas se cruzam
+        cube(0f, 0f, -0.35f, 0.7f, 0.7f, 0.12f, BRASS_D)
+        cube(0f, 0f, -0.45f, 0.35f, 0.35f, 0.1f, BRASS_L)
+        pop()
         // aljava nas costas
         quiver(quiverSw, arrows)
         pop()
@@ -998,58 +1066,88 @@ object Archer3D {
         cube(0.9f, 2.45f, 4.17f, 0.35f, 0.12f, 0.06f, LIP)
         cube(-3.2f, 4.2f, 4.12f, 0.8f, 0.4f, 0.04f, SKIN_D)
         cube(3.2f, 4.2f, 4.12f, 0.8f, 0.4f, 0.04f, SKIN_D)
-        // orelhas élficas longas e pontudas, inclinadas para cima e para trás
+        // orelhas élficas longas e pontudas, para cima e para trás (aparecem por cima do cabelo)
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             push()
-            translate(sd * 4.4f, 4.6f, -0.7f)
-            rotZ(-sd * 0.62f)
-            rotX(-0.32f)
-            cube(sd * 0.45f, 1.4f, 0f, 0.3f, 1.8f, 0.95f, SKIN)
-            cube(sd * 0.45f, 3.5f, 0f, 0.24f, 0.9f, 0.7f, SKIN)
-            cube(sd * 0.45f, 4.8f, 0f, 0.17f, 0.5f, 0.42f, SKIN)
-            cube(sd * 0.45f, 5.7f, 0f, 0.1f, 0.4f, 0.22f, SKIN)
-            cube(sd * 0.78f, 1.5f, 0.05f, 0.07f, 1.3f, 0.5f, SKIN_D)
-            cube(sd * 0.7f, 3.4f, 0.05f, 0.06f, 0.7f, 0.35f, SKIN_D)
+            translate(sd * 4.5f, 4.4f, -0.7f)
+            rotZ(-sd * 0.42f)
+            rotX(-0.5f)
+            cube(sd * 0.45f, 1.3f, 0f, 0.3f, 1.7f, 0.95f, SKIN)
+            cube(sd * 0.45f, 3.3f, 0f, 0.24f, 0.9f, 0.7f, SKIN)
+            cube(sd * 0.45f, 4.6f, 0f, 0.17f, 0.5f, 0.42f, SKIN)
+            cube(sd * 0.45f, 5.5f, 0f, 0.1f, 0.4f, 0.22f, SKIN)
+            cube(sd * 0.78f, 1.4f, 0.05f, 0.07f, 1.2f, 0.5f, SKIN_D)
+            cube(sd * 0.7f, 3.2f, 0.05f, 0.06f, 0.7f, 0.35f, SKIN_D)
             pop()
         }
-        // cabelo loiro-platinado liso e longo: topo com risca no meio, mechas para trás das orelhas
+        // topo da cabeça com risca no meio e fios
         cube(0f, 9.9f, -0.3f, 4.75f, 0.9f, 4.7f, HAIR)
         cube(0f, 10.8f, -0.6f, 4.0f, 0.55f, 4.1f, HAIR_L)
         cube(0f, 11.35f, -0.8f, 2.8f, 0.35f, 2.9f, HAIR)
+        for (k in 0..5) {
+            val fx = -3.0f + k * 1.2f
+            cube(fx, 11.0f, -0.6f, 0.07f, 0.05f, 3.9f, HAIR_D)
+        }
+        cube(0f, 11.72f, -0.8f, 0.06f, 0.05f, 2.7f, HAIR_D)
         cube(0f, 10.0f, 4.35f, 4.7f, 0.55f, 0.55f, HAIR)
         push()
         translate(-2.6f, 8.9f, 4.3f)
         rotZ(0.38f)
         cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
+        cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
         pop()
         push()
         translate(2.6f, 8.9f, 4.3f)
         rotZ(-0.38f)
         cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
+        cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
         pop()
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
-            // cabelo de lado, atrás da orelha
-            cube(sd * 4.95f, 4.2f, -3.2f, 0.7f, 6.4f, 1.4f, HAIR)
-            cube(sd * 5.05f, 4.2f, -3.2f, 0.12f, 6.0f, 1.0f, HAIR_L)
-            // trancinha do templo com fio de prata
-            cube(sd * 4.85f, 5.2f, 1.2f, 0.3f, 3.4f, 0.3f, HAIR)
-            for (j in 0..3) cube(sd * 4.85f, 7.4f - j * 1.5f, 1.2f, 0.34f, 0.12f, 0.34f, HAIR_D)
-            cube(sd * 4.85f, 1.6f, 1.2f, 0.26f, 0.3f, 0.26f, STEEL_L)
+            // laterais: cabelo cobre todo o lado da cabeça acima das orelhas e desce atrás delas (sem pele à mostra)
+            cube(sd * 4.6f, 7.9f, 0.3f, 0.5f, 1.9f, 3.7f, HAIR)
+            cube(sd * 5.12f, 7.9f, 0.3f, 0.06f, 1.6f, 3.3f, HAIR_L)
+            cube(sd * 4.9f, 3.4f, -3.3f, 0.65f, 5.1f, 1.25f, HAIR)
+            cube(sd * 5.58f, 3.4f, -3.3f, 0.06f, 4.7f, 0.85f, HAIR_L)
+            for (j in 0..2) cube(sd * 5.6f, 2.0f + j * 2.2f, -3.3f, 0.05f, 0.9f, 0.05f, HAIR_D)
+            // trança grossa do templo, com laços e fio de prata, que balança
+            push()
+            translate(sd * 5.7f, 7.6f, -2.6f)
+            rotZ(-sd * (0.06f + tail0 * 0.35f))
+            rotX(0.10f + tail1 * 0.30f)
+            cube(0f, 0.1f, 0f, 0.6f, 0.3f, 0.6f, BRASS)
+            for (j in 0..5) {
+                val wv = if (j % 2 == 0) 0.14f else -0.14f
+                cube(wv, -0.9f - j * 1.15f, 0f, 0.42f, 0.62f, 0.44f, if (j % 2 == 0) HAIR else HAIR_D)
+                cube(-wv, -1.2f - j * 1.15f, 0f, 0.36f, 0.5f, 0.4f, if (j % 2 == 0) HAIR_D else HAIR)
+            }
+            cube(0f, -7.9f, 0f, 0.5f, 0.28f, 0.5f, STEEL_L)
+            cube(0f, -8.7f, 0f, 0.38f, 0.5f, 0.34f, HAIR_L)
+            cube(0f, -9.3f, 0f, 0.2f, 0.25f, 0.2f, HAIR)
+            pop()
         }
-        // costas do cabelo e as pontas, que balançam
+        // costas do cabelo
         cube(0f, 4.4f, -4.9f, 5.0f, 5.9f, 0.6f, HAIR)
         cube(0f, 4.4f, -5.45f, 3.4f, 5.4f, 0.1f, HAIR_L)
+        for (k in 0..6) {
+            cube(-3.6f + k * 1.2f, 4.4f, -5.52f, 0.07f, 5.5f, 0.05f, HAIR_D)
+        }
+        // cauda do cabelo: estreita, em três partes que ondulam, para não atravessar a aljava
         push()
         translate(0f, -1.4f, -4.9f)
         rotX(0.10f + tail0 * 0.8f)
-        cube(0f, -1.6f, -0.1f, 4.2f, 2.0f, 0.5f, HAIR)
+        cube(0f, -1.8f, -0.1f, 2.6f, 2.0f, 0.5f, HAIR)
+        cube(0f, -1.8f, -0.55f, 1.7f, 1.8f, 0.08f, HAIR_L)
+        translate(0f, -3.8f, 0f)
+        rotX(0.08f + tail1 * 0.9f)
+        cube(0f, -1.6f, -0.1f, 2.2f, 1.9f, 0.45f, HAIR)
+        cube(0f, -1.6f, -0.5f, 0.07f, 1.8f, 0.06f, HAIR_D)
         translate(0f, -3.6f, 0f)
-        rotX(0.10f + tail1 * 0.9f)
-        cube(0f, -1.5f, -0.1f, 3.4f, 1.8f, 0.45f, HAIR)
-        cube(0f, -3.4f, -0.1f, 2.3f, 0.5f, 0.4f, HAIR_L)
-        cube(0f, -4.1f, -0.1f, 1.0f, 0.3f, 0.3f, HAIR)
+        rotX(0.06f + tail1 * 1.2f + tail0 * 0.4f)
+        cube(0f, -1.3f, -0.1f, 1.7f, 1.4f, 0.4f, HAIR)
+        cube(0f, -3.0f, -0.1f, 1.0f, 0.4f, 0.34f, HAIR_L)
+        cube(0f, -3.6f, -0.1f, 0.4f, 0.3f, 0.26f, HAIR)
         pop()
         pop()
     }
@@ -1067,6 +1165,8 @@ object Archer3D {
     var skillK = 0              // 0 nada, 1 chuva de flechas, 2 flecha trovão
     var skillP = -1f            // 0..1 durante a skill; <0 = sem skill
     var alphaV = 1f
+    var holdOn = false          // arco puxado, esperando soltar o botão
+    var holdPow = 0f            // 0..1: quanto tempo já está mirando (força do tiro)
 
     // tempos do disparo normal (fração da animação): pegar a flecha, encaixar, puxar, soltar, fim — manter T_SHOT igual a Player.shotDelay()
     private const val N_Q = 0.10f
@@ -1497,6 +1597,10 @@ object Archer3D {
             } else {
                 crouchT = 0.2f
             }
+            if (holdOn && kind == 1) {
+                crouchT = 0.2f + 0.3f * holdPow
+                vibA = max(vibA, 0.10f + 0.25f * holdPow)
+            }
             chargeG = if (kind >= 3) drawT else 0f
             if (t >= tR && !released) {
                 released = true
@@ -1526,7 +1630,7 @@ object Archer3D {
             eyeC = (0xFF shl 24) or ((105 + 40 * q).toInt() shl 16) or ((190 + 40 * q).toInt() shl 8) or 255
         }
         eyeOpen *= (1f - 0.45f * aimW)
-        val bowGlow = if (kind == 3) 0.35f + 0.65f * drawT else if (kind == 4) 0.25f + 0.75f * drawT else 0.12f * aimW
+        val bowGlow = (if (kind == 3) 0.35f + 0.65f * drawT else if (kind == 4) 0.25f + 0.75f * drawT else 0.12f * aimW).let { if (holdOn && kind == 1) max(it, 0.1f + 0.7f * holdPow) else it }
         arrowOn = if (casting && t > tQ && t < tR) 1f else 0f
 
         // ── molas ──
@@ -1642,9 +1746,9 @@ object Archer3D {
                 rCZ = lerp(rCZ, 0.5f, u)
             } else {
                 val u = ease(quiverT * 2f - 1f)
-                rCX = lerp(-10.5f, -4.8f, u)
-                rCY = lerp(18.0f, 18.4f, u)
-                rCZ = lerp(0.5f, -5.0f, u)
+                rCX = lerp(-10.5f, -8.7f, u)
+                rCY = lerp(18.0f, 19.6f, u)
+                rCZ = lerp(0.5f, -5.9f, u)
             }
         }
         // direção do tiro no referencial do peito (para o cotovelo da mão da corda apontar para trás)
