@@ -429,12 +429,12 @@ object Ninja3D {
     private fun rgb(r: Int, g: Int, b: Int): Int = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
 
     // ───────────── paleta do ninja ─────────────
-    private val SUIT = 0xFF1B1A24.toInt()
-    private val SUIT_L = 0xFF2C2A3A.toInt()
-    private val SUIT_D = 0xFF0F0E15.toInt()
-    private val PLATE = 0xFF3C3B4C.toInt()
-    private val PLATE_L = 0xFF5C5A76.toInt()
-    private val PLATE_D = 0xFF262538.toInt()
+    private val SUIT: Int get() = HeroLook.tecido(0xFF1B1A24.toInt())
+    private val SUIT_L: Int get() = HeroLook.tecido(0xFF2C2A3A.toInt())
+    private val SUIT_D: Int get() = HeroLook.tecido(0xFF0F0E15.toInt())
+    private val PLATE: Int get() = HeroLook.metal(0xFF3C3B4C.toInt())
+    private val PLATE_L: Int get() = HeroLook.metal(0xFF5C5A76.toInt())
+    private val PLATE_D: Int get() = HeroLook.metal(0xFF262538.toInt())
     private val CRIM = 0xFFA81E2C.toInt()
     private val CRIM_L = 0xFFD8354A.toInt()
     private val CRIM_D = 0xFF6A1020.toInt()
@@ -701,10 +701,12 @@ object Ninja3D {
     private fun arm(side: Float, sh: Float, shZ: Float, el: Float, wr: Float) {
         push()
         translate(side * 7.0f, 12.8f, 0f)
-        cube(side * 0.5f, 1.0f, 0f, 3.1f, 1.0f, 3.2f, PLATE)
-        cube(side * 0.5f, 2.0f, 0f, 3.2f, 0.25f, 3.3f, CRIM)
-        cube(side * 2.6f, -0.2f, 0f, 0.5f, 1.4f, 3.2f, PLATE_D)
-        rotZ(shZ)
+        if (HeroLook.ombro) {
+            cube(side * 0.5f, 1.0f, 0f, 3.1f, 1.0f, 3.2f, PLATE)
+            cube(side * 0.5f, 2.0f, 0f, 3.2f, 0.25f, 3.3f, CRIM)
+            cube(side * 2.6f, -0.2f, 0f, 0.5f, 1.4f, 3.2f, PLATE_D)
+
+        }        rotZ(shZ)
         rotX(sh)
         cube(0f, -2.5f, 0f, 1.75f, 2.7f, 1.75f, SKIN)
         cube(0f, -1.2f, 0f, 1.95f, 0.5f, 1.95f, SUIT_L)
@@ -730,19 +732,25 @@ object Ninja3D {
             cube(0f, 0.3f, 0f, 2.3f, 1f, 2.3f, SKIN_D)
             cube(0f, 1.3f, 0f, 3.1f, 0.9f, 3.1f, SUIT_L)
             // cabeça coberta
-            cube(0f, 5f, 0f, 4.5f, 4.5f, 4.3f, SUIT)
-            cube(0f, 8.6f, -0.3f, 4.2f, 0.9f, 3.9f, SUIT_L)
+            cube(0f, 5f, 0f, 4.5f, 4.5f, 4.3f, if (HeroLook.elmo) SUIT else SKIN)
+            cube(0f, 8.6f, -0.3f, 4.2f, 0.9f, 3.9f, if (HeroLook.elmo) SUIT_L else SKIN)
+            if (!HeroLook.elmo) {
+                cube(0f, 3.6f, 4.4f, 0.55f, 0.9f, 0.3f, SKIN_D)
+                cube(0f, 2.2f, 4.36f, 1.3f, 0.15f, 0.1f, 0xFF7A3A3A.toInt())
+            }
             // máscara metálica
-            cube(0f, 4.0f, 4.35f, 4.2f, 3.3f, 0.22f, PLATE)
-            cube(0f, 6.8f, 4.35f, 4.2f, 0.45f, 0.22f, PLATE_D)
-            cube(0f, 5.5f, 4.5f, 3.9f, 0.95f, 0.12f, SUIT_D)
-            cube(0f, 4.2f, 4.62f, 0.45f, 1.3f, 0.2f, PLATE_L)
-            cube(0f, 2.2f, 4.58f, 1.9f, 0.2f, 0.1f, PLATE_D)
-            cube(-0.9f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
-            cube(0f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
-            cube(0.9f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
-            cube(0f, 3.1f, 4.62f, 2.7f, 0.12f, 0.08f, PLATE_L)
-            // olhos vermelhos brilhantes, em V
+            if (HeroLook.elmo) {
+                cube(0f, 4.0f, 4.35f, 4.2f, 3.3f, 0.22f, PLATE)
+                cube(0f, 6.8f, 4.35f, 4.2f, 0.45f, 0.22f, PLATE_D)
+                cube(0f, 5.5f, 4.5f, 3.9f, 0.95f, 0.12f, SUIT_D)
+                cube(0f, 4.2f, 4.62f, 0.45f, 1.3f, 0.2f, PLATE_L)
+                cube(0f, 2.2f, 4.58f, 1.9f, 0.2f, 0.1f, PLATE_D)
+                cube(-0.9f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
+                cube(0f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
+                cube(0.9f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
+                cube(0f, 3.1f, 4.62f, 2.7f, 0.12f, 0.08f, PLATE_L)
+
+            }            // olhos vermelhos brilhantes, em V
             val ey = 0.38f * eyeOpen
             for (k in 0..1) {
                 val sd = if (k == 0) 1f else -1f
@@ -758,27 +766,29 @@ object Ninja3D {
             cube(0f, 7.6f, 4.5f, 1.3f, 0.5f, 0.12f, CRIM_L)
             cube(0f, 7.6f, 4.62f, 0.5f, 0.3f, 0.1f, GLOW, true)
             // cabelo espetado
-            cube(0f, 9.4f, -0.8f, 3.9f, 1.1f, 3.7f, HAIR)
-            for (i in -2..2) {
-                val h = 1.0f + (2 - abs(i)) * 0.6f
-                cube(i * 1.5f, 10.4f + h * 0.5f, -1.6f, 0.75f, h * 0.9f, 0.75f, if (i % 2 == 0) HAIR else HAIR_L)
-            }
-            cube(0f, 6.0f, -4.4f, 4.0f, 3.2f, 0.5f, HAIR)
-            cube(0f, 4.2f, -4.45f, 3.0f, 1.2f, 0.45f, HAIR_D)
-            // rabo de cavalo em molas
-            push()
-                translate(0f, 8.4f, -3.9f)
-                rotX(-(1.15f + h0))
-                cube(0f, 1.6f, 0f, 1.2f, 1.7f, 1.2f, HAIR)
-                cube(0f, 0.2f, 0f, 1.45f, 0.35f, 1.45f, CRIM)
-                translate(0f, 3.2f, 0f)
-                rotX(0.7f + h1)
-                cube(0f, 1.8f, 0f, 1.05f, 2f, 1.05f, HAIR_D)
-                translate(0f, 3.8f, 0f)
-                rotX(0.8f + h1 * 1.2f)
-                cube(0f, 1.6f, 0f, 0.75f, 1.8f, 0.75f, HAIR)
-            pop()
-            // pontas da faixa
+            if (HeroLook.cabelo == 0) {
+                cube(0f, 9.4f, -0.8f, 3.9f, 1.1f, 3.7f, HAIR)
+                for (i in -2..2) {
+                    val h = 1.0f + (2 - abs(i)) * 0.6f
+                    cube(i * 1.5f, 10.4f + h * 0.5f, -1.6f, 0.75f, h * 0.9f, 0.75f, if (i % 2 == 0) HAIR else HAIR_L)
+                }
+                cube(0f, 6.0f, -4.4f, 4.0f, 3.2f, 0.5f, HAIR)
+                cube(0f, 4.2f, -4.45f, 3.0f, 1.2f, 0.45f, HAIR_D)
+                // rabo de cavalo em molas
+                push()
+                    translate(0f, 8.4f, -3.9f)
+                    rotX(-(1.15f + h0))
+                    cube(0f, 1.6f, 0f, 1.2f, 1.7f, 1.2f, HAIR)
+                    cube(0f, 0.2f, 0f, 1.45f, 0.35f, 1.45f, CRIM)
+                    translate(0f, 3.2f, 0f)
+                    rotX(0.7f + h1)
+                    cube(0f, 1.8f, 0f, 1.05f, 2f, 1.05f, HAIR_D)
+                    translate(0f, 3.8f, 0f)
+                    rotX(0.8f + h1 * 1.2f)
+                    cube(0f, 1.6f, 0f, 0.75f, 1.8f, 0.75f, HAIR)
+                pop()
+
+            }            // pontas da faixa
             push()
                 translate(0f, 7.6f, -4.5f)
                 rotX(0.25f + band)

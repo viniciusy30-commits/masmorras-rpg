@@ -470,13 +470,13 @@ object Archer3D {
     private fun rgb(r: Int, g: Int, b: Int): Int = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
 
     // ───────────── paleta do arqueiro ─────────────
-    private val TUNIC = 0xFF66795A.toInt()
-    private val TUNIC_L = 0xFF8A9D78.toInt()
-    private val TUNIC_D = 0xFF47593F.toInt()
-    private val TUNIC_DD = 0xFF33422E.toInt()
-    private val CLOAK = 0xFF35603A.toInt()
-    private val CLOAK_L = 0xFF4A7D4B.toInt()
-    private val CLOAK_D = 0xFF24442B.toInt()
+    private val TUNIC: Int get() = HeroLook.tecido(0xFF66795A.toInt())
+    private val TUNIC_L: Int get() = HeroLook.tecido(0xFF8A9D78.toInt())
+    private val TUNIC_D: Int get() = HeroLook.tecido(0xFF47593F.toInt())
+    private val TUNIC_DD: Int get() = HeroLook.tecido(0xFF33422E.toInt())
+    private val CLOAK: Int get() = HeroLook.tecido(0xFF35603A.toInt())
+    private val CLOAK_L: Int get() = HeroLook.tecido(0xFF4A7D4B.toInt())
+    private val CLOAK_D: Int get() = HeroLook.tecido(0xFF24442B.toInt())
     private val LEATHER = 0xFF6E4727.toInt()
     private val LEATHER_L = 0xFF93633A.toInt()
     private val LEATHER_D = 0xFF45301B.toInt()
@@ -588,6 +588,7 @@ object Archer3D {
     }
 
     private fun shoulderPad(side: Float, big: Float) {
+        if (!HeroLook.ombro) return
         cube(side * 0.4f, 1.0f, 0f, 2.5f, 0.8f, 2.6f, LEATHER)
         cube(side * 0.4f, 1.8f, 0f, 2.6f, 0.2f, 2.7f, LEATHER_L)
         if (big > 0.5f) {
@@ -1093,74 +1094,76 @@ object Archer3D {
             pop()
         }
         // topo da cabeça com risca no meio e fios
-        cube(0f, 9.9f, -0.3f, 4.75f, 0.9f, 4.7f, HAIR)
-        cube(0f, 10.8f, -0.6f, 4.0f, 0.55f, 4.1f, HAIR_L)
-        cube(0f, 11.35f, -0.8f, 2.8f, 0.35f, 2.9f, HAIR)
-        for (k in 0..5) {
-            val fx = -3.0f + k * 1.2f
-            cube(fx, 11.0f, -0.6f, 0.07f, 0.05f, 3.9f, HAIR_D)
-        }
-        cube(0f, 11.72f, -0.8f, 0.06f, 0.05f, 2.7f, HAIR_D)
-        cube(0f, 10.0f, 4.35f, 4.7f, 0.55f, 0.55f, HAIR)
-        push()
-        translate(-2.6f, 8.9f, 4.3f)
-        rotZ(0.38f)
-        cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
-        cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
-        pop()
-        push()
-        translate(2.6f, 8.9f, 4.3f)
-        rotZ(-0.38f)
-        cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
-        cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
-        pop()
-        for (k in 0..1) {
-            val sd = if (k == 0) 1f else -1f
-            // laterais: cabelo cobre todo o lado da cabeça acima das orelhas e desce atrás delas (sem pele à mostra)
-            cube(sd * 4.6f, 7.9f, 0.3f, 0.5f, 1.9f, 3.7f, HAIR)
-            cube(sd * 5.12f, 7.9f, 0.3f, 0.06f, 1.6f, 3.3f, HAIR_L)
-            cube(sd * 4.9f, 3.4f, -3.3f, 0.65f, 5.1f, 1.25f, HAIR)
-            cube(sd * 5.58f, 3.4f, -3.3f, 0.06f, 4.7f, 0.85f, HAIR_L)
-            for (j in 0..2) cube(sd * 5.6f, 2.0f + j * 2.2f, -3.3f, 0.05f, 0.9f, 0.05f, HAIR_D)
-            // trança grossa do templo, com laços e fio de prata, que balança
-            push()
-            translate(sd * 5.7f, 7.6f, -2.6f)
-            rotZ(-sd * (0.06f + tail0 * 0.35f))
-            rotX(0.10f + tail1 * 0.30f)
-            cube(0f, 0.1f, 0f, 0.6f, 0.3f, 0.6f, BRASS)
-            for (j in 0..5) {
-                val wv = if (j % 2 == 0) 0.14f else -0.14f
-                cube(wv, -0.9f - j * 1.15f, 0f, 0.42f, 0.62f, 0.44f, if (j % 2 == 0) HAIR else HAIR_D)
-                cube(-wv, -1.2f - j * 1.15f, 0f, 0.36f, 0.5f, 0.4f, if (j % 2 == 0) HAIR_D else HAIR)
+        if (HeroLook.cabelo == 0) {
+            cube(0f, 9.9f, -0.3f, 4.75f, 0.9f, 4.7f, HAIR)
+            cube(0f, 10.8f, -0.6f, 4.0f, 0.55f, 4.1f, HAIR_L)
+            cube(0f, 11.35f, -0.8f, 2.8f, 0.35f, 2.9f, HAIR)
+            for (k in 0..5) {
+                val fx = -3.0f + k * 1.2f
+                cube(fx, 11.0f, -0.6f, 0.07f, 0.05f, 3.9f, HAIR_D)
             }
-            cube(0f, -7.9f, 0f, 0.5f, 0.28f, 0.5f, STEEL_L)
-            cube(0f, -8.7f, 0f, 0.38f, 0.5f, 0.34f, HAIR_L)
-            cube(0f, -9.3f, 0f, 0.2f, 0.25f, 0.2f, HAIR)
+            cube(0f, 11.72f, -0.8f, 0.06f, 0.05f, 2.7f, HAIR_D)
+            cube(0f, 10.0f, 4.35f, 4.7f, 0.55f, 0.55f, HAIR)
+            push()
+            translate(-2.6f, 8.9f, 4.3f)
+            rotZ(0.38f)
+            cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
+            cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
             pop()
-        }
-        // costas do cabelo
-        cube(0f, 4.4f, -4.9f, 5.0f, 5.9f, 0.6f, HAIR)
-        cube(0f, 4.4f, -5.45f, 3.4f, 5.4f, 0.1f, HAIR_L)
-        for (k in 0..6) {
-            cube(-3.6f + k * 1.2f, 4.4f, -5.52f, 0.07f, 5.5f, 0.05f, HAIR_D)
-        }
-        // cauda do cabelo: estreita, em três partes que ondulam, para não atravessar a aljava
-        push()
-        translate(0f, -1.4f, -4.9f)
-        rotX(0.10f + tail0 * 0.8f)
-        cube(0f, -1.8f, -0.1f, 2.6f, 2.0f, 0.5f, HAIR)
-        cube(0f, -1.8f, -0.55f, 1.7f, 1.8f, 0.08f, HAIR_L)
-        translate(0f, -3.8f, 0f)
-        rotX(0.08f + tail1 * 0.9f)
-        cube(0f, -1.6f, -0.1f, 2.2f, 1.9f, 0.45f, HAIR)
-        cube(0f, -1.6f, -0.5f, 0.07f, 1.8f, 0.06f, HAIR_D)
-        translate(0f, -3.6f, 0f)
-        rotX(0.06f + tail1 * 1.2f + tail0 * 0.4f)
-        cube(0f, -1.3f, -0.1f, 1.7f, 1.4f, 0.4f, HAIR)
-        cube(0f, -3.0f, -0.1f, 1.0f, 0.4f, 0.34f, HAIR_L)
-        cube(0f, -3.6f, -0.1f, 0.4f, 0.3f, 0.26f, HAIR)
-        pop()
-        HeroKit.cabeca(hg, Classe.ARQUEIRO)
+            push()
+            translate(2.6f, 8.9f, 4.3f)
+            rotZ(-0.38f)
+            cube(0f, 0f, 0f, 2.5f, 0.75f, 0.3f, HAIR)
+            cube(0f, 0.2f, 0.1f, 2.2f, 0.07f, 0.2f, HAIR_L)
+            pop()
+            for (k in 0..1) {
+                val sd = if (k == 0) 1f else -1f
+                // laterais: cabelo cobre todo o lado da cabeça acima das orelhas e desce atrás delas (sem pele à mostra)
+                cube(sd * 4.6f, 7.9f, 0.3f, 0.5f, 1.9f, 3.7f, HAIR)
+                cube(sd * 5.12f, 7.9f, 0.3f, 0.06f, 1.6f, 3.3f, HAIR_L)
+                cube(sd * 4.9f, 3.4f, -3.3f, 0.65f, 5.1f, 1.25f, HAIR)
+                cube(sd * 5.58f, 3.4f, -3.3f, 0.06f, 4.7f, 0.85f, HAIR_L)
+                for (j in 0..2) cube(sd * 5.6f, 2.0f + j * 2.2f, -3.3f, 0.05f, 0.9f, 0.05f, HAIR_D)
+                // trança grossa do templo, com laços e fio de prata, que balança
+                push()
+                translate(sd * 5.7f, 7.6f, -2.6f)
+                rotZ(-sd * (0.06f + tail0 * 0.35f))
+                rotX(0.10f + tail1 * 0.30f)
+                cube(0f, 0.1f, 0f, 0.6f, 0.3f, 0.6f, BRASS)
+                for (j in 0..5) {
+                    val wv = if (j % 2 == 0) 0.14f else -0.14f
+                    cube(wv, -0.9f - j * 1.15f, 0f, 0.42f, 0.62f, 0.44f, if (j % 2 == 0) HAIR else HAIR_D)
+                    cube(-wv, -1.2f - j * 1.15f, 0f, 0.36f, 0.5f, 0.4f, if (j % 2 == 0) HAIR_D else HAIR)
+                }
+                cube(0f, -7.9f, 0f, 0.5f, 0.28f, 0.5f, STEEL_L)
+                cube(0f, -8.7f, 0f, 0.38f, 0.5f, 0.34f, HAIR_L)
+                cube(0f, -9.3f, 0f, 0.2f, 0.25f, 0.2f, HAIR)
+                pop()
+            }
+            // costas do cabelo
+            cube(0f, 4.4f, -4.9f, 5.0f, 5.9f, 0.6f, HAIR)
+            cube(0f, 4.4f, -5.45f, 3.4f, 5.4f, 0.1f, HAIR_L)
+            for (k in 0..6) {
+                cube(-3.6f + k * 1.2f, 4.4f, -5.52f, 0.07f, 5.5f, 0.05f, HAIR_D)
+            }
+            // cauda do cabelo: estreita, em três partes que ondulam, para não atravessar a aljava
+            push()
+            translate(0f, -1.4f, -4.9f)
+            rotX(0.10f + tail0 * 0.8f)
+            cube(0f, -1.8f, -0.1f, 2.6f, 2.0f, 0.5f, HAIR)
+            cube(0f, -1.8f, -0.55f, 1.7f, 1.8f, 0.08f, HAIR_L)
+            translate(0f, -3.8f, 0f)
+            rotX(0.08f + tail1 * 0.9f)
+            cube(0f, -1.6f, -0.1f, 2.2f, 1.9f, 0.45f, HAIR)
+            cube(0f, -1.6f, -0.5f, 0.07f, 1.8f, 0.06f, HAIR_D)
+            translate(0f, -3.6f, 0f)
+            rotX(0.06f + tail1 * 1.2f + tail0 * 0.4f)
+            cube(0f, -1.3f, -0.1f, 1.7f, 1.4f, 0.4f, HAIR)
+            cube(0f, -3.0f, -0.1f, 1.0f, 0.4f, 0.34f, HAIR_L)
+            cube(0f, -3.6f, -0.1f, 0.4f, 0.3f, 0.26f, HAIR)
+            pop()
+
+        }        HeroKit.cabeca(hg, Classe.ARQUEIRO)
         pop()
     }
 

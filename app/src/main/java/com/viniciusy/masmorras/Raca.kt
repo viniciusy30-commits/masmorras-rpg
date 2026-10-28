@@ -81,6 +81,13 @@ class HeroiPerfil(val classe: Classe) {
     var pintura: Int = 0
     var acess: Int = 0
     var altura: Int = 2
+    var cabelo: Int = 0
+    var barba: Int = 0
+    var elmo: Int = 0      // 0 = usa o capacete/chapéu/máscara, 1 = sem
+    var topo: Int = 0
+    var ombro: Int = 0     // 0 = com ombreiras, 1 = sem
+    var metal: Int? = null
+    var tecido: Int? = null
 
     fun nota(a: Atrib): Int = notas[a.ordinal]
     fun total(a: Atrib): Int = notas[a.ordinal] + raca.bonusDe(a)
@@ -111,6 +118,13 @@ class HeroiPerfil(val classe: Classe) {
         p.pintura = pintura
         p.acess = acess
         p.altura = altura
+        p.cabelo = cabelo
+        p.barba = barba
+        p.elmo = elmo
+        p.topo = topo
+        p.ombro = ombro
+        p.metal = metal
+        p.tecido = tecido
         return p
     }
 
@@ -124,6 +138,13 @@ class HeroiPerfil(val classe: Classe) {
         pintura = o.pintura
         acess = o.acess
         altura = o.altura
+        cabelo = o.cabelo
+        barba = o.barba
+        elmo = o.elmo
+        topo = o.topo
+        ombro = o.ombro
+        metal = o.metal
+        tecido = o.tecido
     }
 
     // ── conta final: tudo e relativo ao herói padrão da classe, então o padrão dá os mesmos números de antes ──
@@ -192,6 +213,9 @@ class HeroiPerfil(val classe: Classe) {
         get() = (1.6f + 0.05f * d(Atrib.CAR, ref)).coerceIn(1.3f, 2.4f)
 
     companion object {
+        const val N_CABELO = 10
+        const val N_BARBA = 5
+        const val N_TOPO = 5
         private val padraoCache = HashMap<Classe, HeroiPerfil>()
 
         fun racaPadrao(c: Classe): Raca = if (c == Classe.ARQUEIRO) Raca.ELFO else Raca.HUMANO

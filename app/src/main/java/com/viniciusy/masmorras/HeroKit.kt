@@ -70,6 +70,200 @@ object HeroKit {
             2 -> focinhoDragao(g, sp, sk, skD)
         }
         rosto(g, c)
+        cabelo(g, c)
+        barba(g, c)
+        topo(g, c)
+    }
+
+    // ───────────── cabelo, barba e acessórios de cabeça ─────────────
+
+    /** Caixa da cabeça de cada classe: topo, meia largura, meia profundidade, cor padrão do cabelo e altura do queixo. */
+    private class Cranio(val top: Float, val hw: Float, val hd: Float, val base: Int, val queixo: Float)
+
+    private fun cranio(c: Classe): Cranio = when (c) {
+        Classe.GUERREIRO -> Cranio(10.2f, 5.0f, 4.8f, 0xFF5A3A22.toInt(), 0.9f)
+        Classe.BARBARO -> Cranio(9.7f, 4.8f, 4.6f, 0xFFB8421C.toInt(), 0.9f)
+        Classe.MAGO -> Cranio(9.5f, 4.4f, 4.2f, 0xFFEDEFF3.toInt(), 0.8f)
+        Classe.ARQUEIRO -> Cranio(9.5f, 4.3f, 4.1f, 0xFFEAD79B.toInt(), 0.8f)
+        Classe.NINJA -> Cranio(9.5f, 4.5f, 4.3f, 0xFF1C1626.toInt(), 0.8f)
+    }
+
+    /** Calota de cabelo: tampa de cima, costas e laterais curtas. */
+    private fun calota(g: HeroGfx, k: Cranio, col: Int, colD: Int) {
+        g.cube(0f, k.top + 0.3f, -0.2f, k.hw + 0.25f, 0.6f, k.hd + 0.25f, col)
+        g.cube(0f, k.top - 3.0f, -k.hd - 0.2f, k.hw + 0.2f, 3.2f, 0.5f, colD)
+        for (i in 0..1) {
+            val sd = if (i == 0) 1f else -1f
+            g.cube(sd * (k.hw + 0.15f), k.top - 1.6f, -0.9f, 0.35f, 1.9f, k.hd * 0.8f, colD)
+        }
+    }
+
+    fun cabelo(g: HeroGfx, c: Classe) {
+        val st = HeroLook.cabelo
+        val k = cranio(c)
+        val col = HeroLook.hair(k.base)
+        val colL = HeroLook.hairL(k.base)
+        val colD = HeroLook.hairD(k.base)
+        val elmo = HeroLook.elmo
+        if (st == 0) {
+            // sem chapéu/elmo e sem cabelo próprio: coloca uma calota para a cabeça não ficar pelada
+            if (!elmo && (c == Classe.GUERREIRO || c == Classe.BARBARO || c == Classe.MAGO)) {
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 1.3f, k.hd + 0.1f, k.hw * 0.9f, 0.9f, 0.3f, col)
+            }
+            return
+        }
+        if (st == 1) return
+        when (st) {
+            2 -> { // curto
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
+            }
+            3 -> { // longo
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
+                g.cube(0f, k.top - 6.5f, -k.hd - 0.3f, k.hw + 0.2f, 6.5f, 0.6f, col)
+                for (i in 0..1) {
+                    val sd = if (i == 0) 1f else -1f
+                    g.cube(sd * (k.hw + 0.3f), k.top - 5.5f, -1.4f, 0.4f, 5.0f, 1.6f, colD)
+                }
+            }
+            4 -> { // moicano
+                g.cube(0f, k.top + 0.3f, -0.2f, 0.9f, 0.6f, k.hd * 0.95f, col)
+                if (!elmo) for (j in 0..4) {
+                    val h = 2.2f - j * 0.25f
+                    g.cube(0f, k.top + 0.8f + h * 0.5f, 3.2f - j * 1.6f, 0.8f, h, 0.8f, if (j % 2 == 0) col else colL)
+                }
+                g.cube(0f, k.top - 3.0f, -k.hd - 0.2f, 0.9f, 3.2f, 0.4f, colD)
+            }
+            5 -> { // rabo de cavalo
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 0.4f, -k.hd - 0.6f, 1.0f, 0.7f, 0.7f, colD)
+                g.push()
+                g.translate(0f, k.top - 1.0f, -k.hd - 1.0f)
+                g.rotX(0.55f)
+                g.cube(0f, -2.4f, -0.4f, 1.1f, 2.6f, 0.9f, col)
+                g.cube(0f, -5.4f, -0.9f, 0.8f, 1.4f, 0.7f, colD)
+                g.pop()
+            }
+            6 -> { // coque
+                calota(g, k, col, colD)
+                g.cube(0f, k.top + 1.1f, -0.4f, 1.6f, 1.1f, 1.6f, col)
+                g.cube(0f, k.top + 2.4f, -0.4f, 1.1f, 0.5f, 1.1f, colL)
+                g.cube(0f, k.top + 0.55f, -0.4f, 1.8f, 0.2f, 1.8f, colD)
+            }
+            7 -> { // trança
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 1.2f, k.hd + 0.1f, k.hw * 0.92f, 0.8f, 0.3f, colL)
+                for (j in 0..7) {
+                    val wv = if (j % 2 == 0) 0.3f else -0.3f
+                    g.cube(wv, k.top - 2.0f - j * 1.25f, -k.hd - 0.9f, 0.9f, 0.7f, 0.7f, if (j % 2 == 0) col else colD)
+                }
+                g.cube(0f, k.top - 12.3f, -k.hd - 0.9f, 0.6f, 0.4f, 0.6f, colL)
+            }
+            8 -> { // espetado
+                calota(g, k, col, colD)
+                if (!elmo) for (i in -2..2) {
+                    val h = 1.2f + (2 - kotlin.math.abs(i)) * 0.7f
+                    g.cube(i * 1.6f, k.top + 0.9f + h * 0.5f, -0.4f, 0.75f, h, 0.75f, if (i % 2 == 0) col else colL)
+                    g.cube(i * 1.6f, k.top + 0.9f + h * 0.5f, 2.2f, 0.65f, h * 0.8f, 0.65f, if (i % 2 == 0) colL else col)
+                }
+            }
+            9 -> { // franja
+                calota(g, k, col, colD)
+                g.cube(0f, k.top - 1.7f, k.hd + 0.2f, k.hw * 0.95f, 1.3f, 0.35f, col)
+                g.cube(-k.hw * 0.55f, k.top - 3.0f, k.hd + 0.25f, 1.1f, 0.9f, 0.3f, colD)
+                g.cube(k.hw * 0.7f, k.top - 3.0f, k.hd + 0.25f, 0.9f, 0.7f, 0.3f, colD)
+            }
+        }
+    }
+
+    fun barba(g: HeroGfx, c: Classe) {
+        val st = HeroLook.barba
+        if (st < 2) return
+        val k = cranio(c)
+        val f = face(c)
+        val sp = spec(c)
+        val col = HeroLook.hair(k.base)
+        val colD = HeroLook.hairD(k.base)
+        val z = f.fz - 0.5f
+        when (st) {
+            2 -> { // barba curta
+                g.cube(0f, k.queixo + 1.0f, z, k.hw * 0.78f, 1.0f, 0.5f, col)
+                g.cube(0f, k.queixo + 2.2f, z, 1.7f, 0.45f, 0.5f, colD)
+                for (i in 0..1) {
+                    val sd = if (i == 0) 1f else -1f
+                    g.cube(sd * (k.hw + 0.05f), k.queixo + 2.2f, k.hd * 0.4f, 0.25f, 1.8f, k.hd * 0.55f, col)
+                }
+            }
+            3 -> { // cavanhaque
+                g.cube(0f, k.queixo + 0.7f, z, 1.0f, 1.2f, 0.5f, col)
+                g.cube(0f, k.queixo - 0.5f, z - 0.1f, 0.6f, 0.7f, 0.4f, colD)
+                g.cube(0f, sp.mouthY + 0.9f, z, 1.2f, 0.3f, 0.4f, colD)
+            }
+            4 -> { // bigode
+                for (i in 0..1) {
+                    val sd = if (i == 0) 1f else -1f
+                    g.cube(sd * 1.1f, sp.mouthY + 1.0f, z, 1.2f, 0.4f, 0.45f, col)
+                    g.cube(sd * 2.5f, sp.mouthY + 0.5f, z - 0.1f, 0.35f, 0.9f, 0.35f, colD)
+                }
+            }
+        }
+    }
+
+    /** Bandana, tiara, coroa e casquete: por cima de qualquer cabelo. */
+    fun topo(g: HeroGfx, c: Classe) {
+        val st = HeroLook.topo
+        if (st == 0) return
+        val k = cranio(c)
+        when (st) {
+            1 -> { // bandana
+                val t = HeroLook.tecido(0xFFC62828.toInt())
+                val td = HeroLook.tecido(0xFF8E1B1B.toInt())
+                g.cube(0f, k.top - 1.9f, 0f, k.hw + 0.3f, 0.7f, k.hd + 0.3f, t)
+                g.cube(0f, k.top - 1.9f, -k.hd - 0.5f, 0.8f, 0.8f, 0.5f, td)
+                g.push()
+                g.translate(0f, k.top - 1.9f, -k.hd - 0.9f)
+                g.rotX(0.25f)
+                g.cube(-0.8f, -1.6f, 0f, 0.55f, 1.7f, 0.18f, t)
+                g.cube(0.8f, -2.1f, 0f, 0.55f, 2.2f, 0.18f, td)
+                g.pop()
+            }
+            2 -> { // tiara
+                val o = HeroLook.metal(0xFFE8B83A.toInt())
+                val od = HeroLook.metal(0xFFB8861F.toInt())
+                g.cube(0f, k.top - 1.5f, k.hd + 0.2f, k.hw * 0.9f, 0.3f, 0.2f, o)
+                for (i in 0..1) {
+                    val sd = if (i == 0) 1f else -1f
+                    g.cube(sd * (k.hw + 0.25f), k.top - 1.5f, 0f, 0.2f, 0.3f, k.hd + 0.2f, o)
+                }
+                g.cube(0f, k.top - 1.5f, -k.hd - 0.25f, k.hw + 0.2f, 0.3f, 0.2f, od)
+                g.cube(0f, k.top - 0.9f, k.hd + 0.25f, 0.45f, 0.8f, 0.18f, o)
+                g.cube(0f, k.top - 1.2f, k.hd + 0.4f, 0.3f, 0.3f, 0.12f, 0xFF4FC3FF.toInt(), true)
+            }
+            3 -> { // coroa
+                val o = HeroLook.metal(0xFFE8B83A.toInt())
+                val od = HeroLook.metal(0xFFB8861F.toInt())
+                g.cube(0f, k.top - 0.4f, 0f, k.hw + 0.3f, 0.5f, k.hd + 0.3f, o)
+                g.cube(0f, k.top - 0.4f, 0f, k.hw + 0.35f, 0.15f, k.hd + 0.35f, od)
+                for (i in -2..2) {
+                    val h = if (i == 0) 1.9f else if (i % 2 == 0) 1.5f else 1.1f
+                    g.cube(i * (k.hw * 0.42f), k.top + 0.1f + h, k.hd * 0.78f, 0.45f, h, 0.45f, o)
+                    g.cube(i * (k.hw * 0.42f), k.top + 0.1f + h, -k.hd * 0.78f, 0.45f, h, 0.45f, o)
+                }
+                g.cube(0f, k.top + 0.9f, k.hd + 0.35f, 0.4f, 0.4f, 0.12f, 0xFFFF3A44.toInt(), true)
+            }
+            4 -> { // casquete de aço
+                val a = HeroLook.metal(0xFFAEB9C2.toInt())
+                val al = HeroLook.metal(0xFFD9E1E7.toInt())
+                val ad = HeroLook.metal(0xFF6F7C86.toInt())
+                g.cube(0f, k.top + 0.2f, -0.2f, k.hw + 0.4f, 1.0f, k.hd + 0.4f, a)
+                g.cube(0f, k.top + 1.3f, -0.2f, k.hw * 0.7f, 0.4f, k.hd * 0.7f, al)
+                g.cube(0f, k.top - 1.1f, 0f, k.hw + 0.5f, 0.35f, k.hd + 0.5f, ad)
+                g.cube(0f, k.top - 3.0f, k.hd + 0.4f, 0.45f, 2.0f, 0.2f, a)
+                g.cube(0f, k.top + 0.2f, 0f, 0.3f, 1.2f, k.hd + 0.5f, al)
+            }
+        }
     }
 
     // ───────────── rosto: cicatrizes, pinturas e acessórios ─────────────

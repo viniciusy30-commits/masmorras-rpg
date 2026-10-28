@@ -43,6 +43,16 @@ object HeroCreator {
         0xFFE0702E.toInt(), 0xFFEAD79B.toInt(), 0xFFEDEFF3.toInt(), 0xFF9E9E9E.toInt(), 0xFF3B6FD4.toInt(),
         0xFF3FA34D.toInt(), 0xFFE87AA8.toInt(), 0xFF8E44AD.toInt(), 0xFFFFFFFF.toInt()
     )
+    private val METAIS = intArrayOf(
+        0xFFB0B8C0.toInt(), 0xFFF2B72E.toInt(), 0xFFB87333.toInt(), 0xFF3A3A44.toInt(), 0xFFEDEFF3.toInt(),
+        0xFFB3261E.toInt(), 0xFF3B6FD4.toInt(), 0xFF3FA34D.toInt(), 0xFF8E44AD.toInt(), 0xFF18B5C8.toInt(),
+        0xFFE87AA8.toInt(), 0xFFE0702E.toInt()
+    )
+    private val TECIDOS = intArrayOf(
+        0xFFC62828.toInt(), 0xFF2E5CB8.toInt(), 0xFF3FA34D.toInt(), 0xFF8E44AD.toInt(), 0xFFF2B72E.toInt(),
+        0xFF1B1A24.toInt(), 0xFFEDEFF3.toInt(), 0xFF8D5524.toInt(), 0xFFE87AA8.toInt(), 0xFF18B5C8.toInt(),
+        0xFFE0702E.toInt(), 0xFF5C3A21.toInt()
+    )
     private val OLHOS = intArrayOf(
         0xFFFFC107.toInt(), 0xFF5FD4FF.toInt(), 0xFF7CFF8A.toInt(), 0xFFFF5252.toInt(), 0xFFB388FF.toInt(),
         0xFFFFE9C0.toInt(), 0xFFF5F5F5.toInt(), 0xFFFF9800.toInt(), 0xFFFF80AB.toInt(), 0xFF18FFFF.toInt()
@@ -324,6 +334,22 @@ object HeroCreator {
         linhaOpcoes("Cicatriz", listOf("Nenhuma", "No olho", "Na bochecha", "No lábio", "Garras"), { ed.cicatriz }, { ed.cicatriz = it })
         linhaOpcoes("Pintura", listOf("Nenhuma", "Listras de guerra", "Máscara", "Lágrima dourada", "Tigre"), { ed.pintura }, { ed.pintura = it })
         linhaOpcoes("Acessório", listOf("Nenhum", "Tapa-olho", "Brincos", "Aro na sobrancelha", "Aro no nariz", "Óculos", "Monóculo"), { ed.acess }, { ed.acess = it })
+        painel.addView(titulo("Cabelo e barba"))
+        linhaOpcoes("Cabelo", listOf("Padrão", "Careca", "Curto", "Longo", "Moicano", "Rabo de cavalo", "Coque", "Trança", "Espetado", "Franja"), { ed.cabelo }, { ed.cabelo = it })
+        linhaOpcoes("Barba", listOf("Padrão", "Sem barba", "Curta", "Cavanhaque", "Bigode"), { ed.barba }, { ed.barba = it })
+        painel.addView(titulo("Roupas e armadura"))
+        val nomeElmo = when (classe) {
+            Classe.MAGO -> "Chapéu"
+            Classe.NINJA -> "Máscara"
+            else -> "Capacete"
+        }
+        if (classe != Classe.ARQUEIRO) {
+            linhaOpcoes(nomeElmo, listOf("Usar", "Tirar"), { ed.elmo }, { ed.elmo = it })
+        }
+        linhaOpcoes("Na cabeça", listOf("Nada", "Bandana", "Tiara", "Coroa", "Casquete de aço"), { ed.topo }, { ed.topo = it })
+        linhaOpcoes("Ombreiras", listOf("Usar", "Tirar"), { ed.ombro }, { ed.ombro = it })
+        linhaCores("Cor da armadura (metal)", METAIS, { ed.metal }, { ed.metal = it })
+        linhaCores("Cor da roupa (tecido)", TECIDOS, { ed.tecido }, { ed.tecido = it })
         val folga = View(act)
         painel.addView(folga, LinearLayout.LayoutParams(1, dp(16f)))
 

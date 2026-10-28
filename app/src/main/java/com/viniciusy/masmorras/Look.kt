@@ -15,6 +15,13 @@ object HeroLook {
     var cicatriz: Int = 0
     var pintura: Int = 0
     var acess: Int = 0
+    var cabelo: Int = 0       // 0 = padrão da classe, 1 = careca, 2.. = estilos novos
+    var barba: Int = 0        // 0 = padrão da classe, 1 = sem barba, 2.. = estilos novos
+    var elmo: Boolean = true  // capacete / chapéu / máscara da classe
+    var topo: Int = 0         // acessório de cabeça: bandana, tiara, coroa, casquete
+    var ombro: Boolean = true // ombreiras
+    var metalC: Int? = null   // cor da armadura (metal)
+    var tecidoC: Int? = null  // cor da roupa (tecido)
 
     /** Fatores de altura do herói (Muito baixo ... Muito alto). */
     val ALTURAS = floatArrayOf(0.85f, 0.93f, 1f, 1.07f, 1.15f)
@@ -28,7 +35,28 @@ object HeroLook {
         cicatriz = p.cicatriz
         pintura = p.pintura
         acess = p.acess
+        cabelo = p.cabelo
+        barba = p.barba
+        elmo = p.elmo == 0
+        topo = p.topo
+        ombro = p.ombro == 0
+        metalC = p.metal
+        tecidoC = p.tecido
     }
+
+    private fun lum(c: Int): Float =
+        ((c shr 16) and 0xFF) * 0.30f + ((c shr 8) and 0xFF) * 0.59f + (c and 0xFF) * 0.11f
+
+    private fun tingir(def: Int, cor: Int, ref: Float): Int {
+        val k = (lum(def) / ref).coerceIn(0.35f, 1.5f)
+        return mul(cor, k)
+    }
+
+    /** Peças de metal (armadura): mantém o brilho relativo de cada peça, só troca a cor. */
+    fun metal(def: Int): Int = metalC?.let { tingir(def, it, 165f) } ?: def
+
+    /** Peças de tecido (roupa, capa, túnica). */
+    fun tecido(def: Int): Int = tecidoC?.let { tingir(def, it, 95f) } ?: def
 
     private fun peleBase(): Int? = skinC ?: raca.pele
 
@@ -92,6 +120,13 @@ object Herois {
             p.pintura = sp.getInt("pintura", 0).coerceIn(0, 4)
             p.acess = sp.getInt("acess", 0).coerceIn(0, 6)
             p.altura = sp.getInt("altura", 2).coerceIn(0, 4)
+            p.cabelo = sp.getInt("cabelo", 0).coerceIn(0, HeroiPerfil.N_CABELO - 1)
+            p.barba = sp.getInt("barba", 0).coerceIn(0, HeroiPerfil.N_BARBA - 1)
+            p.elmo = sp.getInt("elmo", 0).coerceIn(0, 1)
+            p.topo = sp.getInt("topo", 0).coerceIn(0, HeroiPerfil.N_TOPO - 1)
+            p.ombro = sp.getInt("ombro", 0).coerceIn(0, 1)
+            p.metal = if (sp.contains("metal")) sp.getInt("metal", 0) else null
+            p.tecido = if (sp.contains("tecido")) sp.getInt("tecido", 0) else null
         } catch (e: Exception) {
             // dados antigos ou corrompidos: volta ao herói padrão
             return HeroiPerfil(classe)
@@ -115,6 +150,15 @@ object Herois {
         e.putInt("pintura", p.pintura)
         e.putInt("acess", p.acess)
         e.putInt("altura", p.altura)
+        e.putInt("cabelo", p.cabelo)
+        e.putInt("barba", p.barba)
+        e.putInt("elmo", p.elmo)
+        e.putInt("topo", p.topo)
+        e.putInt("ombro", p.ombro)
+        val m = p.metal
+        if (m != null) e.putInt("metal", m) else e.remove("metal")
+        val t = p.tecido
+        if (t != null) e.putInt("tecido", t) else e.remove("tecido")
         e.apply()
     }
 }
