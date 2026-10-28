@@ -1408,7 +1408,8 @@ object Archer3D {
         val gZ = lerp(gRZ, gAimZ, aimW)
         val b1 = lerp(0.5f, -elevS - 0.12f * recoilV, aimW)
         val b2 = lerp(-0.3f, 0f, aimW)
-        val nD = 8.0f + 5.6f * dE
+        // corda em repouso fica junto do arco; só recua quando está mirando/puxando
+        val nD = 2.0f + 6.0f * aimW * (1f - quiverT) + 5.6f * dE
         // a mão da corda acompanha a corda; ao soltar, ela recua um pouco (follow-through) e volta
         val relT = if (casting && t >= tR) ((t - tR) / 0.25f).coerceIn(0f, 1f) else 0f
         val handNd = if (casting && t >= tR) 13.6f + 2.4f * sin(PI.toFloat() * relT) else nD
