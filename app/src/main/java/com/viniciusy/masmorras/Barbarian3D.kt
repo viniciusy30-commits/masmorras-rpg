@@ -26,7 +26,7 @@ import kotlin.math.sqrt
 object Barbarian3D {
     private val V = VoxelArt
 
-    private const val MAX = 700
+    private const val MAX = 850
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -134,6 +134,15 @@ object Barbarian3D {
             val cj = m[r * 3 + j]
             m[r * 3 + i] = a * ci + b * cj
             m[r * 3 + j] = c * ci + d * cj
+        }
+    }
+
+    private fun scale(x: Float, y: Float, z: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            m[r * 3] *= x
+            m[r * 3 + 1] *= y
+            m[r * 3 + 2] *= z
         }
     }
 
@@ -646,8 +655,9 @@ object Barbarian3D {
 
     private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float) {
         push()
-            translate(side * 3.7f, hipY, 0f)
+            translate(side * 3.7f * Roupas.quad(Classe.BARBARO), hipY, 0f)
             rotX(a)
+            Roupas.perna(hg, Classe.BARBARO)
             Roupas.coxa(hg, Classe.BARBARO, side)
             cube(0f, -2.7f, 0f, 2.8f, 2.9f, 2.8f, PANTS)
             cube(0f, -0.4f, 0f, 3.0f, 0.7f, 3.0f, FUR)
@@ -683,6 +693,7 @@ object Barbarian3D {
     }
 
     private fun pauldron(side: Float) {
+        if (Roupas.ombreira(hg, Classe.BARBARO, side)) return
         if (!HeroLook.ombro) return
         cube(side * 0.9f, 2.2f, 0f, 2.7f, 0.9f, 2.9f, FUR)
         cube(side * 1.3f, 1.2f, 0f, 3.4f, 0.9f, 3.6f, FUR_D)
@@ -703,14 +714,19 @@ object Barbarian3D {
     }
 
     private fun armBase(side: Float, el: Float) {
+        push()
+        Roupas.braco(hg, Classe.BARBARO)
         cube(0f, -2.7f, 0f, 2.6f, 2.9f, 2.6f, SKIN)
         cube(0f, -2.1f, 0.5f, 2.7f, 1.7f, 2.4f, SKIN_L)
         cube(side * 2.62f, -2.4f, 0f, 0.1f, 1.8f, 1.6f, SKIN_D)
         cube(0f, -4.3f, 0f, 2.85f, 0.55f, 2.85f, IRON_D)
         cube(side * 3.2f, -4.3f, 0f, 0.55f, 0.35f, 0.35f, IRON)
         cube(0f, -4.3f, 2.9f, 0.7f, 0.35f, 0.12f, IRON_L)
+        pop()
         translate(0f, -5.7f, 0f)
         rotX(el)
+        push()
+        Roupas.braco(hg, Classe.BARBARO)
         cube(0f, -0.1f, 0f, 2.4f, 1.0f, 2.4f, SKIN_D)
         cube(0f, -2.5f, 0f, 2.35f, 2.6f, 2.35f, SKIN)
         cube(0f, -1.9f, 0f, 2.45f, 0.3f, 2.45f, LEATHER_D)
@@ -722,6 +738,7 @@ object Barbarian3D {
         cube(0f, -5.9f, 0f, 2.2f, 0.4f, 2.2f, LEATHER)
         cube(0f, -6.8f, 0f, 1.9f, 1.0f, 1.9f, SKIN)
         cube(0f, -6.8f, 1.6f, 1.7f, 0.9f, 0.35f, SKIN_D)
+        pop()
     }
 
     /** Machado de guerra de uma mão. Origem na mão, o cabo sobe pelo +Y e o fio aponta para +Z. */
@@ -771,7 +788,7 @@ object Barbarian3D {
     private fun rightArm(sh: Float, shZ: Float, el: Float, grip: Float, tw: Float) {
         axeP = 0
         push()
-        translate(-9.6f, 13.4f, 0f)
+        translate(-9.6f * Roupas.ombrosK(Classe.BARBARO), 13.4f, 0f)
         pauldron(-1f)
         rotZ(shZ)
         rotX(sh)
@@ -786,7 +803,7 @@ object Barbarian3D {
     private fun leftArm(sh: Float, shZ: Float, el: Float, grip: Float, tw: Float) {
         axeP = 2
         push()
-        translate(9.6f, 13.4f, 0f)
+        translate(9.6f * Roupas.ombrosK(Classe.BARBARO), 13.4f, 0f)
         pauldron(1f)
         wolfHead()
         rotZ(shZ)
@@ -851,6 +868,7 @@ object Barbarian3D {
         override fun rotX(a: Float) = this@Barbarian3D.rotX(a)
         override fun rotY(a: Float) = this@Barbarian3D.rotY(a)
         override fun rotZ(a: Float) = this@Barbarian3D.rotZ(a)
+        override fun scale(x: Float, y: Float, z: Float) = this@Barbarian3D.scale(x, y, z)
     }
 
     private fun head(turn: Float, tilt: Float, b0: Float, b1: Float, h0: Float, h1: Float) {
@@ -858,6 +876,7 @@ object Barbarian3D {
             translate(0f, 14.4f, 0f)
             rotY(turn)
             rotX(tilt)
+            Roupas.cabecaEsc(hg, Classe.BARBARO)
             cube(0f, 0.3f, 0f, 2.6f, 1.2f, 2.5f, SKIN_D)
             cube(0f, 5.0f, 0f, 4.8f, 4.7f, 4.6f, SKIN)
             cube(0f, 5.0f, 4.65f, 4.5f, 4.4f, 0.06f, SKIN_L)
@@ -955,6 +974,8 @@ object Barbarian3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, kF: Float, kB: Float, breath: Float) {
+        push()
+        Roupas.cintura(hg, Classe.BARBARO)
         HeroKit.cauda(hg, Classe.BARBARO)
         Roupas.abdomen(hg, Classe.BARBARO)
         cube(0f, 0.6f, 0f, 6.3f, 1.5f, 3.9f, LEATHER)
@@ -1020,9 +1041,11 @@ object Barbarian3D {
         cube(-2.5f, 3.9f, 3.84f, 0.5f, 0.12f, 0.08f, SCAR)
         cube(-5.95f, 3.8f, 0f, 0.25f, 2.2f, 3.5f, SKIN_D)
         cube(5.95f, 3.8f, 0f, 0.25f, 2.2f, 3.5f, SKIN_D)
+        pop()
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peitoEsc(hg, Classe.BARBARO)
             Roupas.peito(hg, Classe.BARBARO)
             Roupas.capa(hg, Classe.BARBARO)
             cube(0f, 9.8f, 0f, 7.4f, 5.0f, 4.2f, SKIN)

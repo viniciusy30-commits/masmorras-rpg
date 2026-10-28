@@ -11,6 +11,7 @@ interface HeroGfx {
     fun rotX(a: Float)
     fun rotY(a: Float)
     fun rotZ(a: Float)
+    fun scale(x: Float, y: Float, z: Float)
 }
 
 /** Orelhas, chifres, presas, focinho e cauda de cada raça, por cima dos 4 modelos. */

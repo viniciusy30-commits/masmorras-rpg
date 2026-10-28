@@ -23,7 +23,7 @@ import kotlin.math.sqrt
 object Ninja3D {
     private val V = VoxelArt
 
-    private const val MAX = 1250
+    private const val MAX = 1400
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -129,6 +129,15 @@ object Ninja3D {
             val cj = m[r * 3 + j]
             m[r * 3 + i] = a * ci + b * cj
             m[r * 3 + j] = c * ci + d * cj
+        }
+    }
+
+    private fun scale(x: Float, y: Float, z: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            m[r * 3] *= x
+            m[r * 3 + 1] *= y
+            m[r * 3 + 2] *= z
         }
     }
 
@@ -659,14 +668,16 @@ object Ninja3D {
         override fun rotX(a: Float) = this@Ninja3D.rotX(a)
         override fun rotY(a: Float) = this@Ninja3D.rotY(a)
         override fun rotZ(a: Float) = this@Ninja3D.rotZ(a)
+        override fun scale(x: Float, y: Float, z: Float) = this@Ninja3D.scale(x, y, z)
     }
 
     // ───────────── partes do corpo ─────────────
 
     private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float) {
         push()
-            translate(side * 3f, hipY, 0f)
+            translate(side * 3f * Roupas.quad(Classe.NINJA), hipY, 0f)
             rotX(a)
+            Roupas.perna(hg, Classe.NINJA)
             Roupas.coxa(hg, Classe.NINJA, side)
             cube(0f, -2.7f, 0f, 2.2f, 2.9f, 2.3f, SUIT)
             cube(0f, -4.9f, 0f, 2.35f, 0.5f, 2.45f, CRIM_D)
@@ -703,8 +714,8 @@ object Ninja3D {
 
     private fun arm(side: Float, sh: Float, shZ: Float, el: Float, wr: Float) {
         push()
-        translate(side * 7.0f, 12.8f, 0f)
-        if (HeroLook.ombro) {
+        translate(side * 7.0f * Roupas.ombrosK(Classe.NINJA), 12.8f, 0f)
+        if (!Roupas.ombreira(hg, Classe.NINJA, side) && HeroLook.ombro) {
             cube(side * 0.5f, 1.0f, 0f, 3.1f, 1.0f, 3.2f, PLATE)
             cube(side * 0.5f, 2.0f, 0f, 3.2f, 0.25f, 3.3f, CRIM)
             cube(side * 2.6f, -0.2f, 0f, 0.5f, 1.4f, 3.2f, PLATE_D)
@@ -712,15 +723,21 @@ object Ninja3D {
         }
         rotZ(shZ)
         rotX(sh)
+        push()
+        Roupas.braco(hg, Classe.NINJA)
         cube(0f, -2.5f, 0f, 1.75f, 2.7f, 1.75f, SKIN)
         cube(0f, -1.2f, 0f, 1.95f, 0.5f, 1.95f, SUIT_L)
         cube(0f, -5.2f, 0f, 2.0f, 0.35f, 2.0f, CRIM)
+        pop()
         translate(0f, -5.3f, 0f)
         rotX(el)
+        push()
+        Roupas.braco(hg, Classe.NINJA)
         cube(0f, -3.0f, 0f, 2.2f, 3.0f, 2.2f, SUIT)
         cube(0f, -5.9f, 0f, 2.4f, 0.4f, 2.4f, PLATE)
         cube(0f, -3.2f, 2.25f, 1.0f, 2.2f, 0.15f, PLATE_L)
         cube(0f, -1.2f, 0f, 2.3f, 0.35f, 2.3f, CRIM_D)
+        pop()
         translate(0f, -6.8f, 0f)
         cube(0f, 0f, 0f, 1.35f, 1.2f, 1.35f, SKIN)
         rotX(wr)
@@ -733,6 +750,7 @@ object Ninja3D {
             translate(0f, 14.2f, 0f)
             rotY(turn)
             rotX(tilt)
+            Roupas.cabecaEsc(hg, Classe.NINJA)
             cube(0f, 0.3f, 0f, 2.3f, 1f, 2.3f, SKIN_D)
             cube(0f, 1.3f, 0f, 3.1f, 0.9f, 3.1f, SUIT_L)
             // cabeça coberta
@@ -806,6 +824,8 @@ object Ninja3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, breath: Float) {
+        push()
+        Roupas.cintura(hg, Classe.NINJA)
         if (!ghost) HeroKit.cauda(hg, Classe.NINJA)
         Roupas.abdomen(hg, Classe.NINJA)
         // cinto, fivela e bolsas
@@ -839,9 +859,11 @@ object Ninja3D {
         // abdômen
         cube(0f, 3.8f, 0f, 4.8f, 2.2f, 3.2f, SUIT)
         cube(0f, 3.8f, 3.25f, 4.4f, 0.25f, 0.15f, PLATE_D)
+        pop()
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peitoEsc(hg, Classe.NINJA)
             Roupas.peito(hg, Classe.NINJA)
             Roupas.capa(hg, Classe.NINJA)
             cube(0f, 9.6f, 0f, 5.4f, 4.8f, 3.4f, SUIT)

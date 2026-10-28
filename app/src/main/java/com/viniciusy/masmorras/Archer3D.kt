@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Archer3D {
     private val V = VoxelArt
 
-    private const val MAX = 1350
+    private const val MAX = 1500
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -141,6 +141,15 @@ object Archer3D {
             val cj = m[r * 3 + j]
             m[r * 3 + i] = a * ci + b * cj
             m[r * 3 + j] = c * ci + d * cj
+        }
+    }
+
+    private fun scale(x: Float, y: Float, z: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            m[r * 3] *= x
+            m[r * 3 + 1] *= y
+            m[r * 3 + 2] *= z
         }
     }
 
@@ -529,9 +538,10 @@ object Archer3D {
 
     private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float, spread: Float) {
         push()
-        translate(side * 3f, hipY, 0f)
+        translate(side * 3f * Roupas.quad(Classe.ARQUEIRO), hipY, 0f)
         rotZ(side * spread)
         rotX(a)
+        Roupas.perna(hg, Classe.ARQUEIRO)
         Roupas.coxa(hg, Classe.ARQUEIRO, side)
         // coxa: calça com dobras, costura lateral e faixas de couro
         cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
@@ -591,6 +601,7 @@ object Archer3D {
     }
 
     private fun shoulderPad(side: Float, big: Float) {
+        if (Roupas.ombreira(hg, Classe.ARQUEIRO, side)) return
         if (!HeroLook.ombro) return
         cube(side * 0.4f, 1.0f, 0f, 2.5f, 0.8f, 2.6f, LEATHER)
         cube(side * 0.4f, 1.8f, 0f, 2.6f, 0.2f, 2.7f, LEATHER_L)
@@ -674,10 +685,16 @@ object Archer3D {
         translate(sx, 12.8f, 0f)
         shoulderPad(side, isLeft)
         basis(armB[idx])
+        push()
+        Roupas.braco(hg, Classe.ARQUEIRO)
         upperArm()
+        pop()
         translate(0f, -5.7f, 0f)
         rotX(armB[idx][9])
+        push()
+        Roupas.braco(hg, Classe.ARQUEIRO)
         foreArm(isLeft, gl)
+        pop()
         pop()
     }
 
@@ -913,6 +930,8 @@ object Archer3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, flapF: Float, flapB: Float, breath: Float, quiverSw: Float, scarfSw: Float, arrows: Float) {
+        push()
+        Roupas.cintura(hg, Classe.ARQUEIRO)
         HeroKit.cauda(hg, Classe.ARQUEIRO)
         Roupas.abdomen(hg, Classe.ARQUEIRO)
         // quadril e cinto
@@ -957,9 +976,11 @@ object Archer3D {
             pop()
         }
         // peito
+        pop()
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)
+        Roupas.peitoEsc(hg, Classe.ARQUEIRO)
         Roupas.peito(hg, Classe.ARQUEIRO)
         Roupas.capa(hg, Classe.ARQUEIRO)
         cube(0f, 5.2f, 0f, 4.7f, 0.9f, 3.2f, TUNIC_D)
@@ -1045,6 +1066,7 @@ object Archer3D {
         override fun rotX(a: Float) = this@Archer3D.rotX(a)
         override fun rotY(a: Float) = this@Archer3D.rotY(a)
         override fun rotZ(a: Float) = this@Archer3D.rotZ(a)
+        override fun scale(x: Float, y: Float, z: Float) = this@Archer3D.scale(x, y, z)
     }
 
     private fun head(turn: Float, tilt: Float, tail0: Float, tail1: Float, fth: Float) {
@@ -1052,6 +1074,7 @@ object Archer3D {
         translate(0f, 14.2f, 0f)
         rotY(turn)
         rotX(tilt)
+        Roupas.cabecaEsc(hg, Classe.ARQUEIRO)
         cube(0f, 0.3f, 0f, 2.1f, 1f, 2.1f, SKIN_D)
         // rosto fino e pálido
         cube(0f, 5f, 0f, 4.3f, 4.5f, 4.1f, SKIN)
@@ -1785,13 +1808,13 @@ object Archer3D {
         pRY = lerp(pRY, 0.3f, quiverT)
         pRZ = lerp(pRZ, -0.4f, quiverT)
         // cotovelo do braço do arco: para trás no repouso, para fora/baixo ao mirar
-        solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, lerp(0.22f, 0.7f, aimW), lerp(-0.15f, -0.9f, aimW), lerp(-1f, 0f, aimW))
+        solveArm(7.2f * Roupas.ombrosK(Classe.ARQUEIRO), 12.8f, 0f, gCX, gCY, gCZ, lerp(0.22f, 0.7f, aimW), lerp(-0.15f, -0.9f, aimW), lerp(-1f, 0f, aimW))
         System.arraycopy(ikB, 0, armB[0], 0, 9)
         armB[0][9] = ikEl
         val hLX = ikHX
         val hLY = ikHY
         val hLZ = ikHZ
-        solveArm(-7.2f, 12.8f, 0f, rCX, rCY, rCZ, pRX, pRY, pRZ)
+        solveArm(-7.2f * Roupas.ombrosK(Classe.ARQUEIRO), 12.8f, 0f, rCX, rCY, rCZ, pRX, pRY, pRZ)
         System.arraycopy(ikB, 0, armB[1], 0, 9)
         armB[1][9] = ikEl
         val hRXs = ikHX
@@ -1864,8 +1887,8 @@ object Archer3D {
         rotY(chestTw)
         translate(0f, breath, 0f)
         head(-chestTw * 0.92f + sp[8], -lean * 0.6f - elevS * 0.5f * aimW, sp[9], sp[9] * 0.8f, sp[11])
-        arm(-1f, -7.2f, 1, 0f)
-        arm(1f, 7.2f, 0, if (casting && kind >= 3) chargeG * 0.8f else 0f)
+        arm(-1f, -7.2f * Roupas.ombrosK(Classe.ARQUEIRO), 1, 0f)
+        arm(1f, 7.2f * Roupas.ombrosK(Classe.ARQUEIRO), 0, if (casting && kind >= 3) chargeG * 0.8f else 0f)
         // arco na mão esquerda (alinhado ao quadril, não ao peito)
         push()
         translate(hLX, hLY, hLZ)

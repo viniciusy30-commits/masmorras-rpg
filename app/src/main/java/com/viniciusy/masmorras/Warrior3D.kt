@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Warrior3D {
     private val V = VoxelArt
 
-    private const val MAX = 800
+    private const val MAX = 950
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -199,6 +199,15 @@ object Warrior3D {
             val cj = m[r * 3 + j]
             m[r * 3 + i] = a * ci + b * cj
             m[r * 3 + j] = c * ci + d * cj
+        }
+    }
+
+    private fun scale(x: Float, y: Float, z: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            m[r * 3] *= x
+            m[r * 3 + 1] *= y
+            m[r * 3 + 2] *= z
         }
     }
 
@@ -536,8 +545,9 @@ object Warrior3D {
 
     private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float) {
         push()
-            translate(side * 3.4f, hipY, 0f)
+            translate(side * 3.4f * Roupas.quad(Classe.GUERREIRO), hipY, 0f)
             rotX(a)
+            Roupas.perna(hg, Classe.GUERREIRO)
             Roupas.coxa(hg, Classe.GUERREIRO, side)
             cube(0f, -2.7f, 0f, 2.55f, 2.9f, 2.6f, PANTS)
             cube(0f, -2.2f, 0.35f, 2.75f, 2.5f, 2.65f, STEEL_D)
@@ -570,7 +580,10 @@ object Warrior3D {
         pop()
     }
 
+    private fun shX(): Float = 8.4f * Roupas.ombrosK(Classe.GUERREIRO)
+
     private fun pauldron(side: Float) {
+        if (Roupas.ombreira(hg, Classe.GUERREIRO, side)) return
         if (!HeroLook.ombro) return
         cube(side * 0.8f, 1.5f, 0f, 3.1f, 1f, 3.2f, STEEL_L)
         cube(side * 1.5f, 0.1f, 0f, 2.8f, 0.9f, 3f, STEEL)
@@ -586,11 +599,16 @@ object Warrior3D {
     }
 
     private fun armBase(el: Float) {
+        push()
+        Roupas.braco(hg, Classe.GUERREIRO)
         cube(0f, -2.7f, 0f, 2f, 2.9f, 2f, LEATHER_D)
         cube(0f, -1.4f, 0f, 2.2f, 0.4f, 2.2f, GOLD)
         cube(0f, -3.9f, 0f, 2.35f, 0.3f, 2.35f, STEEL_D)
+        pop()
         translate(0f, -5.7f, 0f)
         rotX(el)
+        push()
+        Roupas.braco(hg, Classe.GUERREIRO)
         cube(0f, -0.1f, 0f, 2.15f, 0.9f, 2.15f, STEEL_D)
         cube(0f, 0.4f, -2.3f, 0.9f, 1f, 0.8f, STEEL)
         cube(0f, 0.5f, -3.1f, 0.4f, 0.5f, 0.6f, STEEL_L)
@@ -603,6 +621,7 @@ object Warrior3D {
         cube(0f, -6.2f, 1.7f, 1.5f, 0.5f, 0.4f, LEATHER)
         cube(0f, -5.6f, 0f, 2.1f, 0.5f, 2.1f, STEEL_D)
         cube(0f, -7.3f, 1.2f, 1.6f, 0.3f, 0.5f, GOLD_D)
+        pop()
     }
 
     private fun sword(glow: Float, wrist: Float) {
@@ -641,7 +660,7 @@ object Warrior3D {
 
     private fun rightArm(sh: Float, shZ: Float, el: Float, wrist: Float, glow: Float) {
         push()
-        translate(-8.4f, 13.2f, 0f)
+        translate(-shX(), 13.2f, 0f)
         pauldron(-1f)
         rotZ(shZ)
         rotX(sh)
@@ -654,7 +673,7 @@ object Warrior3D {
 
     private fun leftArm(sh: Float, shZ: Float, el: Float) {
         push()
-        translate(8.4f, 13.2f, 0f)
+        translate(shX(), 13.2f, 0f)
         pauldron(1f)
         rotZ(shZ)
         rotX(sh)
@@ -703,6 +722,7 @@ object Warrior3D {
         override fun rotX(a: Float) = this@Warrior3D.rotX(a)
         override fun rotY(a: Float) = this@Warrior3D.rotY(a)
         override fun rotZ(a: Float) = this@Warrior3D.rotZ(a)
+        override fun scale(x: Float, y: Float, z: Float) = this@Warrior3D.scale(x, y, z)
     }
 
     private fun head(turn: Float, tilt: Float, p0: Float, p1: Float) {
@@ -710,6 +730,7 @@ object Warrior3D {
             translate(0f, 14.2f, 0f)
             rotY(turn)
             rotX(tilt)
+            Roupas.cabecaEsc(hg, Classe.GUERREIRO)
             cube(0f, 0.3f, 0f, 2.3f, 1f, 2.3f, SKIN_D)
             cube(0f, -0.2f, 0f, 3.9f, 1.3f, 3.7f, STEEL_D)
             cube(0f, 0.95f, 0f, 4f, 0.3f, 3.8f, GOLD)
@@ -780,6 +801,8 @@ object Warrior3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, tabA: Float, breath: Float) {
+        push()
+        Roupas.cintura(hg, Classe.GUERREIRO)
         HeroKit.cauda(hg, Classe.GUERREIRO)
         Roupas.abdomen(hg, Classe.GUERREIRO)
         cube(0f, 0.6f, 0f, 5.6f, 1.4f, 3.5f, LEATHER)
@@ -827,9 +850,11 @@ object Warrior3D {
         cube(0f, 6.5f, 3.75f, 4.2f, 0.12f, 0.12f, GOLD_D)
         cube(-5.3f, 3.8f, 0f, 0.25f, 2.2f, 3f, GOLD_D)
         cube(5.3f, 3.8f, 0f, 0.25f, 2.2f, 3f, GOLD_D)
+        pop()
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peitoEsc(hg, Classe.GUERREIRO)
             Roupas.peito(hg, Classe.GUERREIRO)
             Roupas.capa(hg, Classe.GUERREIRO)
             cube(0f, 9.8f, 0f, 6.9f, 5f, 3.9f, STEEL)
@@ -1098,10 +1123,10 @@ object Warrior3D {
     /** Braço de dois ossos até a mão, com o cotovelo apontando para baixo e para fora (vetor-polo). */
     private fun spearArm(side: Float, hx: Float, hy: Float, hz: Float) {
         push()
-        translate(side * 8.4f, 13.2f, 0f)
+        translate(side * shX(), 13.2f, 0f)
         val l1 = 5.7f
         val l2 = 6.1f
-        val rx = hx - side * 8.4f
+        val rx = hx - side * shX()
         val ry = hy - 13.2f
         val rz = hz
         val rl = sqrt(rx * rx + ry * ry + rz * rz).coerceAtLeast(0.0001f)
@@ -1163,8 +1188,8 @@ object Warrior3D {
     }
 
     private fun spearRig() {
-        clampReach(-8.4f, sPo[0], sPo[1], sPo[2], tR)
-        clampReach(8.4f, sPo[3], sPo[4], sPo[5], tL)
+        clampReach(-shX(), sPo[0], sPo[1], sPo[2], tR)
+        clampReach(shX(), sPo[3], sPo[4], sPo[5], tL)
         spearArm(-1f, tR[0], tR[1], tR[2])
         spearArm(1f, tL[0], tL[1], tL[2])
         var dx = tL[0] - tR[0]

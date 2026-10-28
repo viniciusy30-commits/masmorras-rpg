@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Mage3D {
     private val V = VoxelArt
 
-    private const val MAX = 900
+    private const val MAX = 1050
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -135,6 +135,15 @@ object Mage3D {
             val cj = m[r * 3 + j]
             m[r * 3 + i] = a * ci + b * cj
             m[r * 3 + j] = c * ci + d * cj
+        }
+    }
+
+    private fun scale(x: Float, y: Float, z: Float) {
+        val m = stack[top]
+        for (r in 0..2) {
+            m[r * 3] *= x
+            m[r * 3 + 1] *= y
+            m[r * 3 + 2] *= z
         }
     }
 
@@ -630,8 +639,9 @@ object Mage3D {
 
     private fun leg(side: Float, a: Float, knee: Float, hipY: Float, foot: Float) {
         push()
-            translate(side * 3f, hipY, 0f)
+            translate(side * 3f * Roupas.quad(Classe.MAGO), hipY, 0f)
             rotX(a)
+            Roupas.perna(hg, Classe.MAGO)
             Roupas.coxa(hg, Classe.MAGO, side)
             cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
             translate(0f, -5.6f, 0f)
@@ -652,18 +662,25 @@ object Mage3D {
     }
 
     private fun sleeve(el: Float) {
+        push()
+        Roupas.braco(hg, Classe.MAGO)
         cube(0f, -2.7f, 0f, 1.9f, 2.9f, 1.9f, ROBE)
         cube(0f, -5.6f, 0f, 2.15f, 0.35f, 2.15f, GOLD)
+        pop()
         translate(0f, -5.7f, 0f)
         rotX(el)
+        push()
+        Roupas.braco(hg, Classe.MAGO)
         cube(0f, -3.4f, 0f, 2.5f, 3.2f, 2.5f, ROBE_L)
         cube(0f, -3.4f, 2.55f, 1f, 2.4f, 0.15f, ROBE)
         cube(0f, -6.7f, 0f, 2.8f, 0.4f, 2.8f, GOLD)
         cube(0f, -6.3f, 0f, 2.3f, 0.3f, 2.3f, ROBE_DD)
         cube(0f, -7.6f, 0f, 1.35f, 1.2f, 1.35f, SKIN)
+        pop()
     }
 
     private fun shoulderPad(side: Float) {
+        if (Roupas.ombreira(hg, Classe.MAGO, side)) return
         if (!HeroLook.ombro) return
         cube(side * 0.6f, 1.1f, 0f, 3.0f, 1.0f, 3.1f, ROBE_L)
         cube(side * 0.6f, 2.05f, 0f, 3.1f, 0.2f, 3.2f, GOLD)
@@ -720,7 +737,7 @@ object Mage3D {
 
     private fun rightArm(sh: Float, shZ: Float, el: Float, wrist: Float) {
         push()
-        translate(-7.2f, 12.8f, 0f)
+        translate(-7.2f * Roupas.ombrosK(Classe.MAGO), 12.8f, 0f)
         shoulderPad(-1f)
         rotZ(shZ)
         rotX(sh)
@@ -731,7 +748,7 @@ object Mage3D {
 
     private fun leftArm(sh: Float, shZ: Float, el: Float) {
         push()
-        translate(7.2f, 12.8f, 0f)
+        translate(7.2f * Roupas.ombrosK(Classe.MAGO), 12.8f, 0f)
         shoulderPad(1f)
         // cristal flutuante sobre o ombro
         cube(1.9f, 4.6f + crystalBob, 0f, 0.7f, 1.2f, 0.7f, orbC, true)
@@ -754,6 +771,7 @@ object Mage3D {
         override fun rotX(a: Float) = this@Mage3D.rotX(a)
         override fun rotY(a: Float) = this@Mage3D.rotY(a)
         override fun rotZ(a: Float) = this@Mage3D.rotZ(a)
+        override fun scale(x: Float, y: Float, z: Float) = this@Mage3D.scale(x, y, z)
     }
 
     private fun head(turn: Float, tilt: Float, b0: Float, b1: Float, h0: Float, h1: Float) {
@@ -761,6 +779,7 @@ object Mage3D {
             translate(0f, 14.2f, 0f)
             rotY(turn)
             rotX(tilt)
+            Roupas.cabecaEsc(hg, Classe.MAGO)
             cube(0f, 0.3f, 0f, 2.3f, 1f, 2.3f, SKIN_D)
             // rosto
             cube(0f, 5f, 0f, 4.4f, 4.5f, 4.2f, SKIN)
@@ -857,6 +876,8 @@ object Mage3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, flare: Float, breath: Float, bookSw: Float, wingW: Float, flap: Float) {
+        push()
+        Roupas.cintura(hg, Classe.MAGO)
         HeroKit.cauda(hg, Classe.MAGO)
         Roupas.abdomen(hg, Classe.MAGO)
         // cinto, fivela, grimório e poção
@@ -909,9 +930,11 @@ object Mage3D {
         // peito
         cube(0f, 3.8f, 0f, 5f, 2.2f, 3.3f, ROBE)
         cube(0f, 3.8f, 3.35f, 4.8f, 0.3f, 0.2f, GOLD_D)
+        pop()
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peitoEsc(hg, Classe.MAGO)
             Roupas.peito(hg, Classe.MAGO)
             Roupas.capa(hg, Classe.MAGO)
             cube(0f, 9.8f, 0f, 5.7f, 4.8f, 3.5f, ROBE)

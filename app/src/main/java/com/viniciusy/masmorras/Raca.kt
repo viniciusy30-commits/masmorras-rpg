@@ -85,7 +85,7 @@ class HeroiPerfil(val classe: Classe) {
     var barba: Int = 0
     var elmo: Int = 0      // 0 = usa o capacete/chapéu/máscara, 1 = sem
     var topo: Int = 0
-    var ombro: Int = 0     // 0 = com ombreiras, 1 = sem
+    var ombro: Int = 0     // 0 = ombreira original, 1 = sem, 2..6 = estilos da classe
     var metal: Int? = null
     var tecido: Int? = null
     var sexo: Int = 0      // 0 = masculino, 1 = feminino

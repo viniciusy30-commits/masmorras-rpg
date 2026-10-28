@@ -19,7 +19,8 @@ object HeroLook {
     var barba: Int = 0        // 0 = padrão da classe, 1 = sem barba, 2.. = estilos novos
     var elmo: Boolean = true  // capacete / chapéu / máscara da classe
     var topo: Int = 0         // acessório de cabeça: bandana, tiara, coroa, casquete
-    var ombro: Boolean = true // ombreiras
+    var ombro: Boolean = true // ombreiras originais da classe (false = tirou ou usa estilo novo)
+    var ombroK: Int = 0       // 0 = original, 1 = sem ombreiras, 2..6 = estilos novos da classe
     var metalC: Int? = null   // cor da armadura (metal)
     var tecidoC: Int? = null  // cor da roupa (tecido)
     var peito: Int = 0        // roupa do peito (0 = padrão da classe)
@@ -45,6 +46,7 @@ object HeroLook {
         elmo = p.elmo == 0
         topo = p.topo
         ombro = p.ombro == 0
+        ombroK = p.ombro
         metalC = p.metal
         tecidoC = p.tecido
         peito = p.peito
@@ -132,7 +134,7 @@ object Herois {
             p.barba = sp.getInt("barba", 0).coerceIn(0, HeroiPerfil.N_BARBA - 1)
             p.elmo = sp.getInt("elmo", 0).coerceIn(0, 1)
             p.topo = sp.getInt("topo", 0).coerceIn(0, HeroiPerfil.N_TOPO - 1)
-            p.ombro = sp.getInt("ombro", 0).coerceIn(0, 1)
+            p.ombro = sp.getInt("ombro", 0).coerceIn(0, Roupas.NO - 1)
             p.metal = if (sp.contains("metal")) sp.getInt("metal", 0) else null
             p.tecido = if (sp.contains("tecido")) sp.getInt("tecido", 0) else null
             p.sexo = sp.getInt("sexo", 0).coerceIn(0, 1)
