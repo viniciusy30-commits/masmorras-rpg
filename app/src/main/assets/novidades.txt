@@ -1,3 +1,14 @@
+#id 2026-10-28-f
+#titulo Criação de herói: raças, atributos e aparência
+- Depois de escolher a classe abre a criação do herói, com o seu herói de verdade (o mesmo modelo 3D do jogo) girando ao lado; arraste para girar
+- 9 raças: Humano, Elfo, Anão, Orc, Tiefling, Draconato, Golias, Felino e Goblin. Cada uma tem bônus de atributos e traços no corpo: orelhas élficas, de gato ou de goblin, chifres de tiefling e de draconato, presas, focinho de gato ou de dragão e cauda
+- 6 atributos no estilo D&D (Força, Destreza, Constituição, Inteligência, Sabedoria e Carisma) com 27 pontos para distribuir, notas de 8 a 15
+- Os atributos valem no jogo: vida, mana, dano, velocidade, defesa, regeneração de vida e mana, e chance e força do golpe crítico (acerto crítico mostra o número em dourado)
+- Você escolhe a cor da pele, do cabelo e barba e dos olhos nos 4 modelos 3D: Guerreiro, Mago, Arqueiro e Bárbaro
+- O herói padrão de cada classe continua com os mesmos números de antes; o botão Herói padrão volta a ele. O Arqueiro começa elfo e as outras classes começam humanas
+- O tamanho da raça (Golias maior, Goblin menor) é só visual, então ninguém fica preso em corredor estreito
+- Cada classe guarda o seu herói no aparelho
+
 #id 2026-10-28-e
 #titulo Som em tudo: efeitos e música
 - Música nova no menu (harpa e cordas sombrias) e outra, mais tensa, durante o jogo; ela abaixa quando você vence ou perde

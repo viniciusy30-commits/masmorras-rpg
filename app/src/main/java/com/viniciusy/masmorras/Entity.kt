@@ -58,7 +58,7 @@ class Player(
     x: Float,
     y: Float,
     val classe: Classe
-) : Entity(x, y, 24f, classe.maxHp, classe.maxHp) {
+) : Entity(x, y, 24f, Herois.perfil(classe).maxHp, Herois.perfil(classe).maxHp) {
 
     companion object {
         const val ROLL_TIME = 0.46f
@@ -76,7 +76,22 @@ class Player(
         const val FLY_H = 70f       // altura do voo
     }
 
-    var mp = classe.maxMp
+    // herói escolhido na criação de personagem (raça + atributos)
+    val heroi: HeroiPerfil = Herois.perfil(classe)
+    val maxMpH: Float = heroi.maxMp
+    val velH: Float = heroi.velocidade
+    val danoH: Float = heroi.dano
+    val defesaH: Float = heroi.defesa
+    val regenHpH: Float = heroi.regenHp
+    val regenMpH: Float = heroi.regenMp
+    val critH: Float = heroi.critChance
+    val critMulH: Float = heroi.critMul
+
+    init {
+        Herois.ativar(heroi)
+    }
+
+    var mp = maxMpH
     var vx = 0f
     var vy = 0f
     var inX = 0f
@@ -446,8 +461,8 @@ class Player(
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
             val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) 0.3f else 1f) * (if (bowHold) 0.5f else 1f)
-            vx = inX * classe.velocidade * 60f * slow
-            vy = inY * classe.velocidade * 60f * slow
+            vx = inX * velH * 60f * slow
+            vy = inY * velH * 60f * slow
         }
         x += vx * dt
         y += vy * dt
@@ -478,8 +493,11 @@ class Player(
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
-        if (classe.maxMp > 0f && mp < classe.maxMp) {
-            mp = (mp + 8f * dt).coerceAtMost(classe.maxMp)
+        if (maxMpH > 0f && mp < maxMpH) {
+            mp = (mp + regenMpH * dt).coerceAtMost(maxMpH)
+        }
+        if (regenHpH > 0f && alive && hp < maxHp) {
+            hp = (hp + regenHpH * dt).coerceAtMost(maxHp)
         }
     }
 

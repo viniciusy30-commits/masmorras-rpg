@@ -54,8 +54,8 @@ object Warrior3D {
     private val LEATHER = 0xFF5A3A26.toInt()
     private val LEATHER_L = 0xFF7A5238.toInt()
     private val LEATHER_D = 0xFF3A2416.toInt()
-    private val SKIN = 0xFFF1C27D.toInt()
-    private val SKIN_D = 0xFFC98F55.toInt()
+    private val SKIN: Int get() = HeroLook.skin(0xFFF1C27D.toInt())
+    private val SKIN_D: Int get() = HeroLook.skinD(0xFFC98F55.toInt())
     private val PANTS = 0xFF2F3A44.toInt()
     private val STEEL_DD = 0xFF4A555E.toInt()
     private val GOLD_D = 0xFFB88413.toInt()
@@ -70,7 +70,7 @@ object Warrior3D {
     private val RED_L = 0xFFE04545.toInt()
     private val FUR = 0xFFF0EBDF.toInt()
     private val FUR_D = 0xFFBAB2A2.toInt()
-    private val BEARD = 0xFF5A3A22.toInt()
+    private val BEARD: Int get() = HeroLook.hair(0xFF5A3A22.toInt())
     private val CHAIN = 0xFF8A95A5.toInt()
     private val SCAR = 0xFFD9988A.toInt()
     private val WHITE = 0xFFFFFFFF.toInt()
@@ -691,6 +691,16 @@ object Warrior3D {
         cube(0.3f, 0.6f, -0.4f, 2.2f, 3f, 0.45f, LEATHER_D)
     }
 
+    private val hg = object : HeroGfx {
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Warrior3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun push() = this@Warrior3D.push()
+        override fun pop() = this@Warrior3D.pop()
+        override fun translate(x: Float, y: Float, z: Float) = this@Warrior3D.translate(x, y, z)
+        override fun rotX(a: Float) = this@Warrior3D.rotX(a)
+        override fun rotY(a: Float) = this@Warrior3D.rotY(a)
+        override fun rotZ(a: Float) = this@Warrior3D.rotZ(a)
+    }
+
     private fun head(turn: Float, tilt: Float, p0: Float, p1: Float) {
         push()
             translate(0f, 14.2f, 0f)
@@ -702,8 +712,8 @@ object Warrior3D {
             cube(0f, 5.2f, 0f, 5f, 5f, 4.8f, SKIN)
             cube(-2f, 4.7f, 4.85f, 1.05f, 1f * eyeOpen, 0.12f, EYE)
             cube(2f, 4.7f, 4.85f, 1.05f, 1f * eyeOpen, 0.12f, EYE)
-            cube(-2.1f, 4.9f, 4.95f, 0.55f, 0.4f * eyeOpen, 0.1f, WHITE, true)
-            cube(1.9f, 4.9f, 4.95f, 0.55f, 0.4f * eyeOpen, 0.1f, WHITE, true)
+            cube(-2.1f, 4.9f, 4.95f, 0.55f, 0.4f * eyeOpen, 0.1f, HeroLook.eye(WHITE), true)
+            cube(1.9f, 4.9f, 4.95f, 0.55f, 0.4f * eyeOpen, 0.1f, HeroLook.eye(WHITE), true)
             cube(0f, 3.3f, 5f, 0.6f, 0.7f, 0.3f, SKIN_D)
             cube(0f, 1.7f, 4.85f, 1.5f, 0.3f, 0.12f, SKIN_D)
             cube(-2f, 6f, 4.95f, 1.5f, 0.4f, 0.15f, BEARD)
@@ -755,10 +765,12 @@ object Warrior3D {
                 rotX(0.5f + p1 * 1.3f)
                 cube(0f, -0.3f, -1.2f, 0.9f, 0.8f, 2f, RED_D)
             pop()
+        HeroKit.cabeca(hg, Classe.GUERREIRO)
         pop()
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, tabA: Float, breath: Float) {
+        HeroKit.cauda(hg, Classe.GUERREIRO)
         cube(0f, 0.6f, 0f, 5.6f, 1.4f, 3.5f, LEATHER)
         cube(0f, 0.8f, 3.55f, 1.9f, 1.4f, 0.5f, GOLD)
         cube(0f, 0.8f, 4f, 1.1f, 0.9f, 0.25f, GOLD_L)

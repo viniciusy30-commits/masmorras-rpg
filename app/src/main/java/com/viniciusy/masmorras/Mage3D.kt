@@ -481,10 +481,10 @@ object Mage3D {
     private val LEATHER = 0xFF5A3A26.toInt()
     private val LEATHER_L = 0xFF7A5238.toInt()
     private val LEATHER_D = 0xFF3A2416.toInt()
-    private val SKIN = 0xFFF1C27D.toInt()
-    private val SKIN_D = 0xFFC98F55.toInt()
-    private val HAIR = 0xFFEDEFF3.toInt()
-    private val HAIR_D = 0xFFB9C1CE.toInt()
+    private val SKIN: Int get() = HeroLook.skin(0xFFF1C27D.toInt())
+    private val SKIN_D: Int get() = HeroLook.skinD(0xFFC98F55.toInt())
+    private val HAIR: Int get() = HeroLook.hair(0xFFEDEFF3.toInt())
+    private val HAIR_D: Int get() = HeroLook.hairD(0xFFB9C1CE.toInt())
     private val SHAFT = 0xFF8A5A33.toInt()
     private val SHAFT_L = 0xFFAD7842.toInt()
     private val SHAFT_D = 0xFF5E3B20.toInt()
@@ -742,6 +742,16 @@ object Mage3D {
         pop()
     }
 
+    private val hg = object : HeroGfx {
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Mage3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun push() = this@Mage3D.push()
+        override fun pop() = this@Mage3D.pop()
+        override fun translate(x: Float, y: Float, z: Float) = this@Mage3D.translate(x, y, z)
+        override fun rotX(a: Float) = this@Mage3D.rotX(a)
+        override fun rotY(a: Float) = this@Mage3D.rotY(a)
+        override fun rotZ(a: Float) = this@Mage3D.rotZ(a)
+    }
+
     private fun head(turn: Float, tilt: Float, b0: Float, b1: Float, h0: Float, h1: Float) {
         push()
             translate(0f, 14.2f, 0f)
@@ -752,8 +762,8 @@ object Mage3D {
             cube(0f, 5f, 0f, 4.4f, 4.5f, 4.2f, SKIN)
             cube(-2f, 5.2f, 4.25f, 1f, 0.9f * eyeOpen, 0.12f, EYE)
             cube(2f, 5.2f, 4.25f, 1f, 0.9f * eyeOpen, 0.12f, EYE)
-            cube(-2f, 5.1f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
-            cube(2f, 5.1f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
+            cube(-2f, 5.1f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, HeroLook.eye(eyeC), true)
+            cube(2f, 5.1f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, HeroLook.eye(eyeC), true)
             cube(-2f, 7f, 4.3f, 1.7f, 0.5f, 0.2f, HAIR)
             cube(2f, 7f, 4.3f, 1.7f, 0.5f, 0.2f, HAIR)
             cube(0f, 3.8f, 4.45f, 0.8f, 1f, 0.5f, SKIN_D)
@@ -805,6 +815,7 @@ object Mage3D {
                 cube(0f, 1f, 0f, 0.9f, 1.1f, 0.9f, ROBE_D)
                 cube(0f, 2.5f, 0f, 0.55f, 0.55f, 0.55f, orbL, true)
             pop()
+        HeroKit.cabeca(hg, Classe.MAGO)
         pop()
     }
 
@@ -830,6 +841,7 @@ object Mage3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, flare: Float, breath: Float, bookSw: Float, wingW: Float, flap: Float) {
+        HeroKit.cauda(hg, Classe.MAGO)
         // cinto, fivela, grimório e poção
         cube(0f, 0.6f, 0f, 5.2f, 1.2f, 3.4f, LEATHER)
         cube(0f, 0.7f, 3.45f, 1.6f, 1.1f, 0.5f, GOLD)

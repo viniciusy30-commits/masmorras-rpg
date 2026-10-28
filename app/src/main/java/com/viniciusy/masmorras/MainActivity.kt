@@ -163,6 +163,8 @@ class MainActivity : AppCompatActivity() {
         enterImmersive()
         menuBg.setRunning(true)
 
+        Herois.init(this)
+
         // Auto check update
         Updater.autoCheck(this)
 
@@ -248,7 +250,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            onClassPicked(classe)
+            HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
         }
         findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)
@@ -364,11 +366,11 @@ class MainActivity : AppCompatActivity() {
                     hpBar.max = p.maxHp.toInt()
                     hpBar.progress = p.hp.toInt().coerceAtLeast(0)
                     setOrbText(tvHpNum, p.hp.toInt().coerceAtLeast(0), p.maxHp.toInt())
-                    if (p.classe.maxMp > 0f) {
+                    if (p.maxMpH > 0f) {
                         mpRow.visibility = View.VISIBLE
-                        mpBar.max = p.classe.maxMp.toInt()
+                        mpBar.max = p.maxMpH.toInt()
                         mpBar.progress = p.mp.toInt().coerceAtLeast(0)
-                        setOrbText(tvMpNum, p.mp.toInt().coerceAtLeast(0), p.classe.maxMp.toInt())
+                        setOrbText(tvMpNum, p.mp.toInt().coerceAtLeast(0), p.maxMpH.toInt())
                     } else {
                         mpRow.visibility = View.GONE
                         tvMpNum.text = ""

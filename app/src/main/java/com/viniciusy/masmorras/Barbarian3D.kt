@@ -599,14 +599,14 @@ object Barbarian3D {
     }
 
     // ───────────── paleta do bárbaro ─────────────
-    private val SKIN = 0xFFD99A5E.toInt()
-    private val SKIN_L = 0xFFEBB77C.toInt()
-    private val SKIN_D = 0xFFB07440.toInt()
-    private val SKIN_DD = 0xFF8A5530.toInt()
+    private val SKIN: Int get() = HeroLook.skin(0xFFD99A5E.toInt())
+    private val SKIN_L: Int get() = HeroLook.skinL(0xFFEBB77C.toInt())
+    private val SKIN_D: Int get() = HeroLook.skinD(0xFFB07440.toInt())
+    private val SKIN_DD: Int get() = HeroLook.skinDD(0xFF8A5530.toInt())
     private val SCAR = 0xFFE8B8A0.toInt()
-    private val HAIR = 0xFFB8421C.toInt()
-    private val HAIR_L = 0xFFE0702E.toInt()
-    private val HAIR_D = 0xFF7E2A12.toInt()
+    private val HAIR: Int get() = HeroLook.hair(0xFFB8421C.toInt())
+    private val HAIR_L: Int get() = HeroLook.hairL(0xFFE0702E.toInt())
+    private val HAIR_D: Int get() = HeroLook.hairD(0xFF7E2A12.toInt())
     private val PAINT = 0xFFC62828.toInt()
     private val PAINT_D = 0xFF8E1B1B.toInt()
     private val LEATHER = 0xFF5A3A26.toInt()
@@ -839,6 +839,16 @@ object Barbarian3D {
         pop()
     }
 
+    private val hg = object : HeroGfx {
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Barbarian3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun push() = this@Barbarian3D.push()
+        override fun pop() = this@Barbarian3D.pop()
+        override fun translate(x: Float, y: Float, z: Float) = this@Barbarian3D.translate(x, y, z)
+        override fun rotX(a: Float) = this@Barbarian3D.rotX(a)
+        override fun rotY(a: Float) = this@Barbarian3D.rotY(a)
+        override fun rotZ(a: Float) = this@Barbarian3D.rotZ(a)
+    }
+
     private fun head(turn: Float, tilt: Float, b0: Float, b1: Float, h0: Float, h1: Float) {
         push()
             translate(0f, 14.4f, 0f)
@@ -849,8 +859,8 @@ object Barbarian3D {
             cube(0f, 5.0f, 4.65f, 4.5f, 4.4f, 0.06f, SKIN_L)
             cube(-2.2f, 4.8f, 4.7f, 1.05f, 0.9f * eyeOpen, 0.12f, EYE)
             cube(2.2f, 4.8f, 4.7f, 1.05f, 0.9f * eyeOpen, 0.12f, EYE)
-            cube(-2.2f, 4.8f, 4.8f, 0.55f, 0.45f * eyeOpen, 0.1f, eyeC, true)
-            cube(2.2f, 4.8f, 4.8f, 0.55f, 0.45f * eyeOpen, 0.1f, eyeC, true)
+            cube(-2.2f, 4.8f, 4.8f, 0.55f, 0.45f * eyeOpen, 0.1f, HeroLook.eye(eyeC), true)
+            cube(2.2f, 4.8f, 4.8f, 0.55f, 0.45f * eyeOpen, 0.1f, HeroLook.eye(eyeC), true)
             cube(-2.3f, 5.9f, 4.75f, 1.5f, 0.45f, 0.18f, SKIN_DD)
             cube(2.3f, 5.9f, 4.75f, 1.5f, 0.45f, 0.18f, SKIN_DD)
             cube(0f, 3.4f, 4.9f, 0.7f, 1.2f, 0.45f, SKIN_D)
@@ -921,10 +931,12 @@ object Barbarian3D {
                 cube(0f, -1.6f, -0.2f, 1.9f, 1.7f, 0.8f, HAIR)
                 cube(0f, -3.4f, -0.2f, 0.8f, 0.5f, 0.5f, HAIR_D)
             pop()
+        HeroKit.cabeca(hg, Classe.BARBARO)
         pop()
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, kF: Float, kB: Float, breath: Float) {
+        HeroKit.cauda(hg, Classe.BARBARO)
         cube(0f, 0.6f, 0f, 6.3f, 1.5f, 3.9f, LEATHER)
         cube(0f, 2.0f, 0f, 6.35f, 0.2f, 3.95f, LEATHER_L)
         cube(0f, 0.8f, 3.95f, 2.2f, 1.5f, 0.5f, IRON_D)

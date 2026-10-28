@@ -38,10 +38,11 @@ object Sprites {
     // ───────────────────────── HERÓIS ─────────────────────────
 
     fun drawHero(
-        c: Canvas, p: Paint, classe: Classe, fx: Float, fy: Float, s: Float, phase: Float,
+        c: Canvas, p: Paint, classe: Classe, fx: Float, fy: Float, s0: Float, phase: Float,
         moving: Boolean, faceX: Float, faceY: Float, attack: Float
     ) {
         val back = faceY < -0.55f && abs(faceX) < 0.8f
+        val s = s0 * HeroLook.escala
         when (classe) {
             Classe.GUERREIRO -> Warrior3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.MAGO -> Mage3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)

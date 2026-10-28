@@ -492,12 +492,12 @@ object Archer3D {
     private val BRASS = 0xFFD4A94A.toInt()
     private val BRASS_L = 0xFFFFE08A.toInt()
     private val BRASS_D = 0xFF9C7A28.toInt()
-    private val SKIN = 0xFFF6DCC0.toInt()
-    private val SKIN_D = 0xFFD9B08A.toInt()
-    private val HAIR = 0xFFEAD79B.toInt()
-    private val HAIR_L = 0xFFFBF1C8.toInt()
+    private val SKIN: Int get() = HeroLook.skin(0xFFF6DCC0.toInt())
+    private val SKIN_D: Int get() = HeroLook.skinD(0xFFD9B08A.toInt())
+    private val HAIR: Int get() = HeroLook.hair(0xFFEAD79B.toInt())
+    private val HAIR_L: Int get() = HeroLook.hairL(0xFFFBF1C8.toInt())
     private val LIP = 0xFFC27A70.toInt()
-    private val HAIR_D = 0xFFB9A062.toInt()
+    private val HAIR_D: Int get() = HeroLook.hairD(0xFFB9A062.toInt())
     private val SCARF = 0xFFC2463C.toInt()
     private val SCARF_L = 0xFFE2675A.toInt()
     private val SCARF_D = 0xFF8E2C2A.toInt()
@@ -909,6 +909,7 @@ object Archer3D {
     }
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, flapF: Float, flapB: Float, breath: Float, quiverSw: Float, scarfSw: Float, arrows: Float) {
+        HeroKit.cauda(hg, Classe.ARQUEIRO)
         // quadril e cinto
         cube(0f, -1.6f, 0f, 5.4f, 2.2f, 3.3f, PANTS)
         cube(0f, 0.6f, 0f, 5.3f, 1.1f, 3.5f, LEATHER)
@@ -1029,6 +1030,16 @@ object Archer3D {
         pop()
     }
 
+    private val hg = object : HeroGfx {
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Archer3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun push() = this@Archer3D.push()
+        override fun pop() = this@Archer3D.pop()
+        override fun translate(x: Float, y: Float, z: Float) = this@Archer3D.translate(x, y, z)
+        override fun rotX(a: Float) = this@Archer3D.rotX(a)
+        override fun rotY(a: Float) = this@Archer3D.rotY(a)
+        override fun rotZ(a: Float) = this@Archer3D.rotZ(a)
+    }
+
     private fun head(turn: Float, tilt: Float, tail0: Float, tail1: Float, fth: Float) {
         push()
         translate(0f, 14.2f, 0f)
@@ -1043,8 +1054,8 @@ object Archer3D {
         cube(2f, 5.7f, 4.15f, 1.1f, 0.85f * eyeOpen, 0.12f, EYE_W)
         cube(-1.85f, 5.65f, 4.24f, 0.75f, 0.8f * eyeOpen, 0.1f, EYE)
         cube(2.15f, 5.65f, 4.24f, 0.75f, 0.8f * eyeOpen, 0.1f, EYE)
-        cube(-1.85f, 5.6f, 4.34f, 0.58f, 0.52f * eyeOpen, 0.08f, eyeC, true)
-        cube(2.15f, 5.6f, 4.34f, 0.58f, 0.52f * eyeOpen, 0.08f, eyeC, true)
+        cube(-1.85f, 5.6f, 4.34f, 0.58f, 0.52f * eyeOpen, 0.08f, HeroLook.eye(eyeC), true)
+        cube(2.15f, 5.6f, 4.34f, 0.58f, 0.52f * eyeOpen, 0.08f, HeroLook.eye(eyeC), true)
         cube(-2.2f, 6.1f, 4.42f, 0.17f, 0.17f * eyeOpen, 0.05f, WHITE)
         cube(1.8f, 6.1f, 4.42f, 0.17f, 0.17f * eyeOpen, 0.05f, WHITE)
         cube(-2f, 6.7f, 4.2f, 1.25f, 0.13f, 0.08f, HAIR_D)
@@ -1067,7 +1078,7 @@ object Archer3D {
         cube(-3.2f, 4.2f, 4.12f, 0.8f, 0.4f, 0.04f, SKIN_D)
         cube(3.2f, 4.2f, 4.12f, 0.8f, 0.4f, 0.04f, SKIN_D)
         // orelhas élficas longas e pontudas, para cima e para trás (aparecem por cima do cabelo)
-        for (k in 0..1) {
+        if (HeroLook.orelhaElfica()) for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             push()
             translate(sd * 4.5f, 4.4f, -0.7f)
@@ -1149,6 +1160,7 @@ object Archer3D {
         cube(0f, -3.0f, -0.1f, 1.0f, 0.4f, 0.34f, HAIR_L)
         cube(0f, -3.6f, -0.1f, 0.4f, 0.3f, 0.26f, HAIR)
         pop()
+        HeroKit.cabeca(hg, Classe.ARQUEIRO)
         pop()
     }
 

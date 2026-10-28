@@ -510,7 +510,7 @@ class GameView @JvmOverloads constructor(
                     dy = ey / d
                 }
             }
-            bolts.add(ThunderBolt(p.x + dx * 24f, p.y + dy * 24f, dx, dy, p.classe.danoBase * 2.3f))
+            bolts.add(ThunderBolt(p.x + dx * 24f, p.y + dy * 24f, dx, dy, p.danoH * 2.3f))
             shake = max(shake, 0.2f)
             snd("thunder_fire", 1f)
         }
@@ -620,7 +620,7 @@ class GameView @JvmOverloads constructor(
                 burst(a.tx, a.ty + 13.2f - a.gz, 2, 0xFFB8B0A8.toInt())
                 for (e in enemies) {
                     if (e.alive && hypot(e.x - a.tx, e.y - a.ty) < 34f + e.radius * 0.5f) {
-                        damageEnemy(e, p.classe.danoBase * 0.5f, z.x, z.y, 0.2f)
+                        damageEnemy(e, p.danoH * 0.5f, z.x, z.y, 0.2f)
                     }
                 }
             }
@@ -690,7 +690,7 @@ class GameView @JvmOverloads constructor(
             projectiles.add(
                 Projectile(
                     p.x + p.facingX * 18f, p.y + p.facingY * 18f, vx, vy,
-                    p.classe.danoBase, color, true, if (isMage) 0 else 1
+                    p.danoH, color, true, if (isMage) 0 else 1
                 )
             )
         } else {
@@ -711,7 +711,7 @@ class GameView @JvmOverloads constructor(
             val spear = p.classe == Classe.GUERREIRO && p.weapon == 1
             val thrust = p.classe == Classe.GUERREIRO && (if (spear) p.swing != 1 else p.swing == 2)
             val reach = p.classe.alcance * (if (spear) (if (p.swing == 0) 1.55f else if (p.swing == 1) 1.2f else 1.95f) else if (thrust) 1.3f else 1f)
-            val dmg = p.classe.danoBase * (if (spear) (if (p.swing == 0) 0.95f else if (p.swing == 1) 0.85f else 1.45f) else if (thrust) 1.3f else 1f)
+            val dmg = p.danoH * (if (spear) (if (p.swing == 0) 0.95f else if (p.swing == 1) 0.85f else 1.45f) else if (thrust) 1.3f else 1f)
             enemies.forEach { e ->
                 if (!e.alive) return@forEach
                 val dist = hypot(e.x - p.x, e.y - p.y)
@@ -731,7 +731,7 @@ class GameView @JvmOverloads constructor(
     private fun groundSmash(p: Player, radius: Float, dmgMul: Float, kb: Float, dust: Int) {
         val gy = p.y + p.radius * 0.55f - p.ground
         burst(p.x, gy, dust, 0xFFB8B0A8.toInt())
-        val dmg = p.classe.danoBase * dmgMul
+        val dmg = p.danoH * dmgMul
         enemies.forEach { e ->
             if (!e.alive) return@forEach
             if (e.alt - p.alt > 24f) return@forEach
@@ -778,7 +778,7 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         val slam = sw == 2
         val reach = p.classe.alcance * (if (slam) 1.25f else 1f)
-        val dmg = p.classe.danoBase * (if (slam) 1.5f else 1f)
+        val dmg = p.danoH * (if (slam) 1.5f else 1f)
         enemies.forEach { e ->
             if (!e.alive) return@forEach
             val dist = hypot(e.x - p.x, e.y - p.y)
@@ -884,7 +884,7 @@ class GameView @JvmOverloads constructor(
         fx /= fl
         fy /= fl
         val reach = p.classe.alcance * (if (sw == 0) 1.9f else if (sw == 1) 1.45f else 2.4f)
-        val dmg = p.classe.danoBase * (if (sw == 0) 1.0f else if (sw == 1) 0.9f else 1.75f)
+        val dmg = p.danoH * (if (sw == 0) 1.0f else if (sw == 1) 0.9f else 1.75f)
         val half = if (sw == 0) 15f else 24f
         var hits = 0
         enemies.forEach { e ->
@@ -980,7 +980,7 @@ class GameView @JvmOverloads constructor(
             sx = p.x
             sy = p.y
         }
-        thrown = ThrownSpear(sx, sy, throwDX, throwDY, throwRange, p.classe.danoBase * (2.4f + 1.8f * throwPower), rs * 0.603f)
+        thrown = ThrownSpear(sx, sy, throwDX, throwDY, throwRange, p.danoH * (2.4f + 1.8f * throwPower), rs * 0.603f)
         p.spearOut = true
         burst(sx, sy - 18f, 8, 0xFFFFE08A.toInt())
         shake = max(shake, 0.12f)
@@ -1071,7 +1071,7 @@ class GameView @JvmOverloads constructor(
         val spear = p.weapon == 1
         snd("heavy_swing", 1f, vary())
         val reach = p.classe.alcance * (if (spear) 1.9f else 1.35f)
-        val dmg = p.classe.danoBase * (1.7f + 1.3f * power)
+        val dmg = p.danoH * (1.7f + 1.3f * power)
         enemies.forEach { e ->
             if (!e.alive) return@forEach
             val dist = hypot(e.x - p.x, e.y - p.y)
@@ -1111,9 +1111,12 @@ class GameView @JvmOverloads constructor(
     }
 
     /** hitSnd: null = som do golpe pela classe; "" = sem som (quem chamou toca o seu). */
-    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
+    private fun damageEnemy(e: Enemy, dmg0: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
+        val pl = player
+        val crit = pl != null && pl.critH > 0f && Math.random() < pl.critH.toDouble()
+        val dmg = if (crit && pl != null) dmg0 * pl.critMulH else dmg0
         e.takeDamage(dmg)
-        val big = dmg >= 28f
+        val big = dmg >= 28f || crit
         if (hitSnd != "") {
             val nm = hitSnd ?: when (player?.classe) {
                 Classe.BARBARO -> "hit_heavy"
@@ -1199,11 +1202,11 @@ class GameView @JvmOverloads constructor(
                         Projectile(
                             p.x + p.facingX * 18f, p.y + p.facingY * 18f,
                             p.facingX * 280f, p.facingY * 280f,
-                            p.classe.danoBase, 0xFF42A5F5.toInt(), true, 0
+                            p.danoH, 0xFF42A5F5.toInt(), true, 0
                         )
                     )
                 } else {
-                    p.mp = (p.mp + 12f).coerceAtMost(p.classe.maxMp) // feitiço interrompido: devolve a mana
+                    p.mp = (p.mp + 12f).coerceAtMost(p.maxMpH) // feitiço interrompido: devolve a mana
                 }
             }
         }
@@ -1216,7 +1219,7 @@ class GameView @JvmOverloads constructor(
                     val arrow = Projectile(
                         p.x + p.facingX * 20f, p.y + p.facingY * 20f,
                         p.facingX * 380f * (1f + 0.35f * pw), p.facingY * 380f * (1f + 0.35f * pw),
-                        p.classe.danoBase * (1f + 0.5f * pw), 0xFF8D6E63.toInt(), true, 1
+                        p.danoH * (1f + 0.5f * pw), 0xFF8D6E63.toInt(), true, 1
                     )
                     arrow.life = 1.4f * (1f + 0.25f * pw)
                     projectiles.add(arrow)
@@ -1386,7 +1389,7 @@ class GameView @JvmOverloads constructor(
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
             if (e.stunT <= 0f && !p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
-                p.takeDamage(e.damage)
+                p.takeDamage(e.damage * (1f - p.defesaH))
                 snd("player_hurt", 1f, vary())
                 e.lastHit = now
                 shake = 0.3f
