@@ -332,6 +332,7 @@ object HeroCreator {
         tvCorpo.textSize = 12f
         tvCorpo.setPadding(0, dp(2f), 0, dp(2f))
         painel.addView(tvCorpo)
+        linhaOpcoes("Busto (corpo feminino)", listOf("Pequeno", "Médio", "Grande"), { ed.busto }, { ed.busto = it })
         atualizadores.add { tvCorpo.text = "Corpo: " + Roupas.tipoCorpo(ed.raca, ed.sexo == 1) }
         linhaCores("Pele", PELES, { ed.skin }, { ed.skin = it })
         linhaCores("Cabelo e barba", CABELOS, { ed.hair }, { ed.hair = it })
@@ -342,7 +343,7 @@ object HeroCreator {
         linhaOpcoes("Pintura", listOf("Nenhuma", "Listras de guerra", "Máscara", "Lágrima dourada", "Tigre"), { ed.pintura }, { ed.pintura = it })
         linhaOpcoes("Acessório", listOf("Nenhum", "Tapa-olho", "Brincos", "Aro na sobrancelha", "Aro no nariz", "Óculos", "Monóculo"), { ed.acess }, { ed.acess = it })
         painel.addView(titulo("Cabelo e barba"))
-        linhaOpcoes("Cabelo", listOf("Padrão", "Careca", "Curto", "Longo", "Moicano", "Rabo de cavalo", "Coque", "Trança", "Espetado", "Franja"), { ed.cabelo }, { ed.cabelo = it })
+        linhaOpcoes("Cabelo", listOf("Padrão", "Careca", "Curto", "Longo", "Moicano", "Rabo de cavalo", "Coque", "Trança", "Espetado", "Franja", "Ondulado", "Cacheado", "Chanel", "Duas marias-chiquinhas", "Topete (pompadour)", "Rabo de samurai", "Raspado dos lados", "Black power", "Dreadlocks", "Trança lateral", "Coque duplo", "Franja reta e longo", "Meia-cauda", "Cabelo ao vento"), { ed.cabelo }, { ed.cabelo = it })
         linhaOpcoes("Barba", listOf("Padrão", "Sem barba", "Curta", "Cavanhaque", "Bigode"), { ed.barba }, { ed.barba = it })
         painel.addView(titulo("Roupas e armadura"))
         val nomeElmo = when (classe) {

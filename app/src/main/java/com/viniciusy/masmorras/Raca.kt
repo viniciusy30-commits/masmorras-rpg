@@ -92,6 +92,7 @@ class HeroiPerfil(val classe: Classe) {
     var peito: Int = 0
     var pernas: Int = 0
     var capa: Int = 0
+    var busto: Int = 1     // 0 pequeno, 1 médio, 2 grande (corpo feminino)
 
     fun nota(a: Atrib): Int = notas[a.ordinal]
     fun total(a: Atrib): Int = notas[a.ordinal] + raca.bonusDe(a)
@@ -133,6 +134,7 @@ class HeroiPerfil(val classe: Classe) {
         p.peito = peito
         p.pernas = pernas
         p.capa = capa
+        p.busto = busto
         return p
     }
 
@@ -157,6 +159,7 @@ class HeroiPerfil(val classe: Classe) {
         peito = o.peito
         pernas = o.pernas
         capa = o.capa
+        busto = o.busto
     }
 
     // ── conta final: tudo e relativo ao herói padrão da classe, então o padrão dá os mesmos números de antes ──
@@ -225,7 +228,7 @@ class HeroiPerfil(val classe: Classe) {
         get() = (1.6f + 0.05f * d(Atrib.CAR, ref)).coerceIn(1.3f, 2.4f)
 
     companion object {
-        const val N_CABELO = 10
+        const val N_CABELO = 24
         const val N_BARBA = 5
         const val N_TOPO = 5
         private val padraoCache = HashMap<Classe, HeroiPerfil>()

@@ -210,36 +210,17 @@ object Roupas {
 
     /** Chamado no espaço do corpo (quadril), logo no começo do torso. */
     fun abdomen(g: HeroGfx, c: Classe) {
+        val d = dim(c)
+        if (HeroLook.fem) quadris(g, c, d)
         val k = HeroLook.peito
         if (k <= 0) return
-        val d = dim(c)
         if (d.ahx <= 0f) return
         val t = traje(c, k)
         val base = cor(t, t.base)
         g.cube(0f, d.ay, 0f, d.ahx + 0.12f, d.ahy + 0.05f, d.ahz + 0.12f, base)
         val dz = (d.azF - d.ahz) / 2f
         if (dz > 0.05f) g.cube(0f, d.ay, d.ahz + dz, d.ahx - 0.2f, d.ahy - 0.2f, dz, base)
-        val z = d.azF + 0.05f
-        when (t.estilo) {
-            1 -> g.cube(0f, d.ay, z, 0.35f, d.ahy - 0.4f, 0.06f, cor(t, t.esc))
-            2 -> {
-                g.cube(0f, d.ay - 1.0f, z, d.ahx - 0.3f, 0.35f, 0.07f, cor(t, t.esc))
-                g.cube(0f, d.ay - 1.0f, z + 0.06f, 0.6f, 0.5f, 0.06f, ouro(t))
-            }
-            3 -> for (i in 0..2) g.cube(0f, d.ay - 1.4f + i * 1.4f, z, d.ahx - 0.3f, 0.12f, 0.06f, cor(t, if (i % 2 == 0) t.esc else t.luz))
-            4 -> {
-                for (i in 0..2) g.cube(0f, d.ay - 1.4f + i * 1.4f, z, d.ahx - 0.3f, 0.5f, 0.07f, cor(t, if (i == 1) t.luz else t.base))
-                g.cube(0f, d.ay - 0.2f, z + 0.07f, d.ahx - 0.3f, 0.1f, 0.05f, ouro(t))
-            }
-            5 -> {
-                g.cube(0f, d.ay - 1.2f, z, d.ahx - 0.2f, 0.4f, 0.07f, ouro(t))
-                g.cube(0f, d.ay, z, 0.4f, d.ahy - 0.4f, 0.06f, ouroD(t))
-            }
-            6 -> {
-                g.cube(0f, d.ay - 1.8f, z, d.ahx - 0.1f, 0.5f, 0.08f, cor(t, t.luz))
-                g.cube(0f, d.ay - 0.6f, z, d.ahx - 0.4f, 0.3f, 0.06f, cor(t, t.esc))
-            }
-        }
+        abdomenUnico(g, c, k, d, t)
     }
 
     // ───────────── peito ─────────────
@@ -257,7 +238,7 @@ object Roupas {
     fun peito(g: HeroGfx, c: Classe) {
         val k = HeroLook.peito
         val d = dim(c)
-        if (k > 0) vestirPeito(g, d, traje(c, k))
+        if (k > 0) vestirPeito(g, c, k, d, traje(c, k))
         if (HeroLook.fem) busto(g, c, d, k)
     }
 
@@ -272,82 +253,596 @@ object Roupas {
             col = peitoOriginal(c)
             colL = mul(col, 1.12f)
         }
-        val zBase = if (k > 0) d.zF else d.hz
-        val bx = d.hx * 0.36f
-        val bw = d.hx * 0.27f
+        val colD = mul(col, 0.74f)
+        // 0 = pequeno, 1 = médio, 2 = grande: cada seio é uma cúpula de camadas que afinam para a frente
+        val s = when (HeroLook.busto) { 0 -> 0.82f; 2 -> 1.32f; else -> 1.06f }
+        val zb = if (k > 0) d.zF + 0.05f else d.zF - 0.3f
+        val bx = d.hx * 0.34f
+        val r = 1.75f * s
+        val h = 1.6f * s
+        val by = d.cy + 0.55f - (s - 1f) * 0.5f
         for (i in 0..1) {
             val sd = if (i == 0) 1f else -1f
-            g.cube(sd * bx, d.cy + 0.9f, zBase + 0.15f, bw, 1.35f, 0.85f, col)
-            g.cube(sd * bx, d.cy + 1.0f, zBase + 0.95f, bw * 0.65f, 0.95f, 0.2f, colL)
+            val x = sd * bx
+            g.cube(x, by, zb + 0.55f * s, r, h, 0.6f * s, col)
+            g.cube(x, by + 0.05f, zb + 1.05f * s, r * 0.86f, h * 0.88f, 0.4f * s, col)
+            g.cube(x - sd * 0.1f * s, by + 0.1f, zb + 1.45f * s, r * 0.66f, h * 0.7f, 0.35f * s, colL)
+            g.cube(x - sd * 0.15f * s, by + 0.12f, zb + 1.8f * s, r * 0.4f, h * 0.45f, 0.25f * s, colL)
+            g.cube(x - sd * 0.2f * s, by + 0.05f, zb + 2.0f * s, r * 0.15f, h * 0.17f, 0.15f * s, mul(col, 0.62f))
+            g.cube(x, by - h - 0.1f, zb + 0.9f * s, r * 0.9f, 0.16f, 0.5f * s, colD)
+            g.cube(x + sd * (r + 0.1f), by, zb + 0.4f * s, 0.12f, h * 0.8f, 0.4f * s, colD)
         }
-        g.cube(0f, d.cy + 1.0f, zBase + 0.4f, 0.18f, 1.1f, 0.5f, mul(col, 0.7f))
+        g.cube(0f, by - 0.1f, zb + 0.5f * s, 0.2f * s, h * 0.9f, 0.45f * s, colD)
+        // faixa sob o busto, para parecer um corpo e não duas peças coladas
+        g.cube(0f, d.cy - 0.9f, d.zF - 0.1f, d.hx * 0.62f, 0.5f, 0.15f, mul(col, 0.9f))
     }
 
-    private fun vestirPeito(g: HeroGfx, d: D, t: Traje) {
-        val base = cor(t, t.base)
-        g.cube(0f, d.cy, 0f, d.hx + 0.12f, d.hy + 0.05f, d.hz + 0.12f, base)
-        val dz = (d.zF - d.hz) / 2f
-        if (dz > 0.05f) g.cube(0f, d.cy, d.hz + dz, d.hx - 0.2f, d.hy - 0.2f, dz, base)
-        val z = d.zF + 0.05f
+    private fun calcaOriginal(c: Classe): Int = when (c) {
+        Classe.GUERREIRO -> HeroLook.tecido(0xFF4A3F36.toInt())
+        Classe.BARBARO -> HeroLook.tecido(0xFF5A4630.toInt())
+        Classe.MAGO -> HeroLook.tecido(0xFF2E3F7A.toInt())
+        Classe.ARQUEIRO -> HeroLook.tecido(0xFF4A5A3A.toInt())
+        Classe.NINJA -> HeroLook.tecido(0xFF1B1A24.toInt())
+    }
+
+    /** Quadril feminino: curva de cubos que alarga logo abaixo da cintura (espaço do quadril, depois do cintura()). */
+    private fun quadris(g: HeroGfx, c: Classe, d: D) {
+        val kp = HeroLook.pernas
+        val col = if (kp > 0) cor(traje(c, kp), traje(c, kp).base) else calcaOriginal(c)
+        val colD = mul(col, 0.82f)
+        val ax = if (d.ahx > 0f) d.ahx else d.hx * 0.9f
+        for (i in 0..1) {
+            val sd = if (i == 0) 1f else -1f
+            g.cube(sd * (ax * 0.55f), -0.5f, 0f, ax * 0.5f, 2.4f, d.ahz + 0.5f, col)
+            g.cube(sd * (ax * 0.85f), -1.2f, 0f, ax * 0.22f, 1.8f, d.ahz + 0.7f, colD)
+            g.cube(sd * (ax * 0.55f), -0.7f, d.ahz + 0.5f, ax * 0.46f, 1.9f, 0.4f, col)
+            g.cube(sd * (ax * 0.55f), -0.7f, -(d.ahz + 0.5f), ax * 0.46f, 1.9f, 0.4f, colD)
+        }
+        g.cube(0f, 1.4f, 0f, ax * 0.55f, 0.8f, d.ahz + 0.15f, mul(col, 0.92f))
+    }
+
+    private fun vestirPeito(g: HeroGfx, c: Classe, k: Int, d: D, t: Traje) {
+        val B = cor(t, t.base)
+        val L = cor(t, t.luz)
+        val E = cor(t, t.esc)
+        val O = ouro(t)
+        val OD = ouroD(t)
+        val cy = d.cy
         val top = d.cy + d.hy
+        val bot = d.cy - d.hy
         val w = d.hx - 0.3f
-        val esc = cor(t, t.esc)
-        val luz = cor(t, t.luz)
-        when (t.estilo) {
-            1 -> { // linho: gola em V, cordões e barra
-                g.cube(0f, top - 1.2f, z, 1.2f, 1.2f, 0.07f, pele())
-                g.cube(0f, top - 1.3f, z + 0.05f, 0.3f, 2.6f, 0.06f, esc)
-                for (i in 0..2) g.cube(0f, top - 1.0f - i * 0.9f, z + 0.1f, 0.9f, 0.1f, 0.05f, ouro(t))
-                g.cube(0f, d.cy - d.hy + 1.0f, z, w, 0.35f, 0.07f, esc)
-                g.cube(0f, top - 0.2f, 0f, d.hx - 0.4f, 0.3f, d.hz, esc)
-            }
-            2 -> { // couro: costuras, tiras e rebites
-                g.cube(0f, d.cy, z, 0.25f, d.hy - 0.5f, 0.06f, esc)
-                g.cube(-w * 0.55f, d.cy + 0.5f, z, 0.12f, d.hy - 1.0f, 0.05f, luz)
-                g.cube(w * 0.55f, d.cy + 0.5f, z, 0.12f, d.hy - 1.0f, 0.05f, luz)
-                for (i in 0..2) {
-                    g.cube(0f, d.cy - 2.5f + i * 2.2f, z + 0.05f, w * 0.8f, 0.3f, 0.06f, esc)
-                    g.cube(w * 0.8f, d.cy - 2.5f + i * 2.2f, z + 0.1f, 0.22f, 0.22f, 0.05f, ouro(t))
-                    g.cube(-w * 0.8f, d.cy - 2.5f + i * 2.2f, z + 0.1f, 0.22f, 0.22f, 0.05f, ouro(t))
+        val z = d.zF + 0.05f
+        // tronco base
+        g.cube(0f, cy, 0f, d.hx + 0.12f, d.hy + 0.05f, d.hz + 0.12f, B)
+        val dz = (d.zF - d.hz) / 2f
+        if (dz > 0.05f) g.cube(0f, cy, d.hz + dz, d.hx - 0.2f, d.hy - 0.2f, dz, B)
+        // costas: um detalhe discreto para a roupa não ser lisa atrás
+        g.cube(0f, cy + 0.4f, -(d.hz + 0.2f), d.hx - 0.6f, d.hy - 1.0f, 0.1f, mul(B, 0.86f))
+        g.cube(0f, top - 0.3f, 0f, d.hx - 0.2f, 0.35f, d.hz + 0.15f, E)
+        fun q(x: Float, y: Float, zz: Float, hx: Float, hy: Float, hz: Float, col: Int, em: Boolean = false) = g.cube(x, y, zz, hx, hy, hz, col, em)
+        val sds = floatArrayOf(-1f, 1f)
+        when (c) {
+            Classe.GUERREIRO -> when (k) {
+                1 -> { // Cavaleiro de aço: couraça de placas com quilha, faldas e gorjal
+                    q(0f, cy + 0.4f, z + 0.05f, w * 0.64f, d.hy - 0.9f, 0.2f, L)
+                    q(0f, cy + 0.4f, z + 0.25f, 0.28f, d.hy - 1.0f, 0.1f, E)
+                    for (s in sds) {
+                        q(s * w * 0.5f, cy + 1.5f, z + 0.1f, w * 0.3f, 1.5f, 0.16f, L)
+                        q(s * w * 0.5f, cy + 1.5f, z + 0.28f, w * 0.26f, 0.12f, 0.05f, OD)
+                        q(s * (d.hx + 0.04f), cy, 0f, 0.18f, d.hy - 0.5f, d.hz - 0.4f, E)
+                        q(s * (w - 0.35f), cy + 2.7f, z + 0.14f, 0.2f, 0.2f, 0.06f, OD)
+                        q(s * (w - 0.35f), cy - 1.2f, z + 0.14f, 0.2f, 0.2f, 0.06f, OD)
+                    }
+                    for (i in 0..2) q(0f, bot + 0.9f + i * 0.95f, z + 0.04f, w * (0.97f - i * 0.07f), 0.4f, 0.13f, if (i % 2 == 0) B else L)
+                    q(0f, top - 0.6f, z + 0.1f, w * 0.9f, 0.42f, 0.14f, O)
+                    q(0f, cy + 1.2f, z + 0.34f, 0.2f, 1.1f, 0.06f, O)
+                    q(0f, cy + 1.7f, z + 0.34f, 0.8f, 0.2f, 0.06f, O)
                 }
-                g.cube(0f, top - 0.3f, 0f, d.hx - 0.3f, 0.35f, d.hz + 0.15f, esc)
-            }
-            3 -> { // malha: fileiras de anéis e gola
-                var y = d.cy - d.hy + 0.8f
-                var i = 0
-                while (y < top - 0.4f) {
-                    g.cube(0f, y, z, w, 0.14f, 0.06f, if (i % 2 == 0) esc else luz)
-                    y += 0.9f
-                    i++
+                2 -> { // Gladiador: couraça muscular de couro, arreio cruzado e leão dourado
+                    for (s in sds) {
+                        q(s * w * 0.42f, cy + 1.5f, z + 0.15f, w * 0.38f, 1.7f, 0.3f, L)
+                        q(s * w * 0.42f, cy + 1.0f, z + 0.4f, w * 0.22f, 0.9f, 0.1f, mul(L, 1.12f))
+                        for (r in 0..2) q(s * w * 0.3f, cy - 0.4f - r * 1.15f, z + 0.1f, w * 0.26f, 0.45f, 0.2f, if (r % 2 == 0) L else B)
+                    }
+                    q(0f, cy - 1.2f, z + 0.06f, 0.14f, 2.8f, 0.08f, E)
+                    for (s in sds) {
+                        push(g, 0f, cy + 0.6f, z + 0.5f, s * 0.78f) {
+                            q(0f, 0f, 0f, 0.5f, d.hy + 0.8f, 0.07f, E)
+                            for (r in -2..2) q(0f, r * 1.7f, 0.07f, 0.2f, 0.2f, 0.06f, O)
+                        }
+                    }
+                    q(0f, cy + 0.6f, z + 0.65f, 1.15f, 1.15f, 0.1f, O)
+                    q(0f, cy + 0.6f, z + 0.78f, 0.7f, 0.7f, 0.08f, OD)
+                    q(0f, cy + 0.5f, z + 0.86f, 0.28f, 0.28f, 0.06f, O, true)
+                    q(0f, top - 0.9f, z + 0.1f, w * 0.85f, 0.35f, 0.1f, E)
                 }
-                g.cube(0f, top - 0.3f, 0f, d.hx - 0.3f, 0.4f, d.hz + 0.15f, esc)
-                g.cube(0f, d.cy - d.hy + 0.4f, z, w + 0.1f, 0.4f, 0.08f, ouroD(t))
+                3 -> { // Guarda de malha: sobreveste azul com cruz branca e malha nas laterais
+                    var y = bot + 0.8f
+                    var i = 0
+                    while (y < top - 0.4f) {
+                        for (s in sds) q(s * (w * 0.8f), y, z, w * 0.2f, 0.14f, 0.06f, if (i % 2 == 0) E else L)
+                        y += 0.8f; i++
+                    }
+                    q(0f, cy - 0.3f, z + 0.12f, w * 0.52f, d.hy - 0.9f, 0.1f, 0xFF2F4F9F.toInt())
+                    q(0f, cy - 0.3f, z + 0.22f, 0.4f, d.hy - 1.5f, 0.06f, 0xFFF2F2F2.toInt())
+                    q(0f, cy + 0.7f, z + 0.22f, 1.7f, 0.4f, 0.06f, 0xFFF2F2F2.toInt())
+                    q(0f, bot + 0.9f, z + 0.2f, w * 0.55f, 0.3f, 0.08f, O)
+                    q(0f, top - 0.9f, z + 0.1f, w * 0.7f, 0.55f, 0.12f, E)
+                    for (s in sds) q(s * (w - 0.4f), top - 0.9f, z + 0.14f, 0.28f, 0.28f, 0.08f, O)
+                }
+                4 -> { // Capitão real: casaco com botões duplos, faixa e alamares dourados
+                    q(0f, cy, z + 0.02f, w, d.hy - 0.4f, 0.08f, B)
+                    for (s in sds) {
+                        q(s * w * 0.78f, cy, z + 0.06f, w * 0.18f, d.hy - 0.5f, 0.07f, O)
+                        for (r in 0..3) {
+                            q(s * 0.9f, bot + 1.3f + r * 1.9f, z + 0.12f, 0.28f, 0.28f, 0.08f, O)
+                            q(s * 0.9f, bot + 1.3f + r * 1.9f, z + 0.2f, 0.12f, 0.12f, 0.05f, OD)
+                        }
+                        for (r in 0..2) q(s * (w - 0.3f), top - 1.2f - r * 0.65f, z + 0.1f, 0.38f, 0.1f, 0.06f, O)
+                        q(s * (w - 0.1f), top - 2.6f, z + 0.1f, 0.12f, 1.5f, 0.05f, O)
+                    }
+                    push(g, 0f, cy + 0.3f, z + 0.14f, 0.62f) {
+                        q(0f, 0f, 0f, 0.55f, d.hy + 1.0f, 0.06f, E)
+                        q(0f, 0f, 0.05f, 0.14f, d.hy + 1.0f, 0.05f, O)
+                    }
+                    q(2.3f, cy + 2.2f, z + 0.14f, 0.55f, 0.55f, 0.07f, O)
+                    q(2.3f, cy + 2.2f, z + 0.2f, 0.3f, 0.3f, 0.06f, 0xFFB5242E.toInt(), true)
+                    q(0f, top - 0.5f, z + 0.12f, w * 0.7f, 0.5f, 0.14f, O)
+                }
+                else -> { // Mercenário de peles: colete de pele, cintos cruzados e dentes
+                    q(0f, top - 0.3f, 0f, d.hx + 0.3f, 0.75f, d.hz + 0.35f, L)
+                    for (i in -3..3) q(i * (w / 3.2f), top - 0.7f, d.hz + 0.38f, 0.62f, 0.95f, 0.3f, if (i % 2 == 0) L else E)
+                    for (s in sds) {
+                        q(s * w * 0.6f, cy + 1.0f, z + 0.1f, w * 0.34f, d.hy - 1.6f, 0.14f, mul(L, 0.9f))
+                        for (r in 0..3) q(s * w * 0.6f, cy + 2.8f - r * 1.7f, z + 0.28f, w * 0.3f, 0.3f, 0.1f, if (r % 2 == 0) L else B)
+                    }
+                    q(0f, cy - 0.5f, z + 0.1f, 0.2f, d.hy - 1.0f, 0.06f, E)
+                    for (r in 0..2) q(0f, cy + 1.6f - r * 1.7f, z + 0.15f, 0.55f, 0.18f, 0.06f, OD)
+                    push(g, 0f, cy + 0.4f, z + 0.3f, 0.7f) { q(0f, 0f, 0f, 0.6f, d.hy + 0.7f, 0.08f, E) }
+                    for (i in -2..2) q(i * 0.7f, top - 2.0f - kotlin.math.abs(i) * 0.25f, z + 0.35f, 0.2f, 0.55f, 0.1f, 0xFFF1EAD6.toInt())
+                    q(0f, bot + 0.9f, z + 0.14f, w + 0.1f, 0.5f, 0.14f, L)
+                }
             }
-            4 -> { // placas: peitoral polido com friso
-                g.cube(0f, d.cy + 0.5f, z, w, d.hy - 1.0f, 0.08f, luz)
-                g.cube(0f, d.cy + 0.5f, z + 0.08f, 0.25f, d.hy - 1.0f, 0.06f, esc)
-                g.cube(0f, d.cy - d.hy + 1.0f, z + 0.05f, w, 0.3f, 0.08f, ouro(t))
-                g.cube(0f, top - 0.9f, z + 0.05f, w, 0.25f, 0.08f, ouro(t))
-                g.cube(-w + 0.2f, d.cy + 0.5f, z + 0.05f, 0.2f, d.hy - 1.0f, 0.08f, ouroD(t))
-                g.cube(w - 0.2f, d.cy + 0.5f, z + 0.05f, 0.2f, d.hy - 1.0f, 0.08f, ouroD(t))
-                g.cube(0f, d.cy + 1.2f, z + 0.14f, 0.7f, 0.7f, 0.06f, ouro(t), true)
-                g.cube(0f, top - 0.2f, 0f, d.hx - 0.3f, 0.35f, d.hz + 0.15f, esc)
+            Classe.BARBARO -> when (k) {
+                1 -> { // Peles de urso: manto felpudo, tufos e colar de garras
+                    for (i in -4..4) {
+                        q(i * (w / 4.2f), top - 0.6f, d.hz + 0.4f, 0.8f, 1.1f, 0.38f, if (i % 2 == 0) L else B)
+                        q(i * (w / 4.2f) + 0.4f, cy + 1.2f - kotlin.math.abs(i) * 0.3f, z + 0.12f, 0.7f, 1.5f, 0.2f, if (i % 2 == 0) B else E)
+                        q(i * (w / 4.2f), bot + 1.0f, z + 0.15f, 0.8f, 0.8f, 0.22f, if (i % 2 == 0) E else B)
+                    }
+                    q(0f, top - 0.2f, 0f, d.hx + 0.6f, 0.9f, d.hz + 0.55f, L)
+                    for (i in -2..2) q(i * 0.85f, cy + 3.3f - kotlin.math.abs(i) * 0.5f, z + 0.5f, 0.22f, 0.8f, 0.15f, 0xFFF3EBD2.toInt())
+                    q(0f, cy + 4.1f, z + 0.4f, 1.9f, 0.14f, 0.1f, OD)
+                    q(0f, cy - 0.4f, z + 0.12f, 0.35f, d.hy - 1.4f, 0.1f, E)
+                }
+                2 -> { // Couro tribal: tiras com contas de osso e pintura de guerra
+                    for (s in sds) {
+                        push(g, 0f, cy + 0.4f, z + 0.1f, s * 0.7f) {
+                            q(0f, 0f, 0f, 0.85f, d.hy + 0.9f, 0.1f, B)
+                            q(0f, 0f, 0.08f, 0.3f, d.hy + 0.9f, 0.05f, L)
+                            for (r in -2..2) q(0f, r * 1.8f, 0.14f, 0.38f, 0.38f, 0.08f, 0xFFE8DCC0.toInt())
+                        }
+                    }
+                    for (r in 0..2) q(0f, cy + 3.0f - r * 3.0f, z + 0.18f, 0.7f, 0.7f, 0.1f, if (r == 1) O else OD)
+                    q(0f, cy + 0.2f, z + 0.28f, 1.1f, 1.1f, 0.1f, E)
+                    q(0f, cy + 0.2f, z + 0.38f, 0.5f, 0.5f, 0.08f, 0xFFE8DCC0.toInt())
+                    for (s in sds) for (r in 0..2) q(s * (w - 0.5f - r * 0.3f), cy - 0.5f + r * 1.3f, z + 0.06f, 0.14f, 0.5f, 0.05f, 0xFFC9302C.toInt())
+                    q(0f, top - 0.9f, z + 0.1f, w * 0.75f, 0.3f, 0.1f, E)
+                    for (i in -3..3) q(i * 0.8f, top - 1.5f - kotlin.math.abs(i) * 0.15f, z + 0.18f, 0.2f, 0.5f, 0.08f, 0xFFE8DCC0.toInt())
+                }
+                3 -> { // Saqueador de ferro: placas soldadas, correntes e caveira de fivela
+                    q(0f, cy + 1.4f, z + 0.08f, w * 0.7f, 1.8f, 0.2f, L)
+                    q(-w * 0.35f, cy - 1.4f, z + 0.1f, w * 0.34f, 1.6f, 0.18f, B)
+                    q(w * 0.38f, cy - 1.8f, z + 0.12f, w * 0.3f, 1.3f, 0.2f, L)
+                    q(0f, cy - 3.6f, z + 0.12f, w * 0.8f, 0.6f, 0.16f, E)
+                    for (s in sds) {
+                        for (r in 0..2) q(s * (w - 0.4f), cy + 3.0f - r * 2.3f, z + 0.22f, 0.26f, 0.26f, 0.1f, OD)
+                        for (r in 0..4) q(s * (0.9f + r * 0.8f), cy + 3.6f - r * 0.5f, z + 0.3f, 0.3f, 0.2f, 0.06f, E)
+                        q(s * (w * 0.5f), top - 0.3f, z + 0.2f, 0.6f, 0.8f, 0.4f, L)
+                        q(s * (w * 0.5f), top + 0.3f, z + 0.25f, 0.18f, 0.7f, 0.18f, L)
+                    }
+                    q(0f, cy + 0.2f, z + 0.34f, 1.1f, 1.0f, 0.1f, 0xFFE8DCC0.toInt())
+                    q(-0.4f, cy + 0.3f, z + 0.44f, 0.25f, 0.25f, 0.05f, E)
+                    q(0.4f, cy + 0.3f, z + 0.44f, 0.25f, 0.25f, 0.05f, E)
+                    q(0f, top - 0.5f, z + 0.1f, w * 0.85f, 0.45f, 0.14f, E)
+                }
+                4 -> { // Armadura de ossos: caixa torácica, coluna e caveira
+                    q(0f, cy, z + 0.04f, 0.38f, d.hy - 0.3f, 0.12f, L)
+                    for (r in 0..4) {
+                        val yy = top - 1.5f - r * 1.7f
+                        val len = w * (0.92f - r * 0.07f)
+                        for (s in sds) {
+                            q(s * len * 0.5f, yy, z + 0.12f, len * 0.5f, 0.3f, 0.14f, if (r % 2 == 0) L else B)
+                            q(s * (len - 0.3f), yy - 0.5f, z + 0.1f, 0.3f, 0.5f, 0.12f, B)
+                        }
+                    }
+                    q(0f, top - 0.6f, z + 0.18f, 1.5f, 1.0f, 0.22f, L)
+                    q(-0.55f, top - 0.5f, z + 0.42f, 0.3f, 0.3f, 0.06f, 0xFF2B1B10.toInt())
+                    q(0.55f, top - 0.5f, z + 0.42f, 0.3f, 0.3f, 0.06f, 0xFF2B1B10.toInt())
+                    q(0f, top - 1.35f, z + 0.3f, 0.9f, 0.3f, 0.12f, B)
+                    for (i in -2..2) q(i * 0.45f, top - 1.65f, z + 0.3f, 0.14f, 0.3f, 0.1f, L)
+                    q(0f, bot + 0.6f, z + 0.1f, w, 0.5f, 0.14f, E)
+                    for (s in sds) q(s * (w + 0.2f), top - 0.4f, 0f, 0.4f, 0.9f, d.hz + 0.2f, L)
+                }
+                else -> { // Guerreiro do clã: tartã xadrez, broche do clã e tiras de couro
+                    val rd = 0xFFB52B2B.toInt()
+                    val vd = 0xFF1F5A2E.toInt()
+                    q(0f, cy, z + 0.03f, w, d.hy - 0.4f, 0.07f, B)
+                    for (i in -3..3) q(i * (w / 3.4f), cy, z + 0.1f, 0.3f, d.hy - 0.4f, 0.05f, if (i % 2 == 0) vd else rd)
+                    for (r in 0..4) q(0f, bot + 0.9f + r * 1.8f, z + 0.15f, w, 0.25f, 0.05f, if (r % 2 == 0) E else vd)
+                    for (s in sds) {
+                        push(g, s * 0.6f, top - 0.5f, z + 0.18f, s * 0.9f) {
+                            q(0f, -3.4f, 0f, 1.0f, 4.6f, 0.07f, rd)
+                            for (r in 0..2) q(0f, -1.0f - r * 2.0f, 0.06f, 1.0f, 0.15f, 0.05f, vd)
+                        }
+                    }
+                    q(-w * 0.62f, top - 1.1f, z + 0.3f, 0.95f, 0.95f, 0.1f, O)
+                    q(-w * 0.62f, top - 1.1f, z + 0.4f, 0.55f, 0.55f, 0.08f, 0xFF5A1B1B.toInt())
+                    q(0f, bot + 0.8f, z + 0.2f, w, 0.45f, 0.12f, mul(B, 0.7f))
+                    q(0f, bot + 0.8f, z + 0.32f, 0.8f, 0.38f, 0.08f, O)
+                }
             }
-            5 -> { // gala: bordas e colar, emblema
-                g.cube(-w + 0.3f, d.cy, z, 0.5f, d.hy - 0.3f, 0.06f, ouro(t))
-                g.cube(w - 0.3f, d.cy, z, 0.5f, d.hy - 0.3f, 0.06f, ouro(t))
-                g.cube(0f, top - 0.6f, z, w, 0.6f, 0.08f, ouro(t))
-                g.cube(0f, top - 2.0f, z + 0.05f, 1.3f, 0.3f, 0.07f, ouroD(t))
-                g.cube(0f, d.cy + 0.2f, z + 0.05f, 1.2f, 1.2f, 0.07f, ouro(t))
-                g.cube(0f, d.cy + 0.2f, z + 0.12f, 0.6f, 0.6f, 0.06f, esc)
-                g.cube(0f, d.cy - d.hy + 0.8f, z, w, 0.4f, 0.07f, ouro(t))
+            Classe.MAGO -> when (k) {
+                1 -> { // Arquimago: bordado de constelações, colar largo dourado e gema
+                    q(0f, top - 0.8f, z, w, 0.9f, 0.1f, O)
+                    for (s in sds) q(s * (w - 0.35f), cy - 0.6f, z, 0.45f, d.hy - 1.3f, 0.07f, O)
+                    for (i in 0..8) {
+                        val px = (((i * 37) % 11) - 5) * 0.8f
+                        val py = bot + 1.0f + ((i * 53) % 7) * 0.95f
+                        q(px, py, z + 0.1f, 0.16f, 0.16f, 0.06f, 0xFFFFF2B0.toInt(), true)
+                    }
+                    q(-1.6f, cy + 0.6f, z + 0.1f, 0.12f, 1.0f, 0.04f, OD)
+                    q(1.2f, cy - 0.5f, z + 0.1f, 0.12f, 1.2f, 0.04f, OD)
+                    q(0f, top - 1.6f, z + 0.14f, 0.9f, 0.9f, 0.1f, O)
+                    q(0f, top - 1.6f, z + 0.24f, 0.5f, 0.5f, 0.08f, 0xFF8A5BFF.toInt(), true)
+                    q(0f, cy - 1.0f, z + 0.12f, 0.12f, 3.4f, 0.05f, O)
+                    q(0f, cy - 4.2f, z + 0.14f, 0.35f, 0.35f, 0.07f, O)
+                }
+                2 -> { // Vestes do sábio: gola cruzada, faixa azul com nó e runas
+                    for (s in sds) {
+                        push(g, s * 0.8f, top - 0.5f, z + 0.08f, s * 0.55f) {
+                            q(0f, -3.6f, 0f, 1.0f, 4.8f, 0.08f, L)
+                            q(s * 0.9f, -3.6f, 0.05f, 0.14f, 4.8f, 0.05f, E)
+                        }
+                    }
+                    q(0f, top - 1.4f, z + 0.1f, 1.0f, 1.3f, 0.07f, pele())
+                    q(0f, bot + 1.7f, z + 0.14f, w + 0.15f, 1.0f, 0.12f, E)
+                    q(w * 0.35f, bot + 1.7f, z + 0.28f, 0.7f, 0.7f, 0.1f, E)
+                    q(w * 0.35f + 0.3f, bot + 0.3f, z + 0.24f, 0.28f, 1.0f, 0.07f, E)
+                    for (r in 0..3) q(-w * 0.55f, cy - 1.0f + r * 1.3f, z + 0.1f, 0.22f, 0.22f, 0.05f, E, true)
+                    q(0f, top - 0.4f, z + 0.1f, w * 0.7f, 0.3f, 0.1f, E)
+                }
+                3 -> { // Feiticeiro das sombras: casaco com selo arcano brilhante e gola de espinhos
+                    val gl = 0xFF9A5BFF.toInt()
+                    for (a in 0..11) {
+                        val ang = a * 0.5236f
+                        q(kotlin.math.cos(ang) * 2.0f, cy + 0.4f + kotlin.math.sin(ang) * 2.0f, z + 0.1f, 0.2f, 0.2f, 0.05f, gl, true)
+                    }
+                    q(0f, cy + 0.4f, z + 0.12f, 0.9f, 0.18f, 0.05f, gl, true)
+                    q(0f, cy + 0.4f, z + 0.12f, 0.18f, 0.9f, 0.05f, gl, true)
+                    for (s in sds) {
+                        q(s * w * 0.78f, cy, z + 0.06f, 0.25f, d.hy - 0.6f, 0.07f, L)
+                        for (r in 0..3) q(s * w * 0.78f, bot + 1.0f + r * 2.0f, z + 0.12f, 0.35f, 0.18f, 0.06f, OD)
+                        for (r in 0..2) q(s * (w * 0.5f + r * 0.9f), top + 0.2f + r * 0.25f, z - 0.4f, 0.3f, 0.7f, 0.2f, E)
+                    }
+                    q(0f, top - 0.8f, z + 0.1f, w * 0.8f, 0.35f, 0.1f, E)
+                    q(0f, bot + 0.8f, z + 0.1f, w, 0.35f, 0.1f, E)
+                }
+                4 -> { // Mago de fogo: línguas de chamas na barra, brasa no peito
+                    for (i in -4..4) {
+                        val h = 1.4f + ((i * 7) and 3) * 0.6f
+                        q(i * (w / 4.3f), bot + h * 0.5f + 0.4f, z + 0.1f, 0.6f, h * 0.5f, 0.08f, if (i % 2 == 0) 0xFFFF9A2A.toInt() else 0xFFFFD25A.toInt(), true)
+                        q(i * (w / 4.3f), bot + h + 0.6f, z + 0.12f, 0.3f, 0.5f, 0.06f, 0xFFFF6A1A.toInt(), true)
+                    }
+                    q(0f, cy + 1.2f, z + 0.12f, 1.2f, 1.2f, 0.1f, O)
+                    q(0f, cy + 1.2f, z + 0.22f, 0.7f, 0.7f, 0.08f, 0xFFFF5A1A.toInt(), true)
+                    q(0f, cy + 1.2f, z + 0.3f, 0.3f, 0.3f, 0.06f, 0xFFFFE08A.toInt(), true)
+                    for (s in sds) {
+                        q(s * (w - 0.4f), cy, z + 0.06f, 0.4f, d.hy - 1.0f, 0.07f, E)
+                        q(s * 2.2f, top - 0.9f, z + 0.1f, 0.14f, 0.7f, 0.06f, O)
+                    }
+                    q(0f, top - 0.6f, z + 0.1f, w * 0.7f, 0.4f, 0.12f, O)
+                }
+                else -> { // Druida do bosque: escamas de folhas, colar de casca e flor
+                    for (r in 0..4) for (i in -3..3) {
+                        val ox = if (r % 2 == 0) 0f else 0.5f
+                        q(i * (w / 3.2f) + ox, bot + 0.9f + r * 1.9f, z + 0.06f + r * 0.02f, 0.62f, 0.55f, 0.07f, if ((i + r) % 2 == 0) B else L)
+                    }
+                    q(0f, top - 0.6f, 0f, d.hx + 0.2f, 0.7f, d.hz + 0.3f, E)
+                    for (i in -3..3) q(i * 1.7f, top - 1.0f, d.hz + 0.35f, 0.5f, 0.8f, 0.14f, if (i % 2 == 0) B else L)
+                    for (s in sds) q(s * (w - 0.1f), cy, z + 0.04f, 0.14f, d.hy - 0.5f, 0.06f, 0xFF6B4A2A.toInt())
+                    q(0f, cy - 0.2f, z + 0.14f, 0.14f, d.hy - 1.0f, 0.05f, 0xFF6B4A2A.toInt())
+                    for (a in 0..4) q(kotlin.math.cos(a * 1.2566f) * 0.7f, cy + 1.6f + kotlin.math.sin(a * 1.2566f) * 0.7f, z + 0.22f, 0.4f, 0.4f, 0.06f, 0xFFF4B6D2.toInt())
+                    q(0f, cy + 1.6f, z + 0.28f, 0.3f, 0.3f, 0.06f, O)
+                }
             }
-            6 -> { // peles: gola felpuda e barra clara
-                g.cube(0f, top - 0.2f, 0f, d.hx + 0.3f, 0.7f, d.hz + 0.35f, luz)
-                for (i in -2..2) g.cube(i * (w / 2.6f), top - 0.6f, d.hz + 0.35f, 0.7f, 0.9f, 0.3f, if (i % 2 == 0) luz else esc)
-                g.cube(0f, d.cy - d.hy + 0.6f, z, w + 0.2f, 0.6f, 0.12f, luz)
-                g.cube(0f, d.cy, z, 0.18f, d.hy - 1.2f, 0.06f, esc)
-                for (i in 0..2) g.cube(0f, d.cy - 1.5f + i * 1.8f, z + 0.05f, 0.4f, 0.2f, 0.06f, ouroD(t))
+            Classe.ARQUEIRO -> when (k) {
+                1 -> { // Caçador da floresta: gibão com cadarço, tira da aljava e pena
+                    q(0f, cy, z + 0.03f, w * 0.9f, d.hy - 0.5f, 0.08f, L)
+                    for (r in 0..4) {
+                        q(0f, bot + 1.0f + r * 1.7f, z + 0.12f, 0.9f, 0.1f, 0.05f, E)
+                        q(-0.55f, bot + 1.0f + r * 1.7f, z + 0.14f, 0.12f, 0.2f, 0.05f, O)
+                        q(0.55f, bot + 1.0f + r * 1.7f, z + 0.14f, 0.12f, 0.2f, 0.05f, O)
+                    }
+                    for (s in sds) q(s * 0.3f, cy, z + 0.1f, 0.08f, d.hy - 0.6f, 0.05f, E)
+                    push(g, 0f, cy + 0.2f, z + 0.2f, -0.62f) { q(0f, 0f, 0f, 0.65f, d.hy + 1.0f, 0.07f, E) }
+                    q(w * 0.6f, cy - 1.8f, z + 0.2f, 0.9f, 0.9f, 0.2f, B)
+                    q(w * 0.6f, cy - 0.9f, z + 0.3f, 0.9f, 0.3f, 0.12f, E)
+                    q(-w * 0.55f, top - 1.0f, z + 0.2f, 0.18f, 1.2f, 0.06f, 0xFFD94B3A.toInt())
+                    q(-w * 0.55f, top - 0.2f, z + 0.2f, 0.4f, 0.5f, 0.05f, 0xFFF0F0F0.toInt())
+                }
+                2 -> { // Elfo de seda: folhas bordadas, gola assimétrica e pingente de lua
+                    for (s in sds) {
+                        push(g, s * 0.5f, top - 0.4f, z + 0.06f, s * 0.35f) { q(0f, -3.8f, 0f, 1.1f, 5.0f, 0.08f, L) }
+                        for (r in 0..3) {
+                            q(s * (w * 0.55f), bot + 1.4f + r * 2.0f, z + 0.1f, 0.5f, 0.25f, 0.05f, E)
+                            q(s * (w * 0.55f) + s * 0.4f, bot + 1.7f + r * 2.0f, z + 0.1f, 0.22f, 0.4f, 0.05f, E)
+                        }
+                    }
+                    q(0f, bot + 1.0f, z + 0.1f, w, 0.35f, 0.07f, O)
+                    q(0f, top - 1.9f, z + 0.14f, 0.12f, 0.9f, 0.05f, O)
+                    q(0f, top - 3.0f, z + 0.16f, 0.5f, 0.5f, 0.06f, 0xFFEAF2FF.toInt(), true)
+                    q(0.25f, top - 3.0f, z + 0.2f, 0.4f, 0.4f, 0.05f, B)
+                    q(0f, top - 0.4f, z + 0.1f, w * 0.7f, 0.3f, 0.1f, O)
+                }
+                3 -> { // Ladrão encapuzado: cintos cruzados, fileira de facas e gola alta
+                    for (s in sds) {
+                        push(g, 0f, cy + 0.3f, z + 0.1f, s * 0.6f) {
+                            q(0f, 0f, 0f, 0.5f, d.hy + 1.0f, 0.08f, L)
+                            for (r in -2..2) q(0f, r * 1.7f, 0.08f, 0.22f, 0.3f, 0.06f, O)
+                        }
+                    }
+                    for (r in 0..3) {
+                        q(-w * 0.55f + r * 0.5f, cy - 2.0f, z + 0.16f, 0.15f, 0.9f, 0.05f, 0xFFB8B8C8.toInt())
+                        q(-w * 0.55f + r * 0.5f, cy - 2.9f, z + 0.16f, 0.2f, 0.3f, 0.06f, E)
+                    }
+                    q(0f, bot + 0.7f, z + 0.1f, w, 0.4f, 0.1f, L)
+                    q(0f, bot + 0.7f, z + 0.18f, 0.4f, 0.3f, 0.06f, O)
+                    q(0f, top - 0.2f, 0f, d.hx + 0.1f, 0.9f, d.hz + 0.35f, E)
+                    q(0f, top + 0.4f, z - 0.4f, 3.0f, 0.5f, 0.15f, E)
+                }
+                4 -> { // Guarda élfico: placas em forma de folha com gema e filigrana
+                    for (r in 0..3) {
+                        val wv = w * (0.8f - r * 0.1f)
+                        q(0f, top - 1.7f - r * 1.9f, z + 0.1f + r * 0.02f, wv, 0.85f, 0.12f, if (r % 2 == 0) L else B)
+                        q(0f, top - 1.7f - r * 1.9f - 0.8f, z + 0.14f, wv * 0.8f, 0.1f, 0.06f, O)
+                    }
+                    for (s in sds) {
+                        q(s * (w - 0.3f), cy + 1.0f, z + 0.1f, 0.4f, 2.6f, 0.1f, E)
+                        q(s * (w - 0.3f), cy - 2.2f, z + 0.1f, 0.4f, 1.5f, 0.1f, E)
+                    }
+                    q(0f, top - 0.9f, z + 0.14f, 1.0f, 0.5f, 0.1f, O)
+                    q(0f, cy + 1.0f, z + 0.3f, 0.5f, 0.5f, 0.08f, 0xFF59E0A0.toInt(), true)
+                    q(0f, cy + 1.0f, z + 0.26f, 0.9f, 0.14f, 0.05f, O)
+                    q(0f, cy + 1.0f, z + 0.26f, 0.14f, 0.9f, 0.05f, O)
+                }
+                else -> { // Patrulheiro do inverno: casaco com gola de pele, botões de toggle e cristal de gelo
+                    q(0f, top - 0.3f, 0f, d.hx + 0.4f, 0.9f, d.hz + 0.45f, L)
+                    for (i in -3..3) q(i * (w / 3.2f), top - 0.8f, d.hz + 0.5f, 0.6f, 0.9f, 0.26f, if (i % 2 == 0) L else mul(L, 0.88f))
+                    q(0f, bot + 0.8f, z + 0.1f, w + 0.15f, 0.7f, 0.14f, L)
+                    for (s in sds) {
+                        for (r in 0..3) {
+                            q(s * 1.0f, bot + 2.0f + r * 1.7f, z + 0.1f, 0.5f, 0.2f, 0.06f, E)
+                            q(s * 0.5f, bot + 2.0f + r * 1.7f, z + 0.14f, 0.18f, 0.18f, 0.06f, 0xFFE8DCC0.toInt())
+                        }
+                        q(s * (w * 0.7f), cy + 0.2f, z + 0.06f, 0.14f, d.hy - 1.2f, 0.05f, E)
+                    }
+                    q(0f, cy + 0.2f, z + 0.1f, 0.12f, d.hy - 1.4f, 0.06f, OD)
+                    q(-w * 0.5f, top - 2.0f, z + 0.3f, 0.5f, 0.7f, 0.08f, 0xFFBFEFFF.toInt(), true)
+                    q(-w * 0.5f, top - 2.0f, z + 0.36f, 0.2f, 0.4f, 0.06f, 0xFFFFFFFF.toInt(), true)
+                }
+            }
+            Classe.NINJA -> when (k) {
+                1 -> { // Shinobi noturno: faixas cruzadas, bandoleira de kunai e emblema tomoe
+                    for (s in sds) {
+                        push(g, 0f, cy + 0.2f, z + 0.06f, s * 0.7f) {
+                            q(0f, 0f, 0f, 0.75f, d.hy + 0.9f, 0.07f, L)
+                            for (r in -2..2) q(0f, r * 1.7f, 0.06f, 0.78f, 0.1f, 0.05f, E)
+                        }
+                    }
+                    for (r in 0..3) {
+                        q(-w * 0.62f + r * 0.55f, cy - 2.2f, z + 0.14f, 0.12f, 0.95f, 0.05f, 0xFFB8B8C8.toInt())
+                        q(-w * 0.62f + r * 0.55f, cy - 3.1f, z + 0.14f, 0.18f, 0.3f, 0.06f, O)
+                    }
+                    q(0f, bot + 0.8f, z + 0.1f, w, 0.4f, 0.1f, O)
+                    q(w * 0.55f, cy + 1.2f, z + 0.2f, 0.7f, 0.7f, 0.06f, E)
+                    q(w * 0.55f, cy + 1.2f, z + 0.26f, 0.35f, 0.35f, 0.05f, O, true)
+                }
+                2 -> { // Assassino carmesim: quimono cruzado, obi preto e dragão bordado
+                    for (s in sds) {
+                        push(g, s * 0.7f, top - 0.4f, z + 0.08f, s * 0.5f) {
+                            q(0f, -3.7f, 0f, 1.0f, 4.9f, 0.08f, L)
+                            q(s * 0.95f, -3.7f, 0.05f, 0.14f, 4.9f, 0.05f, O)
+                        }
+                    }
+                    q(0f, top - 1.3f, z + 0.1f, 0.9f, 1.2f, 0.06f, 0xFF15151C.toInt())
+                    q(0f, bot + 1.5f, z + 0.14f, w + 0.15f, 1.1f, 0.12f, 0xFF15151C.toInt())
+                    q(0f, bot + 1.5f, z + 0.26f, 0.9f, 0.9f, 0.08f, O)
+                    for (r in 0..4) q(w * 0.5f + (r % 2) * 0.5f, cy - 0.8f + r * 1.0f, z + 0.1f, 0.4f, 0.2f, 0.05f, O)
+                    for (s in sds) q(s * (w - 0.2f), cy + 0.5f, z + 0.1f, 0.12f, 2.0f, 0.05f, O)
+                }
+                3 -> { // Ninja da neve: jaqueta acolchoada em grade, gola de pelo e bolsa de shuriken
+                    for (r in 0..4) for (i in -3..3) q(i * (w / 3.4f), bot + 1.0f + r * 1.8f, z + 0.06f, w / 3.4f - 0.14f, 0.82f, 0.08f, if ((r + i) % 2 == 0) B else L)
+                    for (r in 0..5) q(0f, bot + 0.2f + r * 1.8f, z + 0.16f, w, 0.07f, 0.04f, E)
+                    for (i in -3..3) q(i * (w / 3.4f), cy, z + 0.16f, 0.06f, d.hy - 0.3f, 0.04f, E)
+                    q(0f, top - 0.4f, 0f, d.hx + 0.2f, 0.7f, d.hz + 0.3f, 0xFFFFFFFF.toInt())
+                    q(0f, bot + 0.8f, z + 0.12f, w, 0.35f, 0.1f, O)
+                    q(w * 0.55f, cy - 1.8f, z + 0.2f, 0.9f, 0.9f, 0.2f, E)
+                    q(w * 0.55f, cy - 1.8f, z + 0.34f, 0.5f, 0.5f, 0.05f, 0xFFBFEFFF.toInt(), true)
+                    for (s in sds) q(s * 0.5f, cy, z + 0.2f, 0.12f, d.hy - 0.6f, 0.05f, O)
+                }
+                4 -> { // Ninja blindado: armadura lamelar com cordões e placa de máscara oni
+                    for (r in 0..5) for (i in -4..4) q(i * (w / 4.3f), bot + 0.8f + r * 1.5f, z + 0.05f + (r % 2) * 0.03f, w / 4.3f - 0.1f, 0.66f, 0.07f, if ((i + r) % 2 == 0) L else B)
+                    for (i in -2..2) q(i * (w / 2.2f), cy, z + 0.14f, 0.07f, d.hy - 0.4f, 0.04f, E)
+                    q(0f, cy + 0.8f, z + 0.2f, w * 0.5f, 1.9f, 0.1f, E)
+                    q(0f, cy + 0.8f, z + 0.3f, w * 0.4f, 1.6f, 0.06f, L)
+                    q(-0.9f, cy + 1.3f, z + 0.36f, 0.45f, 0.18f, 0.05f, O, true)
+                    q(0.9f, cy + 1.3f, z + 0.36f, 0.45f, 0.18f, 0.05f, O, true)
+                    q(0f, cy + 0.2f, z + 0.36f, 0.9f, 0.14f, 0.05f, O)
+                    for (s in sds) q(s * 0.5f, cy + 2.0f, z + 0.4f, 0.14f, 0.5f, 0.05f, O)
+                    q(0f, top - 0.8f, z + 0.1f, w * 0.85f, 0.4f, 0.12f, E)
+                    q(0f, bot + 0.6f, z + 0.1f, w, 0.35f, 0.1f, O)
+                }
+                else -> { // Mestre dourado: seda negra com dragão dourado serpenteando e obi largo
+                    for (r in 0..5) {
+                        val xx = kotlin.math.sin(r * 1.1f) * w * 0.55f
+                        q(xx, top - 1.2f - r * 1.35f, z + 0.1f, 0.9f, 0.45f, 0.06f, O)
+                        q(xx + (if (r % 2 == 0) 0.8f else -0.8f), top - 1.5f - r * 1.35f, z + 0.12f, 0.3f, 0.3f, 0.05f, OD)
+                    }
+                    q(w * 0.4f, top - 0.9f, z + 0.16f, 0.55f, 0.55f, 0.07f, O)
+                    q(w * 0.4f + 0.12f, top - 0.8f, z + 0.22f, 0.18f, 0.18f, 0.05f, 0xFFFF3030.toInt(), true)
+                    q(0f, bot + 1.4f, z + 0.12f, w + 0.15f, 1.0f, 0.12f, O)
+                    q(0f, bot + 1.4f, z + 0.24f, 1.2f, 0.8f, 0.08f, OD)
+                    q(0f, bot + 1.4f, z + 0.32f, 0.5f, 0.4f, 0.06f, 0xFFB5242E.toInt(), true)
+                    for (s in sds) {
+                        q(s * (w - 0.2f), cy + 0.6f, z + 0.06f, 0.14f, d.hy - 1.2f, 0.05f, O)
+                        push(g, s * 0.7f, top - 0.4f, z + 0.1f, s * 0.4f) { q(0f, -2.5f, 0f, 0.14f, 3.4f, 0.05f, O) }
+                    }
+                    q(0f, top - 0.3f, z + 0.1f, w * 0.7f, 0.3f, 0.1f, O)
+                }
+            }
+        }
+    }
+
+    /** Roda o bloco dentro de um push/pop com rotZ (para tiras e faixas diagonais). */
+    private inline fun push(g: HeroGfx, x: Float, y: Float, z: Float, rot: Float, bloco: () -> Unit) {
+        g.push()
+        g.translate(x, y, z)
+        g.rotZ(rot)
+        bloco()
+        g.pop()
+    }
+
+    private fun abdomenUnico(g: HeroGfx, c: Classe, k: Int, d: D, t: Traje) {
+        val B = cor(t, t.base)
+        val L = cor(t, t.luz)
+        val E = cor(t, t.esc)
+        val O = ouro(t)
+        val OD = ouroD(t)
+        val y = d.ay
+        val z = d.azF + 0.05f
+        val w = d.ahx - 0.3f
+        fun q(x: Float, yy: Float, zz: Float, hx: Float, hy: Float, hz: Float, col: Int, em: Boolean = false) = g.cube(x, yy, zz, hx, hy, hz, col, em)
+        val sds = floatArrayOf(-1f, 1f)
+        when (c) {
+            Classe.GUERREIRO -> when (k) {
+                1 -> { for (i in 0..2) q(0f, y + 1.3f - i * 1.15f, z + 0.02f * i, w * (1f - i * 0.05f), 0.5f, 0.1f, if (i % 2 == 0) L else B); q(0f, y + 0.2f, z + 0.14f, 0.9f, 0.7f, 0.08f, O) }
+                2 -> { for (i in -3..3) q(i * (w / 3.4f), y - 0.3f, z + 0.08f, 0.62f, 1.7f, 0.06f, if (i % 2 == 0) L else B); q(0f, y + 1.5f, z + 0.12f, w, 0.32f, 0.1f, E); q(0f, y + 1.5f, z + 0.22f, 0.5f, 0.45f, 0.06f, O) }
+                3 -> { q(0f, y - 0.2f, z + 0.1f, w * 0.5f, 2.0f, 0.08f, 0xFF2F4F9F.toInt()); q(0f, y + 1.5f, z + 0.12f, w, 0.3f, 0.1f, E); q(0f, y + 1.5f, z + 0.2f, 0.5f, 0.4f, 0.06f, O) }
+                4 -> { q(0f, y + 1.1f, z + 0.06f, w, 0.55f, 0.1f, O); q(0f, y + 1.1f, z + 0.16f, 0.6f, 0.45f, 0.06f, 0xFFB5242E.toInt(), true); for (s in sds) q(s * 1.6f, y - 0.9f, z + 0.08f, 0.2f, 1.3f, 0.06f, O) }
+                else -> { q(0f, y + 1.2f, z + 0.08f, w + 0.1f, 0.6f, 0.14f, L); for (i in -2..2) q(i * 0.9f, y - 0.1f, z + 0.12f, 0.4f, 0.8f, 0.1f, if (i % 2 == 0) E else L); q(0f, y + 1.2f, z + 0.24f, 0.4f, 0.4f, 0.06f, OD) }
+            }
+            Classe.BARBARO -> when (k) {
+                1 -> { for (i in -3..3) q(i * (w / 3.2f), y - 0.1f, z + 0.1f, 0.7f, 1.9f - kotlin.math.abs(i) * 0.15f, 0.14f, if (i % 2 == 0) L else B) }
+                2 -> { q(0f, y + 1.4f, z + 0.08f, w, 0.3f, 0.1f, E); for (i in -3..3) q(i * 1.3f, y + 0.2f - kotlin.math.abs(i) * 0.1f, z + 0.12f, 0.2f, 0.2f, 0.07f, 0xFFE8DCC0.toInt()); q(0f, y - 0.8f, z + 0.1f, 0.14f, 0.9f, 0.06f, E) }
+                3 -> { q(0f, y + 0.6f, z + 0.08f, w, 1.0f, 0.12f, L); q(-w * 0.5f, y - 0.8f, z + 0.1f, w * 0.4f, 0.9f, 0.1f, B); for (i in 0..3) q(-w + i * 1.2f, y - 1.7f, z + 0.14f, 0.28f, 0.28f, 0.06f, E) }
+                4 -> { for (s in sds) { q(s * w * 0.7f, y + 0.4f, z + 0.06f, 0.35f, 1.5f, 0.1f, L); q(s * w * 0.35f, y - 0.2f, z + 0.06f, 0.3f, 1.2f, 0.1f, B) }; q(0f, y + 1.5f, z + 0.1f, w, 0.35f, 0.1f, E) }
+                else -> { val rd = 0xFFB52B2B.toInt(); for (i in -3..3) q(i * (w / 3.4f), y - 0.2f, z + 0.1f, w / 3.4f - 0.08f, 1.8f, 0.08f, if (i % 2 == 0) rd else 0xFF1F5A2E.toInt()); q(0f, y + 1.5f, z + 0.14f, w, 0.3f, 0.1f, E) }
+            }
+            Classe.MAGO -> when (k) {
+                1 -> { q(0f, y + 1.1f, z + 0.06f, w, 0.6f, 0.1f, O); for (i in 0..2) q(-1.4f + i * 1.4f, y - 0.4f, z + 0.1f, 0.18f, 0.18f, 0.06f, 0xFFFFF2B0.toInt(), true); q(0f, y - 1.3f, z + 0.06f, 0.1f, 0.9f, 0.05f, O) }
+                2 -> { q(0f, y + 0.4f, z + 0.1f, w + 0.1f, 1.2f, 0.12f, E); q(w * 0.45f, y + 0.3f, z + 0.24f, 0.7f, 0.7f, 0.1f, E); q(w * 0.5f, y - 1.2f, z + 0.2f, 0.28f, 1.3f, 0.07f, E) }
+                3 -> { for (s in sds) { push(g, 0f, y, z + 0.1f, s * 0.7f) { q(0f, 0f, 0f, 0.3f, 2.4f, 0.07f, L) } }; q(0f, y, z + 0.2f, 0.5f, 0.5f, 0.08f, O); q(0f, y, z + 0.28f, 0.22f, 0.22f, 0.06f, 0xFF9A5BFF.toInt(), true) }
+                4 -> { q(0f, y + 1.1f, z + 0.06f, w, 0.6f, 0.1f, 0xFF7E200F.toInt()); for (i in -2..2) q(i * 1.4f, y - 0.2f, z + 0.1f, 0.4f, 0.9f + (2 - kotlin.math.abs(i)) * 0.3f, 0.07f, 0xFFFF9A2A.toInt(), true) }
+                else -> { q(0f, y + 1.2f, z + 0.08f, w, 0.28f, 0.1f, 0xFF6B4A2A.toInt()); for (i in -3..3) q(i * 1.4f, y + 0.2f - kotlin.math.abs(i) * 0.12f, z + 0.12f, 0.45f, 0.7f, 0.07f, if (i % 2 == 0) B else L) }
+            }
+            Classe.ARQUEIRO -> {}
+            Classe.NINJA -> when (k) {
+                1 -> { q(0f, y + 1.2f, z + 0.08f, w, 0.55f, 0.1f, O); q(w * 0.5f, y + 1.2f, z + 0.2f, 0.6f, 0.6f, 0.1f, O); q(w * 0.55f, y - 0.2f, z + 0.16f, 0.25f, 1.4f, 0.06f, O) }
+                2 -> { q(0f, y + 0.9f, z + 0.08f, w, 0.9f, 0.12f, 0xFF15151C.toInt()); q(0f, y + 0.9f, z + 0.2f, 0.8f, 0.7f, 0.08f, O) }
+                3 -> { q(0f, y + 0.9f, z + 0.08f, w, 0.8f, 0.12f, E); q(-w * 0.4f, y + 0.9f, z + 0.2f, 0.6f, 0.6f, 0.08f, 0xFFBFEFFF.toInt(), true); q(-w * 0.4f, y - 0.5f, z + 0.16f, 0.2f, 1.0f, 0.06f, E) }
+                4 -> { for (i in -3..3) q(i * (w / 3.4f), y - 0.1f, z + 0.08f, w / 3.4f - 0.1f, 1.8f, 0.08f, if (i % 2 == 0) L else B); q(0f, y + 1.5f, z + 0.12f, w, 0.3f, 0.1f, O) }
+                else -> { q(0f, y + 0.9f, z + 0.08f, w, 0.9f, 0.12f, O); q(0f, y + 0.9f, z + 0.2f, 1.1f, 0.7f, 0.08f, OD); q(0f, y + 0.9f, z + 0.28f, 0.5f, 0.35f, 0.06f, 0xFFB5242E.toInt(), true) }
+            }
+        }
+    }
+
+    private fun pernaUnica(g: HeroGfx, c: Classe, k: Int, th: Float, zf: Float, canela: Boolean, ty: Float, t: Traje) {
+        val B = cor(t, t.base)
+        val L = cor(t, t.luz)
+        val E = cor(t, t.esc)
+        val O = ouro(t)
+        val OD = ouroD(t)
+        val z = zf + 0.05f
+        val y0 = ty
+        fun q(x: Float, yy: Float, zz: Float, hx: Float, hy: Float, hz: Float, col: Int, em: Boolean = false) = g.cube(x, yy, zz, hx, hy, hz, col, em)
+        val a = th - 0.1f
+        // y0 = centro da perna; as peças são relativas a ele
+        if (!canela) {
+            when (c) {
+                Classe.GUERREIRO -> when (k) {
+                    1 -> { q(0f, y0 + 1.2f, z + 0.05f, a, 1.3f, 0.12f, L); q(0f, y0 + 1.2f, z + 0.15f, 0.2f, 1.2f, 0.06f, E); q(0f, y0 - 2.6f, z + 0.05f, a * 0.8f, 0.3f, 0.1f, O) }
+                    2 -> { for (i in -2..2) q(i * (a / 2.4f), y0 + 1.6f - kotlin.math.abs(i) * 0.15f, z + 0.08f, a / 2.4f - 0.05f, 1.6f, 0.08f, if (i % 2 == 0) L else B); q(0f, y0 - 1.0f, z + 0.1f, a, 0.22f, 0.08f, E) }
+                    3 -> { for (i in 0..5) q(0f, y0 + 2.2f - i * 0.8f, z + 0.05f, a - 0.1f, 0.12f, 0.06f, if (i % 2 == 0) E else L); q(0f, y0 - 2.6f, z + 0.1f, a, 0.25f, 0.08f, O) }
+                    4 -> { q(0f, y0, z + 0.04f, 0.28f, 2.6f, 0.06f, O); q(0f, y0 + 2.2f, z + 0.1f, a, 0.3f, 0.08f, O); q(0f, y0 - 2.5f, z + 0.1f, a, 0.5f, 0.1f, 0xFFB5242E.toInt()) }
+                    else -> { for (i in 0..3) q(0f, y0 + 2.2f - i * 1.4f, z + 0.1f, a, 0.28f, 0.12f, E); q(0f, y0 - 2.4f, z + 0.12f, a + 0.1f, 0.7f, 0.2f, L) }
+                }
+                Classe.BARBARO -> when (k) {
+                    1 -> { for (i in -2..2) q(i * (a / 2.4f), y0 - 2.4f, z + 0.12f, 0.6f, 0.9f - kotlin.math.abs(i) * 0.1f, 0.2f, if (i % 2 == 0) L else B); q(0f, y0 + 2.4f, z + 0.08f, a + 0.1f, 0.5f, 0.14f, L) }
+                    2 -> { q(0f, y0 + 1.0f, z + 0.06f, a, 0.22f, 0.08f, E); q(0f, y0 - 0.8f, z + 0.06f, a, 0.22f, 0.08f, E); for (i in 0..2) q(-a * 0.6f + i * a * 0.6f, y0 - 1.9f, z + 0.1f, 0.18f, 0.18f, 0.06f, 0xFFE8DCC0.toInt()) }
+                    3 -> { q(0f, y0 + 1.0f, z + 0.06f, a * 0.8f, 1.4f, 0.12f, L); for (i in 0..2) q(-a * 0.6f + i * a * 0.6f, y0 + 1.0f, z + 0.2f, 0.2f, 0.2f, 0.06f, OD); q(0f, y0 - 1.6f, z + 0.06f, a * 0.5f, 0.3f, 0.1f, E) }
+                    4 -> { for (i in 0..2) q(0f, y0 + 1.8f - i * 1.6f, z + 0.08f, a * 0.7f, 0.2f, 0.12f, L); q(0f, y0 + 0.2f, z + 0.06f, 0.18f, 2.4f, 0.1f, B) }
+                    else -> { val rd = 0xFFB52B2B.toInt(); for (i in -2..2) q(i * (a / 2.4f), y0, z + 0.06f, a / 2.4f - 0.05f, 2.2f, 0.06f, if (i % 2 == 0) rd else 0xFF1F5A2E.toInt()); q(0f, y0 + 2.3f, z + 0.1f, a, 0.28f, 0.1f, E) }
+                }
+                Classe.MAGO -> when (k) {
+                    1 -> { q(0f, y0 - 2.4f, z + 0.06f, a, 0.4f, 0.08f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 2.0f, 0.05f, O) }
+                    2 -> { q(0f, y0 - 2.2f, z + 0.06f, a, 0.35f, 0.08f, E); for (i in 0..2) q(0f, y0 + 1.2f - i * 1.1f, z + 0.06f, 0.18f, 0.18f, 0.05f, E, true) }
+                    3 -> { q(0f, y0 + 1.6f, z + 0.06f, a, 0.28f, 0.08f, OD); q(0f, y0 - 1.8f, z + 0.06f, a, 0.28f, 0.08f, OD); q(0f, y0, z + 0.1f, 0.5f, 0.5f, 0.06f, 0xFF9A5BFF.toInt(), true) }
+                    4 -> { for (i in 0..2) q((i - 1) * a * 0.6f, y0 - 2.0f + i % 2 * 0.4f, z + 0.06f, 0.4f, 0.8f, 0.06f, 0xFFFF9A2A.toInt(), true); q(0f, y0 + 2.2f, z + 0.06f, a, 0.3f, 0.08f, 0xFF7E200F.toInt()) }
+                    else -> { for (i in 0..3) q(if (i % 2 == 0) -a * 0.45f else a * 0.45f, y0 + 1.8f - i * 1.2f, z + 0.06f, 0.5f, 0.4f, 0.06f, if (i % 2 == 0) B else L); q(0f, y0 + 0.2f, z + 0.04f, 0.08f, 2.6f, 0.04f, 0xFF6B4A2A.toInt()) }
+                }
+                Classe.ARQUEIRO -> when (k) {
+                    1 -> { q(0f, y0 + 1.6f, z + 0.06f, a, 0.28f, 0.08f, E); q(0f, y0 - 1.4f, z + 0.06f, a, 0.28f, 0.08f, E); q(a * 0.5f, y0, z + 0.14f, 0.7f, 1.1f, 0.14f, B) }
+                    2 -> { q(0f, y0, z + 0.04f, 0.16f, 2.6f, 0.05f, E); for (i in 0..2) q(0.5f, y0 + 1.6f - i * 1.3f, z + 0.06f, 0.35f, 0.2f, 0.05f, E) }
+                    3 -> { q(0f, y0 + 1.8f, z + 0.06f, a, 0.22f, 0.08f, L); q(0f, y0 - 0.8f, z + 0.06f, a, 0.22f, 0.08f, L); q(-a * 0.5f, y0 + 0.5f, z + 0.14f, 0.2f, 0.7f, 0.06f, 0xFFB8B8C8.toInt()) }
+                    4 -> { for (i in 0..2) q(0f, y0 + 1.8f - i * 1.5f, z + 0.08f, a * (0.9f - i * 0.1f), 0.6f, 0.1f, if (i % 2 == 0) L else B); q(0f, y0 - 2.4f, z + 0.12f, a, 0.22f, 0.08f, O) }
+                    else -> { q(0f, y0 - 2.4f, z + 0.1f, a + 0.1f, 0.5f, 0.2f, L); q(0f, y0 + 2.2f, z + 0.06f, a, 0.25f, 0.1f, E); for (i in 0..1) q(0f, y0 + 0.6f - i * 1.3f, z + 0.06f, 0.3f, 0.18f, 0.06f, 0xFFE8DCC0.toInt()) }
+                }
+                Classe.NINJA -> when (k) {
+                    1 -> { for (i in 0..3) q(0f, y0 + 2.2f - i * 1.1f, z + 0.05f, a, 0.1f, 0.05f, L); q(a * 0.6f, y0 + 1.0f, z + 0.14f, 0.5f, 0.9f, 0.14f, E) }
+                    2 -> { q(0f, y0 - 2.4f, z + 0.06f, a, 0.4f, 0.08f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 2.0f, 0.05f, O) }
+                    3 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.06f, a, 0.5f, 0.08f, if (i % 2 == 0) B else L); q(0f, y0 - 2.4f, z + 0.1f, a + 0.05f, 0.3f, 0.1f, 0xFFBFEFFF.toInt()) }
+                    4 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.06f, a, 0.55f, 0.1f, if (i % 2 == 0) L else B); q(0f, y0 + 0.2f, z + 0.16f, 0.1f, 2.6f, 0.05f, O) }
+                    else -> { q(0f, y0 + 0.2f, z + 0.04f, 0.14f, 2.6f, 0.05f, O); q(0f, y0 - 2.5f, z + 0.1f, a, 0.4f, 0.08f, O); q(a * 0.55f, y0 + 1.6f, z + 0.1f, 0.3f, 0.3f, 0.06f, 0xFFB5242E.toInt(), true) }
+                }
+            }
+        } else {
+            when (c) {
+                Classe.GUERREIRO -> when (k) {
+                    1 -> { q(0f, y0 + 2.2f, z + 0.2f, a, 0.9f, 0.3f, L); q(0f, y0 + 2.2f, z + 0.5f, 0.3f, 0.3f, 0.1f, O); q(0f, y0 - 0.3f, z + 0.06f, 0.2f, 2.2f, 0.06f, E); q(0f, y0 - 2.6f, z + 0.1f, a, 0.3f, 0.1f, O) }
+                    2 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.1f, a, 0.22f, 0.1f, E); q(0f, y0 - 2.6f, z + 0.1f, a + 0.1f, 0.4f, 0.12f, L) }
+                    3 -> { for (i in 0..5) q(0f, y0 + 2.4f - i * 0.85f, z + 0.05f, a - 0.1f, 0.12f, 0.06f, if (i % 2 == 0) E else L); q(0f, y0 + 2.6f, z + 0.12f, a, 0.4f, 0.1f, O) }
+                    4 -> { q(0f, y0 - 2.4f, z + 0.12f, a + 0.1f, 0.7f, 0.2f, 0xFF3A2A1A.toInt()); q(0f, y0 + 2.4f, z + 0.08f, a, 0.3f, 0.1f, O); q(0f, y0 - 0.2f, z + 0.04f, 0.18f, 2.0f, 0.05f, O) }
+                    else -> { q(0f, y0 + 1.4f, z + 0.1f, a, 0.28f, 0.12f, E); q(0f, y0 - 0.2f, z + 0.1f, a, 0.28f, 0.12f, E); q(0f, y0 - 2.4f, z + 0.12f, a + 0.15f, 0.7f, 0.2f, L) }
+                }
+                Classe.BARBARO -> when (k) {
+                    1 -> { q(0f, y0 + 2.4f, z + 0.1f, a + 0.2f, 0.6f, 0.2f, L); for (i in -1..1) q(i * a * 0.6f, y0 - 2.5f, z + 0.12f, 0.5f, 0.7f, 0.2f, if (i % 2 == 0) B else L) }
+                    2 -> { for (i in 0..2) q(0f, y0 + 1.8f - i * 1.6f, z + 0.08f, a, 0.2f, 0.1f, E); q(0f, y0 - 2.6f, z + 0.08f, a, 0.3f, 0.1f, 0xFFE8DCC0.toInt()) }
+                    3 -> { q(0f, y0 + 0.8f, z + 0.1f, a - 0.1f, 1.8f, 0.14f, L); q(0f, y0 + 2.0f, z + 0.26f, 0.8f, 0.7f, 0.1f, B); q(0f, y0 - 2.4f, z + 0.1f, a, 0.4f, 0.12f, E) }
+                    4 -> { q(0f, y0 + 2.0f, z + 0.14f, 0.9f, 0.9f, 0.2f, L); q(0f, y0 - 0.4f, z + 0.06f, 0.18f, 2.0f, 0.08f, L); for (i in 0..2) q(0f, y0 - 0.4f - i * 0.9f + 0.9f, z + 0.14f, 0.7f, 0.14f, 0.08f, B) }
+                    else -> { val rd = 0xFFB52B2B.toInt(); for (i in 0..3) q(0f, y0 + 2.2f - i * 1.4f, z + 0.06f, a, 0.14f, 0.08f, if (i % 2 == 0) rd else 0xFF1F5A2E.toInt()); q(0f, y0 - 2.5f, z + 0.1f, a + 0.1f, 0.4f, 0.12f, E) }
+                }
+                Classe.MAGO -> when (k) {
+                    1 -> { q(0f, y0 - 2.4f, z + 0.06f, a, 0.3f, 0.08f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 1.8f, 0.05f, O) }
+                    2 -> { q(0f, y0 - 2.4f, z + 0.06f, a, 0.3f, 0.08f, E); q(0f, y0 + 1.4f, z + 0.06f, a, 0.2f, 0.08f, E) }
+                    3 -> { q(0f, y0 + 1.4f, z + 0.08f, a, 0.28f, 0.1f, OD); q(0f, y0 - 1.6f, z + 0.08f, a, 0.28f, 0.1f, OD); q(0f, y0 - 0.1f, z + 0.1f, 0.4f, 0.4f, 0.05f, 0xFF9A5BFF.toInt(), true) }
+                    4 -> { q(0f, y0 - 2.5f, z + 0.1f, a + 0.1f, 0.5f, 0.2f, 0xFF7E200F.toInt()); q(0f, y0 - 2.4f, z + 0.3f, 0.3f, 0.3f, 0.06f, 0xFFFF9A2A.toInt(), true) }
+                    else -> { for (i in 0..3) q(if (i % 2 == 0) -a * 0.4f else a * 0.4f, y0 + 1.8f - i * 1.2f, z + 0.06f, 0.5f, 0.4f, 0.06f, if (i % 2 == 0) B else L); q(0f, y0 - 2.6f, z + 0.1f, a, 0.3f, 0.1f, 0xFF6B4A2A.toInt()) }
+                }
+                Classe.ARQUEIRO -> when (k) {
+                    1 -> { q(0f, y0 + 2.4f, z + 0.1f, a + 0.15f, 0.7f, 0.2f, L); q(0f, y0 - 0.2f, z + 0.06f, 0.14f, 1.8f, 0.05f, E) }
+                    2 -> { q(0f, y0 - 2.4f, z + 0.08f, a, 0.4f, 0.1f, E); q(0f, y0 + 0.4f, z + 0.04f, 0.12f, 2.0f, 0.05f, E) }
+                    3 -> { q(0f, y0 + 1.4f, z + 0.08f, a, 0.28f, 0.1f, L); q(0f, y0 - 0.4f, z + 0.08f, a, 0.28f, 0.1f, L); q(0f, y0 - 2.2f, z + 0.1f, a + 0.05f, 0.6f, 0.12f, E) }
+                    4 -> { q(0f, y0 + 1.6f, z + 0.12f, a, 1.0f, 0.14f, L); q(0f, y0 + 1.6f, z + 0.24f, 0.4f, 0.4f, 0.06f, 0xFF59E0A0.toInt(), true); q(0f, y0 - 1.4f, z + 0.1f, a, 0.9f, 0.12f, B) }
+                    else -> { q(0f, y0 + 2.4f, z + 0.1f, a + 0.2f, 0.8f, 0.22f, L); q(0f, y0 - 2.4f, z + 0.1f, a + 0.15f, 0.6f, 0.2f, L) }
+                }
+                Classe.NINJA -> when (k) {
+                    1 -> { for (i in 0..4) q(0f, y0 + 2.2f - i * 1.0f, z + 0.05f, a, 0.1f, 0.05f, L); q(0f, y0 - 0.4f, z + 0.1f, 0.6f, 1.2f, 0.08f, E) }
+                    2 -> { q(0f, y0 - 2.5f, z + 0.08f, a, 0.4f, 0.1f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 2.0f, 0.05f, O) }
+                    3 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.06f, a, 0.5f, 0.08f, if (i % 2 == 0) B else L); q(0f, y0 - 2.5f, z + 0.1f, a + 0.05f, 0.3f, 0.1f, 0xFFBFEFFF.toInt()) }
+                    4 -> { q(0f, y0 + 1.2f, z + 0.14f, a, 1.4f, 0.12f, L); q(0f, y0 + 1.2f, z + 0.26f, 0.5f, 0.5f, 0.06f, O, true); q(0f, y0 - 1.6f, z + 0.1f, a, 0.9f, 0.1f, B) }
+                    else -> { q(0f, y0 - 2.5f, z + 0.1f, a, 0.4f, 0.1f, O); q(0f, y0 + 1.6f, z + 0.1f, a, 0.28f, 0.1f, O); q(0f, y0 - 0.2f, z + 0.04f, 0.12f, 2.2f, 0.05f, OD) }
+                }
             }
         }
     }
@@ -699,36 +1194,7 @@ object Roupas {
         g.cube(0f, -2.7f, 0f, l.th + 0.12f, 2.95f, l.tz + 0.12f, base)
         val dz = (l.tzF - l.tz) / 2f
         if (dz > 0.05f) g.cube(0f, -2.7f, l.tz + dz, l.th - 0.2f, 2.7f, dz, base)
-        val z = l.tzF + 0.05f
-        when (t.estilo) {
-            1 -> {
-                g.cube(0f, -0.5f, z, l.th, 0.3f, 0.06f, esc)
-                g.cube(0f, -3.5f, z, l.th - 0.4f, 0.1f, 0.05f, ouro(t))
-            }
-            2 -> {
-                g.cube(side * (l.th - 0.5f), -2.7f, z, 0.1f, 2.6f, 0.05f, esc)
-                g.cube(0f, -1.4f, z, l.th, 0.28f, 0.06f, esc)
-                g.cube(0f, -4.0f, z, l.th, 0.28f, 0.06f, esc)
-                g.cube(0f, -1.4f, z + 0.06f, 0.3f, 0.3f, 0.05f, ouro(t))
-            }
-            3 -> for (i in 0..4) g.cube(0f, -0.8f - i * 1.0f, z, l.th - 0.2f, 0.12f, 0.06f, if (i % 2 == 0) esc else luz)
-            4 -> {
-                g.cube(0f, -2.0f, z, l.th - 0.3f, 1.6f, 0.08f, luz)
-                g.cube(0f, -4.3f, z, l.th - 0.3f, 0.6f, 0.08f, base)
-                g.cube(0f, -0.4f, z, l.th, 0.3f, 0.09f, ouro(t))
-                g.cube(0f, -3.6f, z + 0.05f, l.th, 0.2f, 0.08f, ouro(t))
-            }
-            5 -> {
-                g.cube(0f, -0.5f, z, l.th, 0.45f, 0.07f, ouro(t))
-                g.cube(0f, -2.7f, z, 0.2f, 2.2f, 0.05f, ouroD(t))
-                g.cube(0f, -4.9f, z, l.th, 0.3f, 0.07f, ouro(t))
-            }
-            6 -> {
-                g.cube(0f, -0.4f, 0f, l.th + 0.3f, 0.6f, l.tz + 0.3f, luz)
-                g.cube(0f, -5.2f, 0f, l.th + 0.3f, 0.4f, l.tz + 0.3f, luz)
-                g.cube(0f, -2.7f, z, 0.15f, 2.2f, 0.05f, esc)
-            }
-        }
+        pernaUnica(g, c, k, l.th, l.tzF, false, -2.7f, t)
     }
 
     /** Chamado no espaço da canela (depois de dobrar o joelho). */
@@ -743,35 +1209,6 @@ object Roupas {
         g.cube(0f, l.sy, 0f, l.sh + 0.12f, l.shy + 0.03f, l.sz + 0.12f, base)
         val dz = (l.szF - l.sz) / 2f
         if (dz > 0.05f) g.cube(0f, l.sy, l.sz + dz, l.sh - 0.2f, l.shy - 0.2f, dz, base)
-        val z = l.szF + 0.05f
-        val top = l.sy + l.shy
-        when (t.estilo) {
-            1 -> {
-                g.cube(0f, top - 4.2f, z, l.sh, 0.3f, 0.06f, esc)
-                g.cube(0f, top - 5.3f, z, l.sh, 0.3f, 0.06f, esc)
-            }
-            2 -> {
-                g.cube(0f, top - 1.4f, z, l.sh, 0.28f, 0.06f, esc)
-                g.cube(0f, top - 3.6f, z, l.sh, 0.28f, 0.06f, esc)
-                g.cube(0f, top - 2.5f, z, 0.1f, 1.0f, 0.05f, luz)
-            }
-            3 -> for (i in 0..4) g.cube(0f, top - 0.8f - i * 1.0f, z, l.sh - 0.2f, 0.12f, 0.06f, if (i % 2 == 0) esc else luz)
-            4 -> {
-                g.cube(0f, top - 2.6f, z, l.sh - 0.25f, 2.3f, 0.08f, luz)
-                g.cube(0f, top - 2.6f, z + 0.08f, 0.2f, 2.3f, 0.06f, esc)
-                g.cube(0f, top - 0.4f, z, l.sh, 0.3f, 0.09f, ouro(t))
-                g.cube(0f, top - 4.9f, z, l.sh, 0.3f, 0.09f, ouro(t))
-            }
-            5 -> {
-                g.cube(0f, top - 0.5f, z, l.sh, 0.4f, 0.07f, ouro(t))
-                g.cube(0f, top - 2.8f, z, 0.2f, 1.8f, 0.05f, ouroD(t))
-                g.cube(0f, top - 5.0f, z, l.sh, 0.3f, 0.07f, ouro(t))
-            }
-            6 -> {
-                g.cube(0f, top - 0.6f, 0f, l.sh + 0.3f, 0.8f, l.sz + 0.3f, luz)
-                g.cube(0f, top - 5.0f, 0f, l.sh + 0.3f, 0.5f, l.sz + 0.3f, luz)
-                g.cube(0f, top - 2.8f, z, 0.15f, 1.6f, 0.05f, esc)
-            }
-        }
+        pernaUnica(g, c, k, l.sh, l.szF, true, l.sy, t)
     }
 }

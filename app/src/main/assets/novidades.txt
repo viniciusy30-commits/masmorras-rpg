@@ -1,3 +1,9 @@
+#id 2026-10-28-l
+#titulo Roupas únicas, busto em 3 tamanhos e 24 cabelos
+- Cada um dos 25 trajes (peito, barriga e pernas) agora tem desenho próprio: couraça muscular de gladiador, caixa torácica de ossos, tartã do clã, selo arcano brilhante, chamas do mago de fogo, folhas do druida, lamelar com máscara oni, dragão dourado do mestre e muito mais
+- Novo busto redondo em camadas, com 3 tamanhos (Pequeno, Médio, Grande), escolhido na criação; quadril feminino reforçado
+- Cabelos refeitos, com mais volume, repartição, franja e mechas que balançam; 14 estilos novos: ondulado, cacheado, chanel, marias-chiquinhas, pompadour, rabo de samurai, raspado dos lados, black power, dreadlocks, trança lateral, coque duplo, franja reta, meia-cauda e cabelo ao vento
+
 #id 2026-10-28-k
 #titulo Corpo por raça e roupas que substituem o original
 - O tipo de corpo agora depende da RAÇA (anão atarracado, elfo esguio, orc e golias enormes, goblin e gnomo de cabeça grande...), nos dois sexos; a tela de criação mostra o nome do tipo logo abaixo do Sexo

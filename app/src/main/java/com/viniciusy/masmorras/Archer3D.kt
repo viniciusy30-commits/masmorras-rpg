@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Archer3D {
     private val V = VoxelArt
 
-    private const val MAX = 1500
+    private const val MAX = 1900
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)

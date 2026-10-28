@@ -26,6 +26,7 @@ object HeroLook {
     var peito: Int = 0        // roupa do peito (0 = padrão da classe)
     var pernas: Int = 0       // roupa das pernas (0 = padrão da classe)
     var capa: Int = 0         // capa nas costas (0 = nenhuma)
+    var busto: Int = 1        // 0 pequeno, 1 médio, 2 grande
     var fem: Boolean = false  // corpo e rosto femininos
 
     /** Fatores de altura do herói (Muito baixo ... Muito alto). */
@@ -52,6 +53,7 @@ object HeroLook {
         peito = p.peito
         pernas = p.pernas
         capa = p.capa
+        busto = p.busto
     }
 
     private fun lum(c: Int): Float =
@@ -141,6 +143,7 @@ object Herois {
             p.peito = sp.getInt("peito", 0).coerceIn(0, Roupas.N - 1)
             p.pernas = sp.getInt("pernas", 0).coerceIn(0, Roupas.N - 1)
             p.capa = sp.getInt("capa", 0).coerceIn(0, Roupas.N - 1)
+            p.busto = sp.getInt("busto", 1).coerceIn(0, 2)
         } catch (e: Exception) {
             // dados antigos ou corrompidos: volta ao herói padrão
             return HeroiPerfil(classe)
@@ -177,6 +180,7 @@ object Herois {
         e.putInt("peito", p.peito)
         e.putInt("pernas", p.pernas)
         e.putInt("capa", p.capa)
+        e.putInt("busto", p.busto)
         e.apply()
     }
 }
