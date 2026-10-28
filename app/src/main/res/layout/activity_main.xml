@@ -605,6 +605,14 @@
                     android:scaleType="fitCenter"
                     android:src="@drawable/hd_ic_roll"/>
 
+                <com.viniciusy.masmorras.ShadowTimerView
+                    android:id="@+id/shadowTimer"
+                    android:layout_width="72dp"
+                    android:layout_height="72dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="114dp"
+                    android:layout_marginBottom="4dp"/>
+
                 <ImageButton
                     android:id="@+id/btnAttack"
                     android:layout_width="104dp"

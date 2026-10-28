@@ -65,6 +65,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSkill4Cd: TextView
     private lateinit var hudLayer: View
     private val prevCd = FloatArray(4)
+    private lateinit var shadowTimer: ShadowTimerView
+    private lateinit var btnRoll: android.widget.ImageButton
     private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
     private lateinit var tvFim: TextView
@@ -130,6 +132,8 @@ class MainActivity : AppCompatActivity() {
         mpRow = findViewById(R.id.mpRow)
         btnWeapon = findViewById(R.id.btnWeapon)
         btnAttack = findViewById(R.id.btnAttack)
+        shadowTimer = findViewById(R.id.shadowTimer)
+        btnRoll = findViewById(R.id.btnRoll)
         btnSkill1 = findViewById(R.id.btnSkill1)
         btnSkill2 = findViewById(R.id.btnSkill2)
         tvSkill1Cd = findViewById(R.id.tvSkill1Cd)
@@ -391,15 +395,23 @@ class MainActivity : AppCompatActivity() {
                         val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
                         val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd)
                         var ping = false
-                        for (i in 0 until (if (ninja) 4 else 2)) {
+                        for (i in 0 until (if (ninja) 3 else 2)) {
                             val c = p.skillCd(i + 1, nowMs)
                             if (prevCd[i] > 0f && c <= 0f) ping = true
                             prevCd[i] = c
-                            // W do ninja: com a sombra no ar, o botão fica pronto para trocar de lugar
-                            val swap = ninja && i == 1 && gameView.swapReady()
-                            val semMana = ninja && !swap && c <= 0f && p.mp < Player.NINJA_COST[i + 1]
-                            tvs[i].text = if (c > 0f && !swap) Math.ceil(c.toDouble()).toInt().toString() else ""
-                            btns[i].alpha = if ((c > 0f && !swap) || semMana) 0.45f else 1f
+                            if (ninja && i == 1) {
+                                // Sombra Viva fica no botão de rolar: anel com o tempo que falta da sombra,
+                                // ou a recarga; com a sombra no ar o botão vira "trocar de lugar"
+                                val left = gameView.shadowLeft()
+                                val swap = gameView.swapReady()
+                                if (left > 0f) shadowTimer.setShadow(left, NinjaShadow.LIFE) else shadowTimer.setIdle(c)
+                                val semMana = left <= 0f && c <= 0f && p.mp < Player.NINJA_COST[2]
+                                btnRoll.alpha = if ((c > 0f && !swap) || semMana) 0.45f else 1f
+                                continue
+                            }
+                            val semMana = ninja && c <= 0f && p.mp < Player.NINJA_COST[i + 1]
+                            tvs[i].text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
+                            btns[i].alpha = if (c > 0f || semMana) 0.45f else 1f
                         }
                         if (ping) Sfx.play("ui_ping", 0.6f)
                     }
@@ -534,12 +546,21 @@ class MainActivity : AppCompatActivity() {
         btnAttack.setImageResource(R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
         val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA) View.VISIBLE else View.GONE
-        val skill34Vis = if (classe == Classe.NINJA) View.VISIBLE else View.GONE
+        val skill2Vis = if (classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
+        val skill3Vis = if (classe == Classe.NINJA) View.VISIBLE else View.GONE
+        // ninja: Sombra Viva toma o lugar do rolamento
+        if (classe == Classe.NINJA) {
+            btnRoll.setImageResource(R.drawable.hd_ic_nin_w)
+            btnRoll.contentDescription = "Sombra Viva"
+        } else {
+            btnRoll.setImageResource(R.drawable.hd_ic_roll)
+            btnRoll.contentDescription = "Rolar"
+        }
+        btnRoll.alpha = 1f
+        shadowTimer.clear()
         if (classe == Classe.NINJA) {
             btnSkill1.setImageResource(R.drawable.hd_ic_nin_q)
-            btnSkill2.setImageResource(R.drawable.hd_ic_nin_w)
             btnSkill1.contentDescription = "Shuriken Navalha"
-            btnSkill2.contentDescription = "Sombra Viva"
         } else {
             btnSkill1.setImageResource(R.drawable.hd_ic_rain)
             btnSkill2.setImageResource(R.drawable.hd_ic_thunder)
@@ -552,13 +573,14 @@ class MainActivity : AppCompatActivity() {
         btnSkill3.alpha = 1f
         btnSkill4.alpha = 1f
         btnSkill1.visibility = skillVis
-        btnSkill2.visibility = skillVis
+        btnSkill2.visibility = skill2Vis
         tvSkill1Cd.visibility = skillVis
-        tvSkill2Cd.visibility = skillVis
-        btnSkill3.visibility = skill34Vis
-        btnSkill4.visibility = skill34Vis
-        tvSkill3Cd.visibility = skill34Vis
-        tvSkill4Cd.visibility = skill34Vis
+        tvSkill2Cd.visibility = skill2Vis
+        btnSkill3.visibility = skill3Vis
+        tvSkill3Cd.visibility = skill3Vis
+        // ultimate (R) removida por enquanto
+        btnSkill4.visibility = View.GONE
+        tvSkill4Cd.visibility = View.GONE
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)

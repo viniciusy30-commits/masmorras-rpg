@@ -878,12 +878,31 @@ object Ninja3D {
 
     // ───────────── sombra (clone fantasma da Sombra Viva) ─────────────
 
-    /** Desenha a silhueta da sombra: pose parada, ou girando (mode 2) / lançando (mode 1) enquanto copia as skills. */
+    /**
+     * Desenha a silhueta da sombra: sempre parada (não imita os passos do herói), só copia as skills.
+     * mode 1 = lançando shuriken (pose do Q), mode 2 = giro de lâminas (pose do E); prog = 0..1 da skill.
+     */
     fun drawGhost(c: Canvas, p: Paint, fx: Float, fy: Float, s: Float, yawIn: Float, alpha: Float, mode: Int, prog: Float) {
         if (alpha <= 0.01f) return
         ghost = true
         val oldAlpha = alphaV
         alphaV = alpha
+        val spSave = sp.copyOf()
+        val kSSave = kS.copyOf()
+        val kISave = kI.copyOf()
+        // cachecol e rabo de cavalo calmos: a sombra não herda o balanço dos passos do herói
+        val sw = sin(clock * 1.6f)
+        sp[0] = 0f
+        sp[1] = 0f
+        sp[2] = 0.14f + 0.03f * sw
+        sp[3] = 0.16f + 0.03f * sw
+        sp[4] = 0.17f + 0.04f * sw
+        sp[5] = 0.05f
+        sp[6] = 0.08f
+        sp[7] = 0.03f
+        sp[8] = 0f
+        sp[9] = 0.12f
+        sp[10] = 0.06f
         rs = s * PX
         ox = fx
         oy = fy
@@ -894,31 +913,46 @@ object Ninja3D {
         lYs = sin(yawIn)
         identity()
         rotY(yawIn)
-        val br = sin(clock * 2.2f) * 0.26f
-        for (i in 0 until NK) kO[i] = KG_IDLE[i]
-        var pr = prog
-        if (pr < 0f) pr = 0f
-        if (pr > 1f) pr = 1f
-        if (mode == 2) {
-            rotY(TWO_PI * 2f * ease(pr))
-            for (i in 0 until NK) kO[i] = SE[1][i]
-        } else if (mode == 1) {
-            val u = ease(min(1f, pr / 0.5f))
-            for (i in 0 until NK) kO[i] = lerp(SQ[0][i], SQ[1][i], u)
+        for (i in 0 until NK) {
+            kI[i] = KG_IDLE[i]
+            kS[i] = KG_IDLE[i]
+        }
+        val pr = prog.coerceIn(0f, 1f)
+        var lean = 0.06f
+        var dip = 0.3f
+        var bend = 0.16f
+        if (mode == 1 || mode == 2) {
+            // mesma pose e mesma linha do tempo da skill do herói
+            poseFrom(if (mode == 1) 3 else 5, pr)
+            lean = 0.2f
+            dip = 0.6f
+            bend = 0.3f
+            if (mode == 2) {
+                rotY(TWO_PI * 2f * ease(((pr - 0.12f) / 0.66f).coerceIn(0f, 1f)))
+                dip = 1.2f
+                bend = 0.66f
+            }
+        } else {
+            for (i in 0 until NK) kO[i] = KG_IDLE[i]
+            kO[0] += sin(clock * 1.3f) * 0.03f
+            kO[4] += sin(clock * 1.1f + 1f) * 0.03f
         }
         bladeG = 1f
-        bHipY = 12.6f - (if (mode == 2) 1.2f else 0.3f)
-        bLean = if (mode == 0) 0.06f else 0.2f
+        bHipY = 12.6f - dip
+        bLean = lean
         bChestTw = kO[8]
         bHipTw = 0f
-        bBreath = br
+        bBreath = sin(clock * 2.2f) * 0.26f
         for (k in 0..1) {
             legA[k] = if (k == 0) 0.12f else -0.12f
-            legK[k] = 0.16f + (if (mode == 2) 0.5f else 0f)
+            legK[k] = bend
             legF[k] = 0f
         }
         assemble()
         flushZ(c)
+        System.arraycopy(spSave, 0, sp, 0, sp.size)
+        System.arraycopy(kSSave, 0, kS, 0, kS.size)
+        System.arraycopy(kISave, 0, kI, 0, kI.size)
         alphaV = oldAlpha
         ghost = false
     }

@@ -1,3 +1,12 @@
+#id 2026-10-28-i
+#titulo Ninja: Sombra Viva no lugar do rolamento
+- A Sombra Viva agora fica no botão de rolar do Ninja; um anel roxo ao redor do botão mostra quanto tempo a sombra ainda dura (fica vermelho piscando no final)
+- Com a sombra no ar, toque no mesmo botão para trocar de lugar com ela
+- A sombra fica parada e só imita as suas skills (Shuriken e Corte Sombrio), não os seus passos
+- Nova animação de troca: fumaça negra, anéis de runas, fita sombria rasgando o caminho e cortes cruzados na chegada
+- O Ninja não trava mais ao usar skills: continua andando (quase na velocidade normal) e pode pular durante elas
+- Marca da Morte (R) removida por enquanto
+
 #id 2026-10-28-h
 #titulo Nova classe: Ninja das sombras
 - Ninja estilo Zed: máscara de olhos vermelhos, armadura escura, cachecol e rabo de cavalo ao vento, com duas lâminas curvas que deixam rastro

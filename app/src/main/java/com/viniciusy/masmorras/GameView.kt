@@ -75,6 +75,8 @@ class GameView @JvmOverloads constructor(
     private val zaps = ArrayList<ZapFx>()
     // ninja: sombra, shurikens, cortes, golpe pendente e Marca da Morte
     private var ninjaShadow: NinjaShadow? = null
+    private val swapFxs = ArrayList<SwapFx>()
+    private var darkFlash = 0f
     private val shurikens = ArrayList<Shuriken>()
     private val slashFx = ArrayList<SlashFx>()
     private var pendingNinjaT = -1f
@@ -221,6 +223,8 @@ class GameView @JvmOverloads constructor(
         ninjaShadow = null
         shurikens.clear()
         slashFx.clear()
+        swapFxs.clear()
+        darkFlash = 0f
         pendingNinjaT = -1f
         markTarget = null
         markT = 0f
@@ -429,6 +433,11 @@ class GameView @JvmOverloads constructor(
         if (gameOver) return
         if (p.classe == Classe.MAGO) {
             teleport(p)
+            return
+        }
+        if (p.classe == Classe.NINJA) {
+            // no lugar do rolamento: Sombra Viva (1º toque cria a sombra, 2º toque troca de lugar com ela)
+            ninjaSkill(p, 2)
             return
         }
         if (p.classe == Classe.ARQUEIRO) {
@@ -867,6 +876,7 @@ class GameView @JvmOverloads constructor(
 
     /** Pode usar uma skill do ninja? Gasta a mana/recarga e começa a pose; a skill sai no instante de soltar. */
     private fun ninjaSkill(p: Player, k: Int) {
+        if (k !in 1..3) return
         if (k == 2) {
             val sh = ninjaShadow
             if (sh != null && sh.canSwap && p.skillK == 0 && p.alive) {
@@ -875,11 +885,6 @@ class GameView @JvmOverloads constructor(
             }
         }
         val now = System.currentTimeMillis()
-        if (k == 4 && findMarkTarget(p) == null) {
-            snd("ui_error", 0.5f)
-            if (p.skillReady(4, now)) texts.add(DmgText(p.x, p.y - p.radius - 40f - p.alt, "Sem alvo!", 0.8f, 0xFFFF8A80.toInt()))
-            return
-        }
         if (!p.startSkill(k, now)) {
             snd("ui_error", 0.5f)
             return
@@ -890,11 +895,16 @@ class GameView @JvmOverloads constructor(
         skillDY = p.facingY
         pendingSkillK = k
         pendingSkillT = p.skillReleaseAt(k)
+        // a sombra (parada) começa a imitar a skill junto com o herói, na mesma direção
+        val sh0 = ninjaShadow
+        if (sh0 != null && sh0.alive && sh0.age >= NinjaShadow.DASH_T && k != 2) {
+            sh0.faceDir(skillDX, skillDY)
+            if (k == 1) sh0.setMode(1, Ninja3D.Q_DUR) else sh0.setMode(2, Ninja3D.E_DUR)
+        }
         snd(when (k) {
             1 -> "bow_draw"
             2 -> "teleport_in"
-            3 -> "heavy_swing"
-            else -> "thunder_cast"
+            else -> "heavy_swing"
         }, 0.8f, if (k == 1) 1.7f else 1f)
     }
 
@@ -912,8 +922,6 @@ class GameView @JvmOverloads constructor(
                 shurikens.add(Shuriken(p.x + dx * 22f, p.y + dy * 22f, dx, dy, p.danoH * 1.5f, p.ground))
                 val sh = ninjaShadow
                 if (sh != null && sh.alive && sh.age >= NinjaShadow.DASH_T) {
-                    sh.faceDir(dx, dy)
-                    sh.setMode(1, 0.34f)
                     shurikens.add(Shuriken(sh.x + dx * 22f, sh.y + dy * 22f, dx, dy, p.danoH * 1.5f, sh.gz))
                     burst(sh.x, sh.y + sh.radius * 0.55f - sh.gz, 3, 0xFF9B5DE5.toInt())
                 }
@@ -945,56 +953,12 @@ class GameView @JvmOverloads constructor(
                 ninjaSlashAt(p.x, p.y, p.ground, p.alt, 108f, dmg, hitSet)
                 val sh = ninjaShadow
                 if (sh != null && sh.alive && sh.age >= NinjaShadow.DASH_T) {
-                    sh.setMode(2, 0.45f)
                     ninjaSlashAt(sh.x, sh.y, sh.gz, sh.gz, 108f, dmg, hitSet)
                 }
                 snd("heavy_swing", 0.95f, 1.15f)
                 shake = max(shake, 0.1f)
             }
-            else -> {
-                // Marca da Morte: some, aparece atrás do alvo e deixa a sombra onde estava
-                val tgt = findMarkTarget(p)
-                if (tgt == null || !tgt.alive) {
-                    p.refundNinja(4)
-                    pendingSkillT = -1f
-                    snd("ui_error", 0.5f)
-                    return
-                }
-                val ox = p.x
-                val oy = p.y
-                val ex = tgt.x - ox
-                val ey = tgt.y - oy
-                val d = hypot(ex, ey).coerceAtLeast(1f)
-                val ux = ex / d
-                val uy = ey / d
-                ninjaShadow = NinjaShadow(ox, oy, ox, oy, p.ground, atan2(ux, uy))
-                val off = tgt.radius + p.radius * 0.7f
-                var nx = tgt.x + ux * off
-                var ny = tgt.y + uy * off
-                if (playerBlocked(p, nx, ny)) {
-                    nx = tgt.x - ux * off
-                    ny = tgt.y - uy * off
-                }
-                if (playerBlocked(p, nx, ny)) {
-                    nx = ox
-                    ny = oy
-                }
-                burst(ox, oy + p.radius * 0.55f - p.alt, 10, 0xFF6A4A9A.toInt())
-                burst(nx, ny + p.radius * 0.55f - p.alt, 10, 0xFFB3202D.toInt())
-                p.x = nx
-                p.y = ny
-                p.facingX = -ux
-                p.facingY = -uy
-                p.phaseT = 0.55f
-                markTarget = tgt
-                markT = markTotal
-                markDmg = 0f
-                damageEnemy(tgt, p.danoH * 0.9f, ox, oy, 0.6f)
-                snd("teleport_out", 0.9f, 1.1f)
-                snd("teleport_in", 0.9f, 1.1f)
-                shake = max(shake, 0.18f)
-                texts.add(DmgText(tgt.x, tgt.y - tgt.radius - 48f - tgt.alt, "MARCA", 0.9f, 0xFFFF5A68.toInt()))
-            }
+            else -> {}
         }
     }
 
@@ -1017,8 +981,12 @@ class GameView @JvmOverloads constructor(
         val ox = p.x
         val oy = p.y
         val oz = p.ground
-        burst(ox, oy + p.radius * 0.55f - p.alt, 8, 0xFF9B5DE5.toInt())
-        burst(sh.x, sh.y + p.radius * 0.55f - sh.gz, 8, 0xFFB3202D.toInt())
+        swapFxs.add(SwapFx(ox, oy, oz, sh.x, sh.y, sh.gz, atan2(p.facingX, p.facingY)))
+        darkFlash = 1f
+        burst(ox, oy + p.radius * 0.55f - p.alt, 12, 0xFF6A2FB8.toInt())
+        burst(ox, oy + p.radius * 0.55f - p.alt, 6, 0xFF1A0B2A.toInt())
+        burst(sh.x, sh.y + p.radius * 0.55f - sh.gz, 12, 0xFFB3202D.toInt())
+        burst(sh.x, sh.y + p.radius * 0.55f - sh.gz, 6, 0xFF1A0B2A.toInt())
         p.x = sh.x
         p.y = sh.y
         p.vz = 0f
@@ -1032,7 +1000,7 @@ class GameView @JvmOverloads constructor(
         pendingNinjaT = -1f
         snd("teleport_out", 0.8f, 1.2f)
         snd("teleport_in", 0.8f, 1.2f)
-        shake = max(shake, 0.08f)
+        shake = max(shake, 0.16f)
     }
 
     /** Melhor alvo para a Marca da Morte: dentro de 400 px, de preferência na frente e perto. */
@@ -1059,7 +1027,10 @@ class GameView @JvmOverloads constructor(
         val sh = ninjaShadow
         if (sh != null) {
             sh.update(dt)
-            if (!sh.alive) ninjaShadow = null
+            if (!sh.alive) {
+                burst(sh.x, sh.y + sh.radius * 0.55f - sh.gz, 8, 0xFF3A1A5E.toInt())
+                ninjaShadow = null
+            }
         }
         for (s in shurikens) {
             if (!s.alive) continue
@@ -1081,6 +1052,9 @@ class GameView @JvmOverloads constructor(
         shurikens.removeAll { !it.alive }
         slashFx.forEach { it.update(dt) }
         slashFx.removeAll { it.done }
+        swapFxs.forEach { it.update(dt) }
+        swapFxs.removeAll { it.done }
+        darkFlash = max(0f, darkFlash - dt * 2.6f)
         // Marca da Morte: conta o tempo e explode causando dano extra
         val mt = markTarget
         if (mt != null) {
@@ -1863,6 +1837,7 @@ class GameView @JvmOverloads constructor(
         rains.forEach { it.drawArrows(canvas, paint, camX, camY) }
         bolts.forEach { it.draw(canvas, paint, camX, camY) }
         zaps.forEach { it.draw(canvas, paint, camX, camY) }
+        swapFxs.forEach { it.draw(canvas, paint, camX, camY) }
         slashFx.forEach { it.draw(canvas, paint, camX, camY) }
         shurikens.forEach { it.draw(canvas, paint, camX, camY) }
         markTarget?.let { if (it.alive) DeathMarkFx.draw(canvas, paint, camX, camY, it, markT, markTotal, time) }
@@ -1878,6 +1853,12 @@ class GameView @JvmOverloads constructor(
             paint.shader = it
             canvas.drawRect(0f, 0f, w, h, paint)
             paint.shader = null
+        }
+        if (darkFlash > 0.01f) {
+            // troca de sombra: a tela escurece num lampejo roxo-negro
+            paint.style = Paint.Style.FILL
+            paint.color = ((darkFlash * darkFlash * 150f).toInt() shl 24) or 0x0A0314
+            canvas.drawRect(0f, 0f, w, h, paint)
         }
 
         paint.typeface = pixelFace
@@ -1901,6 +1882,9 @@ class GameView @JvmOverloads constructor(
 
     /** Ninja: a Sombra Viva está no ar e dá para trocar de lugar com ela. */
     fun swapReady(): Boolean = ninjaShadow?.canSwap == true
+
+    /** Segundos que faltam para a Sombra Viva sumir (0 = sem sombra). */
+    fun shadowLeft(): Float = ninjaShadow?.let { if (it.alive) (NinjaShadow.LIFE - it.age).coerceAtLeast(0f) else 0f } ?: 0f
 
     fun getPlayer(): Player? = player
 }

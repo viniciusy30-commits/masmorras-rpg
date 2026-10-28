@@ -301,7 +301,7 @@ class Player(
 
     fun skillReady(k: Int, now: Long): Boolean {
         if (classe == Classe.NINJA) {
-            return k in 1..4 && alive && skillK == 0 && !rolling && grounded && dashT <= 0f && now >= ninjaReadyAt[k] && mp >= NINJA_COST[k]
+            return k in 1..3 && alive && skillK == 0 && !rolling && grounded && dashT <= 0f && now >= ninjaReadyAt[k] && mp >= NINJA_COST[k]
         }
         return classe == Classe.ARQUEIRO && alive && skillK == 0 && !rolling && grounded &&
             now >= (if (k == 1) rainReadyAt else thunderReadyAt)
@@ -359,7 +359,7 @@ class Player(
     }
 
     fun jump(): Boolean {
-        if (!alive || rolling || skillK != 0) return false
+        if (!alive || rolling || (skillK != 0 && classe != Classe.NINJA)) return false
         if (!grounded) return airJump()
         vz = 340f
         alt = ground + 0.7f
@@ -569,7 +569,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) 0.3f else 1f) * (if (bowHold) 0.5f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f)
             vx = inX * velH * 60f * slow
             vy = inY * velH * 60f * slow
         }
