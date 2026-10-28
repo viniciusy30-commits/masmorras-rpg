@@ -1453,7 +1453,7 @@ object Archer3D {
         val hipY = 12.6f + bob - crouch * 3f - hitKick * 0.9f
         val wob = sin(phase) * 0.10f * mvs
         val twIdle = -0.10f - sin(phase) * 0.20f * mvs
-        val chestTw = twIdle + (-1.2f - twIdle) * aimW - recoilV * 0.18f * aimW
+        val chestTw = twIdle + (-1.45f - twIdle) * aimW - recoilV * 0.18f * aimW
 
         // ── alvos das mãos (referencial do quadril; o peito gira em chestTw) ──
         val dirY = sin(elevS)
@@ -1465,7 +1465,7 @@ object Archer3D {
             reachE += (0f - reachE) * min(1f, dt * 6f)
         }
         // eixo da flecha: passa ao lado do rosto (nunca por dentro da cabeça), na altura dos olhos
-        val ax0 = -7.8f
+        val ax0 = -6.6f
         val ay0 = 16.2f + 1.2f * sin(elevS)
         val az0 = 3.0f
         // o braço do arco estica enquanto a corda é puxada
