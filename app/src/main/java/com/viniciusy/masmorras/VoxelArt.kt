@@ -9,6 +9,8 @@ import kotlin.math.sin
 /** Primitivas de arte em blocos (voxel 3D falso) no estilo Minecraft Dungeons. */
 object VoxelArt {
     var time = 0f
+    /** zoom atual da câmera (o GameView atualiza): os heróis aumentam a resolução interna para não ficar borrado */
+    @JvmField var zoom = 1f
     var flash = 0f
     private val path = Path()
 

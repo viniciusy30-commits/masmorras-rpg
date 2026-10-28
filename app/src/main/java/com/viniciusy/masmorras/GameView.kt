@@ -48,7 +48,7 @@ class GameView @JvmOverloads constructor(
 
     // Zoom do jogador (pinça): 1.0 = o mais longe possível (visão atual); acima disso aproxima
     private val MIN_ZOOM = 1.0f
-    private val MAX_ZOOM = 1.9f
+    private val MAX_ZOOM = 3.6f
     private var userZoom = 1f
     private var attackHeld = false
     // lança: golpe pendente (dano sai no instante da estocada), arremesso pendente e a lança no chão
@@ -1249,6 +1249,7 @@ class GameView @JvmOverloads constructor(
         val zr = if (pinching) 16f else 7f
         camZoom += (targetZoom - camZoom) * (1f - kotlin.math.exp(-dt * zr))
         if (camZoom < MIN_ZOOM) camZoom = MIN_ZOOM
+        VoxelArt.zoom = camZoom
     }
 
     private fun feetRow(e: Entity): Int = ((e.y + e.radius * 0.6f) / map.tileSize).toInt()

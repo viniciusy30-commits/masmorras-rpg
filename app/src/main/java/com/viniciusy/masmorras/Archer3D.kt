@@ -55,6 +55,8 @@ object Archer3D {
     private val scrH = FloatArray(MAX * 8)   // altura no mundo
     private val faceCol = IntArray(MAX * 6)
     private val faceEm = BooleanArray(MAX * 6)
+    private val noOut = BooleanArray(MAX)   // peças finas (corda): sem contorno escuro
+    private var nextNoOut = false
     private val keys = FloatArray(MAX)
     private val order = IntArray(MAX)
     private var n = 0
@@ -181,6 +183,7 @@ object Archer3D {
         val cwy = m[3] * cx + m[4] * cy + m[5] * cz + m[10]
         val cwz = m[6] * cx + m[7] * cy + m[8] * cz + m[11]
         keys[n] = cwy * SINP + cwz * COSP
+        noOut[n] = nextNoOut
         for (f in 0..5) {
             val k = AXIS[f]
             val sg = SIGN[f]
@@ -346,7 +349,7 @@ object Archer3D {
         val wpx = maxX - bx0 + 3f
         val hpx = maxY - by0 + 3f
         if (wpx > 2000f || hpx > 2000f) return
-        var ss = SS_MAX
+        var ss = min(SS_MAX * max(1f, V.zoom), 5f)
         if (wpx * hpx * ss * ss > BUF_MAX) ss = sqrt(BUF_MAX.toFloat() / (wpx * hpx)) * 0.97f
         val rw = (wpx * ss).toInt() + 1
         val rh = (hpx * ss).toInt() + 1
@@ -387,6 +390,7 @@ object Archer3D {
                 val i = row + x
                 val id = ib[i]
                 if (id == 0) continue
+                if (noOut[(id - 1) / 6]) continue
                 val z = zb[i]
                 var strong = false
                 var soft = false
@@ -649,7 +653,67 @@ object Archer3D {
         pop()
     }
 
+    private val bowM = FloatArray(12)
+    private val tipL = FloatArray(6)
+    private val segB = FloatArray(9)
+
+    /** guarda um ponto (no referencial atual) nas coordenadas locais do arco */
+    private fun capL(x: Float, y: Float, z: Float, out: Int) {
+        val m = stack[top]
+        val dx = m[0] * x + m[1] * y + m[2] * z + m[9] - bowM[9]
+        val dy = m[3] * x + m[4] * y + m[5] * z + m[10] - bowM[10]
+        val dz = m[6] * x + m[7] * y + m[8] * z + m[11] - bowM[11]
+        tipL[out * 3] = bowM[0] * dx + bowM[3] * dy + bowM[6] * dz
+        tipL[out * 3 + 1] = bowM[1] * dx + bowM[4] * dy + bowM[7] * dz
+        tipL[out * 3 + 2] = bowM[2] * dx + bowM[5] * dy + bowM[8] * dz
+    }
+
+    /** segmento fino de A até B (referencial do arco) feito de cubo: entra no z-buffer como o resto do corpo */
+    private fun segCube(ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, th: Float, col: Int) {
+        val dx = bx - ax
+        val dy = by - ay
+        val dz = bz - az
+        val len = sqrt(dx * dx + dy * dy + dz * dz)
+        if (len < 0.01f) return
+        val ux = dx / len
+        val uy = dy / len
+        val uz = dz / len
+        var hx = 1f
+        var hy = 0f
+        var hz = 0f
+        if (abs(ux) > 0.9f) {
+            hx = 0f
+            hz = 1f
+        }
+        val hu = hx * ux + hy * uy + hz * uz
+        var zx = hx - hu * ux
+        var zy = hy - hu * uy
+        var zz = hz - hu * uz
+        val zl = sqrt(zx * zx + zy * zy + zz * zz)
+        zx /= zl
+        zy /= zl
+        zz /= zl
+        // X = Y x Z
+        segB[0] = uy * zz - uz * zy
+        segB[1] = uz * zx - ux * zz
+        segB[2] = ux * zy - uy * zx
+        segB[3] = ux
+        segB[4] = uy
+        segB[5] = uz
+        segB[6] = zx
+        segB[7] = zy
+        segB[8] = zz
+        push()
+        translate((ax + bx) * 0.5f, (ay + by) * 0.5f, (az + bz) * 0.5f)
+        basis(segB)
+        nextNoOut = true
+        cube(0f, 0f, 0f, th, len * 0.5f, th, col, true)
+        nextNoOut = false
+        pop()
+    }
+
     private fun bowModel(flex: Float, gl: Float) {
+        System.arraycopy(stack[top], 0, bowM, 0, 12)
         // empunhadura
         cube(-0.3f, 0f, 0f, 0.65f, 2.5f, 0.6f, BOW_D)
         cube(-0.3f, 0f, 0.05f, 0.8f, 1.4f, 0.72f, LEATHER)
@@ -684,6 +748,7 @@ object Archer3D {
             cube(-0.3f, 2.4f, 0f, 0.5f + 0.4f * gl, 0.5f + 0.4f * gl, 0.5f + 0.4f * gl, magC, true)
         }
         projectTo(-0.3f, 2.3f, 0f, 0)
+        capL(-0.3f, 2.3f, 0f, 0)
         pop()
         // limbo de baixo
         push()
@@ -706,9 +771,14 @@ object Archer3D {
             cube(-0.3f, -2.4f, 0f, 0.5f + 0.4f * gl, 0.5f + 0.4f * gl, 0.5f + 0.4f * gl, magC, true)
         }
         projectTo(-0.3f, -2.3f, 0f, 1)
+        capL(-0.3f, -2.3f, 0f, 1)
         pop()
         // ponto de encaixe (onde a mão puxa a corda)
         projectTo(0.35f, 0f, -nockD, 2)
+        // corda em 3D: das duas pontas ao encaixe (por isso some atrás do corpo quando deve)
+        val strCol = STRING
+        segCube(tipL[0], tipL[1], tipL[2], 0.35f, 0f, -nockD, 0.19f, strCol)
+        segCube(tipL[3], tipL[4], tipL[5], 0.35f, 0f, -nockD, 0.19f, strCol)
         projectTo(0.35f, 0f, -nockD + 15.8f, 3)
     }
 
@@ -1027,6 +1097,7 @@ object Archer3D {
     // projeções de pontos do arco: 0 ponta de cima, 1 ponta de baixo, 2 encaixe da corda, 3 ponta da flecha
     private val pjX = FloatArray(4)
     private val pjY = FloatArray(4)
+    private val pjZ = FloatArray(4)
 
     // resultado do IK de braço
     private var ikEl = 0f
@@ -1092,6 +1163,7 @@ object Archer3D {
         val wz = m[6] * x + m[7] * y + m[8] * z + m[11]
         pjX[out] = ox + wx * rs
         pjY[out] = oy + (wz * SINP - wy * COSP) * rs
+        pjZ[out] = wz
     }
 
     // rotações de vetor (mesma convenção das matrizes rotX/rotY/rotZ)
@@ -1476,9 +1548,9 @@ object Archer3D {
         val gAimZ = az0 + dirZ * gLen + 0.9f * recoilV
         val swg = sin(phase) * 4.5f * mvs
         val stp = abs(sin(phase)) * 0.8f * mvs
-        var gRX = 9.4f
-        var gRY = 2.4f + stp
-        var gRZ = 3.8f - swg * 0.25f
+        var gRX = 8.4f
+        var gRY = 2.0f + stp
+        var gRZ = 1.6f - swg * 0.25f
         var rRX = -9.2f
         var rRY = 2.0f + stp
         var rRZ = 1.2f + swg
@@ -1493,8 +1565,8 @@ object Archer3D {
         val gX = lerp(gRX, gAimX, aimW)
         val gY = lerp(gRY, gAimY, aimW)
         val gZ = lerp(gRZ, gAimZ, aimW)
-        val b1 = lerp(0.5f, -elevS - 0.12f * recoilV, aimW)
-        val b2 = lerp(-0.3f, 0f, aimW)
+        val b1 = lerp(0.12f, -elevS - 0.12f * recoilV, aimW)
+        val b2 = 0f
         // corda em repouso fica junto do arco; só recua quando está mirando/puxando
         val nD = 2.0f + 6.0f * aimW * (1f - quiverT) + 5.6f * dE
         // a mão da corda acompanha a corda; ao soltar, ela recua um pouco (follow-through) e volta
@@ -1545,7 +1617,8 @@ object Archer3D {
         pRX = lerp(pRX, -1f, quiverT)
         pRY = lerp(pRY, 0.3f, quiverT)
         pRZ = lerp(pRZ, -0.4f, quiverT)
-        solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, 0.7f, -0.9f, 0f)
+        // cotovelo do braço do arco: para trás no repouso, para fora/baixo ao mirar
+        solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, lerp(0.6f, 0.7f, aimW), lerp(-0.1f, -0.9f, aimW), lerp(-1f, 0f, aimW))
         System.arraycopy(ikB, 0, armB[0], 0, 9)
         armB[0][9] = ikEl
         val hLX = ikHX
@@ -1619,7 +1692,6 @@ object Archer3D {
         rotY(-chestTw)
         rotX(b1)
         rotZ(b2)
-        rotY(-0.6f * (1f - aimW))
         nockD = nD + sin(clock * 58f) * 1.3f * vibA
         bowModel(flexX.coerceIn(-0.35f, 1.15f) * (1f - 0.5f * min(1f, elevS)), bowGlow)
         if (arrowOn > 0.5f) arrowModel(bowGlow)
@@ -1631,7 +1703,8 @@ object Archer3D {
         // anéis mágicos no chão enquanto a skill está sendo preparada
         val ringA = if (kind >= 3) (if (t < tE) 1f else max(0f, 1f - (t - tE) / (1f - tE))) else 0f
         // corda: por baixo do corpo se ele está de costas; por cima se de frente
-        val stringFront = cos(yaw) > 0.15f
+        // corda por cima do corpo só se o arco está do lado da câmera (profundidade real dos pontos do arco)
+        val stringFront = (pjZ[0] + pjZ[1] + pjZ[2]) > 0f
         if (!stringFront) drawString(c, p, kind, drawT)
 
         // poeira dos passos, pouso e salto
@@ -1851,10 +1924,6 @@ object Archer3D {
             c.drawLine(pjX[0], pjY[0], pjX[2], pjY[2], p)
             c.drawLine(pjX[2], pjY[2], pjX[1], pjY[1], p)
         }
-        p.strokeWidth = w
-        p.color = V.tint(STRING)
-        c.drawLine(pjX[0], pjY[0], pjX[2], pjY[2], p)
-        c.drawLine(pjX[2], pjY[2], pjX[1], pjY[1], p)
         p.strokeCap = Paint.Cap.BUTT
         p.style = Paint.Style.FILL
     }

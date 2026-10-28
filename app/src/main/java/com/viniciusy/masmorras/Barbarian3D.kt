@@ -354,7 +354,7 @@ object Barbarian3D {
         val wpx = maxX - bx0 + 3f
         val hpx = maxY - by0 + 3f
         if (wpx > 2000f || hpx > 2000f) return
-        var ss = SS_MAX
+        var ss = kotlin.math.min(SS_MAX * kotlin.math.max(1f, VoxelArt.zoom), 5f)
         if (wpx * hpx * ss * ss > BUF_MAX) ss = sqrt(BUF_MAX.toFloat() / (wpx * hpx)) * 0.97f
         val rw = (wpx * ss).toInt() + 1
         val rh = (hpx * ss).toInt() + 1
