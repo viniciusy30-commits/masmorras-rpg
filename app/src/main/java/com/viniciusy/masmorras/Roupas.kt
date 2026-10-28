@@ -595,7 +595,10 @@ object Roupas {
         return true
     }
 
-    // ───────────── corpo (tipo de cada classe, masculino e feminino) ─────────────
+    // ───────────── corpo (tipo de cada raça, masculino e feminino) ─────────────
+
+    /** Quando true, o modelo não desenha as peças originais (a roupa escolhida ocupa o lugar delas). */
+    @JvmField var ocultar: Boolean = false
 
     /**
      * Tipo de corpo: escalas aplicadas por região. ombros = largura do peito e distância dos ombros, peitoZ = profundidade do peito,
@@ -607,32 +610,44 @@ object Roupas {
         val quadril: Float, val coxa: Float, val braco: Float, val cabeca: Float
     )
 
-    private fun corpo(c: Classe): Corpo = if (HeroLook.fem) {
-        when (c) {
-            Classe.GUERREIRO -> Corpo("Guerreira atlética (ombros firmes, cintura marcada)", 0.94f, 1.0f, 0.86f, 0.92f, 1.07f, 1.05f, 0.95f, 0.96f)
-            Classe.BARBARO -> Corpo("Amazona robusta (braços fortes, quadril largo)", 1.06f, 1.06f, 0.92f, 0.98f, 1.12f, 1.1f, 1.12f, 0.95f)
-            Classe.MAGO -> Corpo("Feiticeira graciosa (esguia e delicada)", 0.82f, 0.88f, 0.78f, 0.84f, 1.02f, 0.9f, 0.76f, 0.98f)
-            Classe.ARQUEIRO -> Corpo("Caçadora esguia (ágil, cintura fina)", 0.86f, 0.88f, 0.78f, 0.84f, 1.04f, 0.92f, 0.8f, 0.97f)
-            Classe.NINJA -> Corpo("Assassina ágil (magra e flexível)", 0.84f, 0.86f, 0.76f, 0.82f, 1.02f, 0.9f, 0.78f, 0.97f)
-        }
-    } else {
-        when (c) {
-            Classe.GUERREIRO -> Corpo("Atlético imponente (peito largo, tronco em V)", 1.08f, 1.04f, 0.95f, 1.0f, 1.04f, 1.06f, 1.1f, 1.0f)
-            Classe.BARBARO -> Corpo("Titã musculoso (tronco de barril, braços enormes)", 1.2f, 1.12f, 1.1f, 1.08f, 1.08f, 1.12f, 1.28f, 0.96f)
-            Classe.MAGO -> Corpo("Esguio erudito (ombros estreitos, braços finos)", 0.9f, 0.9f, 0.9f, 0.9f, 0.94f, 0.88f, 0.82f, 1.04f)
-            Classe.ARQUEIRO -> Corpo("Esbelto ágil (tronco longo e enxuto)", 0.95f, 0.92f, 0.88f, 0.9f, 0.96f, 0.92f, 0.88f, 1.0f)
-            Classe.NINJA -> Corpo("Magro e flexível (tipo corredor)", 0.92f, 0.88f, 0.82f, 0.84f, 0.94f, 0.9f, 0.85f, 1.0f)
-        }
+    private fun base(r: Raca): Corpo = when (r) {
+        Raca.HUMANO -> Corpo("Humano (proporções médias)", 1f, 1f, 1f, 1f, 1f, 1f, 1f, 1f)
+        Raca.ELFO -> Corpo("Elfo esguio (alto e leve)", 0.92f, 0.92f, 0.88f, 0.9f, 0.97f, 0.92f, 0.86f, 1f)
+        Raca.ANAO -> Corpo("Anão atarracado (largo e firme)", 1.1f, 1.1f, 1.12f, 1.1f, 1f, 1.18f, 1.2f, 1.05f)
+        Raca.ORC -> Corpo("Orc brutamontes (ombros enormes)", 1.18f, 1.1f, 1.1f, 1.08f, 1.05f, 1.12f, 1.3f, 0.98f)
+        Raca.TIEFLING -> Corpo("Tiefling esbelto (tronco em V)", 0.96f, 0.95f, 0.92f, 0.94f, 0.98f, 0.96f, 0.92f, 1f)
+        Raca.DRACONATO -> Corpo("Draconato forte (peito de escamas)", 1.12f, 1.08f, 1.05f, 1.05f, 1.06f, 1.1f, 1.18f, 1f)
+        Raca.GOLIAS -> Corpo("Golias colossal (músculos de pedra)", 1.16f, 1.12f, 1.1f, 1.08f, 1.08f, 1.12f, 1.25f, 0.97f)
+        Raca.FELINO -> Corpo("Felino ágil (magro e flexível)", 0.9f, 0.88f, 0.82f, 0.86f, 0.95f, 0.9f, 0.85f, 1f)
+        Raca.GOBLIN -> Corpo("Goblin magricela (cabeça grande)", 0.88f, 0.86f, 0.84f, 0.86f, 0.92f, 0.82f, 0.8f, 1.12f)
+        Raca.MEIOELFO -> Corpo("Meio-elfo (esbelto e atlético)", 0.96f, 0.96f, 0.94f, 0.95f, 1f, 0.96f, 0.93f, 1f)
+        Raca.GNOMO -> Corpo("Gnomo miúdo (cabeça grande)", 0.9f, 0.95f, 0.95f, 0.95f, 0.94f, 0.9f, 0.85f, 1.12f)
+        Raca.HALFLING -> Corpo("Halfling roliço (pequeno e ligeiro)", 0.94f, 1f, 1.02f, 1f, 0.96f, 1f, 0.92f, 1.08f)
+        Raca.AASIMAR -> Corpo("Aasimar nobre (porte elegante)", 1f, 0.98f, 0.94f, 0.96f, 1f, 0.98f, 0.96f, 1f)
     }
 
-    /** Nome do tipo de corpo (mostrado na criação). */
-    fun tipoCorpo(c: Classe, fem: Boolean): String {
-        val antes = HeroLook.fem
-        HeroLook.fem = fem
-        val n = corpo(c).nome
-        HeroLook.fem = antes
-        return n
+    private fun corpoDe(r: Raca, fem: Boolean): Corpo {
+        val b = base(r)
+        if (!fem) return b
+        return Corpo(
+            b.nome.replace("Elfo", "Elfa").replace("Anão", "Anã").replace("Orc ", "Orc ").replace("Tiefling", "Tiefling")
+                .replace("Draconato", "Draconata").replace("Golias", "Golias").replace("Felino", "Felina")
+                .replace("Goblin", "Goblin").replace("Meio-elfo", "Meio-elfa").replace("Gnomo", "Gnoma")
+                .replace("Aasimar", "Aasimar").replace("Humano", "Humana").replace("atarracado", "atarracada")
+                .replace("esguio", "esguia").replace("brutamontes", "robusta").replace("esbelto", "esbelta")
+                .replace("forte", "forte").replace("colossal", "colossal").replace("ágil", "ágil")
+                .replace("magricela", "magricela").replace("miúdo", "miúda").replace("roliço", "roliça")
+                .replace("nobre", "nobre").replace("atlético", "atlética"),
+            b.ombros * 0.93f, b.peitoZ * 0.96f, b.cintura * 0.88f, b.cinturaZ * 0.92f,
+            b.quadril * 1.06f, b.coxa * 1.05f, b.braco * 0.88f, b.cabeca * 0.98f
+        )
     }
+
+    /** O corpo agora depende da raça escolhida (a classe só decide as roupas e o modelo). */
+    private fun corpo(@Suppress("UNUSED_PARAMETER") c: Classe): Corpo = corpoDe(HeroLook.raca, HeroLook.fem)
+
+    /** Nome do tipo de corpo (mostrado na criação). */
+    fun tipoCorpo(r: Raca, fem: Boolean): String = corpoDe(r, fem).nome
 
     /** Fator da distância dos ombros (e do peito) no eixo X. */
     fun ombrosK(c: Classe): Float = corpo(c).ombros

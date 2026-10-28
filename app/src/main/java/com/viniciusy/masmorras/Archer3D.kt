@@ -177,7 +177,7 @@ object Archer3D {
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
-        if (n >= MAX) return
+        if (n >= MAX || Roupas.ocultar) return
         val m = stack[top]
         val base = V.tint(color)
         val o = n * 8
@@ -543,6 +543,7 @@ object Archer3D {
         rotX(a)
         Roupas.perna(hg, Classe.ARQUEIRO)
         Roupas.coxa(hg, Classe.ARQUEIRO, side)
+            Roupas.ocultar = HeroLook.pernas > 0
         // coxa: calça com dobras, costura lateral e faixas de couro
         cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
         cube(0f, -1.0f, 2.24f, 1.5f, 0.9f, 0.05f, PANTS_L)
@@ -586,6 +587,7 @@ object Archer3D {
         cube(0f, -4.7f, 2.1f, 1.3f, 0.3f, 0.12f, LEATHER_D)
         cube(0f, -4.7f, 2.2f, 0.4f, 0.3f, 0.1f, BRASS)
         cube(side * 2.05f, -3f, 0f, 0.1f, 2.3f, 1.4f, BOOT_L)
+        Roupas.ocultar = false
         translate(0f, -5.4f, 0f)
         rotX(foot)
         // pé: sola, biqueira reforçada, calcanhar e costura
@@ -934,12 +936,14 @@ object Archer3D {
         Roupas.cintura(hg, Classe.ARQUEIRO)
         HeroKit.cauda(hg, Classe.ARQUEIRO)
         Roupas.abdomen(hg, Classe.ARQUEIRO)
+        Roupas.ocultar = HeroLook.peito > 0
         // quadril e cinto
         cube(0f, -1.6f, 0f, 5.4f, 2.2f, 3.3f, PANTS)
         cube(0f, 0.6f, 0f, 5.3f, 1.1f, 3.5f, LEATHER)
         cube(0f, 0.6f, 3.55f, 1.2f, 0.9f, 0.3f, BRASS)
         cube(0f, 0.6f, 3.85f, 0.6f, 0.5f, 0.15f, BRASS_L)
         cube(0f, 1.2f, 3.6f, 5.2f, 0.18f, 0.12f, LEATHER_D)
+        Roupas.ocultar = false
         // bolsa no quadril direito e adaga no esquerdo
         cube(-5.7f, -0.7f, 1.2f, 0.9f, 1.5f, 1.7f, LEATHER_L)
         cube(-5.7f, 0.4f, 1.2f, 1.0f, 0.4f, 1.8f, LEATHER_D)
@@ -952,6 +956,7 @@ object Archer3D {
         cube(0.2f, 1.2f, 0f, 0.5f, 1.0f, 0.65f, LEATHER)
         cube(0.2f, 2.3f, 0f, 0.8f, 0.25f, 0.9f, BRASS)
         pop()
+        Roupas.ocultar = HeroLook.peito > 0
         // saiotes da túnica (molas)
         push()
         translate(0f, 0.8f, 3.6f)
@@ -983,6 +988,7 @@ object Archer3D {
         Roupas.peitoEsc(hg, Classe.ARQUEIRO)
         Roupas.peito(hg, Classe.ARQUEIRO)
         Roupas.capa(hg, Classe.ARQUEIRO)
+            Roupas.ocultar = HeroLook.peito > 0
         cube(0f, 5.2f, 0f, 4.7f, 0.9f, 3.2f, TUNIC_D)
         cube(0f, 9.8f, 0f, 5.5f, 4.8f, 3.4f, TUNIC)
         cube(0f, 10.0f, 3.45f, 4.3f, 4.0f, 0.2f, LEATHER)
@@ -1020,6 +1026,7 @@ object Archer3D {
         cube(0f, 0f, 0.2f, 0.12f, 0.8f, 0.08f, STEEL_D)
         cube(0f, -0.2f, 0.28f, 0.22f, 0.22f, 0.08f, magC, true)
         pop()
+        Roupas.ocultar = false
         // duas facas élficas brancas em X nas costas, em bainhas de couro presas ao cinto
         push()
         translate(0f, 0.9f, -4.35f)
@@ -1059,7 +1066,12 @@ object Archer3D {
     }
 
     private val hg = object : HeroGfx {
-        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Archer3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) {
+            val o = Roupas.ocultar
+            Roupas.ocultar = false
+            this@Archer3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+            Roupas.ocultar = o
+        }
         override fun push() = this@Archer3D.push()
         override fun pop() = this@Archer3D.pop()
         override fun translate(x: Float, y: Float, z: Float) = this@Archer3D.translate(x, y, z)
@@ -1883,6 +1895,7 @@ object Archer3D {
         push()
         val arrowsLeft = 5f - (if (casting && t > tR) 1f else 0f) * 0f
         torso(chestTw, sp[2], sp[3], sp[4], sp[7].coerceIn(-0.2f, 0.2f), sp[10], breath, sp[5], sp[6], arrowsLeft)
+        Roupas.ocultar = false
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)

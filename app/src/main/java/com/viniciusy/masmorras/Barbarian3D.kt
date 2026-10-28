@@ -170,7 +170,7 @@ object Barbarian3D {
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
-        if (n >= MAX) return
+        if (n >= MAX || Roupas.ocultar) return
         val m = stack[top]
         val base = V.tint(color)
         val o = n * 8
@@ -659,6 +659,7 @@ object Barbarian3D {
             rotX(a)
             Roupas.perna(hg, Classe.BARBARO)
             Roupas.coxa(hg, Classe.BARBARO, side)
+            Roupas.ocultar = HeroLook.pernas > 0
             cube(0f, -2.7f, 0f, 2.8f, 2.9f, 2.8f, PANTS)
             cube(0f, -0.4f, 0f, 3.0f, 0.7f, 3.0f, FUR)
             cube(0f, -1.1f, 0.15f, 3.05f, 0.35f, 3.05f, FUR_D)
@@ -682,6 +683,7 @@ object Barbarian3D {
             cube(side * 2.6f, -2.7f, 0f, 0.15f, 2.4f, 2.0f, LEATHER_L)
             cube(0f, -5.2f, 0f, 2.95f, 0.7f, 3.0f, FUR)
             cube(0f, -5.8f, 0.2f, 3.0f, 0.4f, 3.05f, FUR_D)
+            Roupas.ocultar = false
             translate(0f, -5.4f, 0f)
             rotX(foot)
             cube(0f, 0.2f, 1.2f, 2.8f, 1.5f, 3.8f, LEATHER)
@@ -861,7 +863,12 @@ object Barbarian3D {
     }
 
     private val hg = object : HeroGfx {
-        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Barbarian3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) {
+            val o = Roupas.ocultar
+            Roupas.ocultar = false
+            this@Barbarian3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+            Roupas.ocultar = o
+        }
         override fun push() = this@Barbarian3D.push()
         override fun pop() = this@Barbarian3D.pop()
         override fun translate(x: Float, y: Float, z: Float) = this@Barbarian3D.translate(x, y, z)
@@ -978,6 +985,7 @@ object Barbarian3D {
         Roupas.cintura(hg, Classe.BARBARO)
         HeroKit.cauda(hg, Classe.BARBARO)
         Roupas.abdomen(hg, Classe.BARBARO)
+        Roupas.ocultar = HeroLook.peito > 0
         cube(0f, 0.6f, 0f, 6.3f, 1.5f, 3.9f, LEATHER)
         cube(0f, 2.0f, 0f, 6.35f, 0.2f, 3.95f, LEATHER_L)
         cube(0f, 0.8f, 3.95f, 2.2f, 1.5f, 0.5f, IRON_D)
@@ -1048,6 +1056,7 @@ object Barbarian3D {
             Roupas.peitoEsc(hg, Classe.BARBARO)
             Roupas.peito(hg, Classe.BARBARO)
             Roupas.capa(hg, Classe.BARBARO)
+            Roupas.ocultar = HeroLook.peito > 0
             cube(0f, 9.8f, 0f, 7.4f, 5.0f, 4.2f, SKIN)
             cube(-3.6f, 10.6f, 4.25f, 3.4f, 2.4f, 0.5f, SKIN_L)
             cube(3.6f, 10.6f, 4.25f, 3.4f, 2.4f, 0.5f, SKIN_L)
@@ -1097,6 +1106,7 @@ object Barbarian3D {
             cube(2.1f, 13.2f, 4.6f, 1.1f, 0.9f, 0.5f, FUR_D)
             cube(4.2f, 13.2f, 4.6f, 1.2f, 0.9f, 0.5f, FUR)
             cube(6.4f, 13.2f, 4.6f, 1.2f, 0.9f, 0.5f, FUR_D)
+            Roupas.ocultar = HeroLook.capa > 0
             push()
                 translate(0f, 13.8f, -4.4f)
                 rotX(c0)
@@ -1144,6 +1154,7 @@ object Barbarian3D {
         rotX(lean)
         push()
         torso(chestTw, c0, c1, c2, kF, kB, breath)
+        Roupas.ocultar = false
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)

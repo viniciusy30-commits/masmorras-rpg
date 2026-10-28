@@ -332,7 +332,7 @@ object HeroCreator {
         tvCorpo.textSize = 12f
         tvCorpo.setPadding(0, dp(2f), 0, dp(2f))
         painel.addView(tvCorpo)
-        atualizadores.add { tvCorpo.text = "Corpo: " + Roupas.tipoCorpo(classe, ed.sexo == 1) }
+        atualizadores.add { tvCorpo.text = "Corpo: " + Roupas.tipoCorpo(ed.raca, ed.sexo == 1) }
         linhaCores("Pele", PELES, { ed.skin }, { ed.skin = it })
         linhaCores("Cabelo e barba", CABELOS, { ed.hair }, { ed.hair = it })
         linhaCores("Olhos", OLHOS, { ed.eye }, { ed.eye = it })

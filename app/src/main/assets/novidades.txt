@@ -1,3 +1,9 @@
+#id 2026-10-28-k
+#titulo Corpo por raça e roupas que substituem o original
+- O tipo de corpo agora depende da RAÇA (anão atarracado, elfo esguio, orc e golias enormes, goblin e gnomo de cabeça grande...), nos dois sexos; a tela de criação mostra o nome do tipo logo abaixo do Sexo
+- Ao trocar peito, pernas ou capa, as peças originais do modelo somem e a roupa nova ocupa o lugar (antes ficava por cima ou por baixo)
+- Botas, armas, grimório, bolsas e aljava continuam aparecendo
+
 #id 2026-10-28-i
 #titulo Ninja: Sombra Viva no lugar do rolamento
 - A Sombra Viva agora fica no botão de rolar do Ninja; um anel roxo ao redor do botão mostra quanto tempo a sombra ainda dura (fica vermelho piscando no final)

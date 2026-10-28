@@ -171,7 +171,7 @@ object Mage3D {
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
-        if (n >= MAX) return
+        if (n >= MAX || Roupas.ocultar) return
         val m = stack[top]
         val base = V.tint(color)
         val o = n * 8
@@ -643,6 +643,7 @@ object Mage3D {
             rotX(a)
             Roupas.perna(hg, Classe.MAGO)
             Roupas.coxa(hg, Classe.MAGO, side)
+            Roupas.ocultar = HeroLook.pernas > 0
             cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
             translate(0f, -5.6f, 0f)
             rotX(knee)
@@ -651,6 +652,7 @@ object Mage3D {
             cube(0f, -0.5f, 0f, 2.25f, 0.5f, 2.3f, LEATHER_L)
             cube(0f, -0.5f, 2.35f, 0.9f, 0.4f, 0.12f, GOLD)
             cube(0f, -4.6f, 2.05f, 1.2f, 0.3f, 0.12f, LEATHER_D)
+            Roupas.ocultar = false
             translate(0f, -5.4f, 0f)
             rotX(foot)
             cube(0f, 0.2f, 1.2f, 2.3f, 1.4f, 3.2f, LEATHER)
@@ -764,7 +766,12 @@ object Mage3D {
     }
 
     private val hg = object : HeroGfx {
-        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Mage3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) {
+            val o = Roupas.ocultar
+            Roupas.ocultar = false
+            this@Mage3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+            Roupas.ocultar = o
+        }
         override fun push() = this@Mage3D.push()
         override fun pop() = this@Mage3D.pop()
         override fun translate(x: Float, y: Float, z: Float) = this@Mage3D.translate(x, y, z)
@@ -880,11 +887,13 @@ object Mage3D {
         Roupas.cintura(hg, Classe.MAGO)
         HeroKit.cauda(hg, Classe.MAGO)
         Roupas.abdomen(hg, Classe.MAGO)
+        Roupas.ocultar = HeroLook.peito > 0
         // cinto, fivela, grimório e poção
         cube(0f, 0.6f, 0f, 5.2f, 1.2f, 3.4f, LEATHER)
         cube(0f, 0.7f, 3.45f, 1.6f, 1.1f, 0.5f, GOLD)
         cube(0f, 0.7f, 3.95f, 0.9f, 0.7f, 0.2f, GOLD_L)
         cube(0f, 0.7f, 4.15f, 0.4f, 0.4f, 0.12f, orbC, true)
+        Roupas.ocultar = false
         push()
             translate(5.7f, 0.2f, 0.4f)
             rotZ(bookSw)
@@ -898,6 +907,7 @@ object Mage3D {
         cube(-5.3f, -0.5f, 2.2f, 0.6f, 0.8f, 0.6f, VIO, true)
         cube(-5.3f, 1.5f, 2.2f, 0.4f, 0.4f, 0.4f, LEATHER_L)
         cube(-5.3f, 0.9f, 2.2f, 0.85f, 0.15f, 0.85f, GOLD_D)
+        Roupas.ocultar = HeroLook.peito > 0
         // saia da túnica: painéis da frente, de trás e dos lados
         cube(0f, -4.2f, 0f, 6.2f, 4.2f, 3.5f, ROBE_DD)
         push()
@@ -937,6 +947,7 @@ object Mage3D {
             Roupas.peitoEsc(hg, Classe.MAGO)
             Roupas.peito(hg, Classe.MAGO)
             Roupas.capa(hg, Classe.MAGO)
+            Roupas.ocultar = HeroLook.peito > 0
             cube(0f, 9.8f, 0f, 5.7f, 4.8f, 3.5f, ROBE)
             cube(0f, 10f, 3.55f, 4.7f, 4.2f, 0.15f, ROBE_L)
             cube(0f, 14.3f, 0f, 3.4f, 0.9f, 3f, ROBE_D)
@@ -960,11 +971,14 @@ object Mage3D {
             cube(0f, 13.4f, 4.5f, 0.5f, 0.5f, 0.15f, orbC, true)
             cube(-3.6f, 14.2f, 3.5f, 0.3f, 0.3f, 0.12f, ARC_L, true)
             cube(3.6f, 14.2f, 3.5f, 0.3f, 0.3f, 0.12f, ARC_L, true)
+            Roupas.ocultar = false
             if (wingW > 0.05f) wings(wingW, flap)
+            Roupas.ocultar = HeroLook.peito > 0
             // capuz dobrado nas costas
             cube(0f, 13f, -3.2f, 3.8f, 1.7f, 1.4f, ROBE_D)
             cube(0f, 13.6f, -4.2f, 3f, 1.1f, 0.5f, ROBE_DD)
             // capa longa em três segmentos
+            Roupas.ocultar = HeroLook.capa > 0
             push()
                 translate(0f, 13.3f, -3.9f)
                 rotX(c0)
@@ -1288,6 +1302,7 @@ object Mage3D {
         val flare = 0.04f + 0.10f * spN + 0.3f * airW
         val bookSw = (0.05f + 0.12f * spN) * sin(clock * 2.2f) - 0.2f * sp[7]
         torso(chestTw, sp[2], sp[3], sp[4], sp[7].coerceIn(-0.2f, 0.2f), sp[10], flare, breath, bookSw, flyW, flap)
+        Roupas.ocultar = false
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)

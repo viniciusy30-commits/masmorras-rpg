@@ -235,7 +235,7 @@ object Warrior3D {
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
-        if (n >= MAX) return
+        if (n >= MAX || Roupas.ocultar) return
         val m = stack[top]
         val base = V.tint(color)
         val o = n * 8
@@ -549,6 +549,7 @@ object Warrior3D {
             rotX(a)
             Roupas.perna(hg, Classe.GUERREIRO)
             Roupas.coxa(hg, Classe.GUERREIRO, side)
+            Roupas.ocultar = HeroLook.pernas > 0
             cube(0f, -2.7f, 0f, 2.55f, 2.9f, 2.6f, PANTS)
             cube(0f, -2.2f, 0.35f, 2.75f, 2.5f, 2.65f, STEEL_D)
             cube(0f, -2f, 2.85f, 1.5f, 2.3f, 0.25f, STEEL)
@@ -569,6 +570,7 @@ object Warrior3D {
             cube(0f, -3.9f, 2.7f, 1.5f, 0.25f, 0.18f, GOLD_D)
             cube(side * 2.45f, -2.6f, 0.2f, 0.2f, 2.5f, 2f, STEEL_L)
             cube(0f, -5.2f, 0f, 2.6f, 0.4f, 2.65f, GOLD_D)
+            Roupas.ocultar = false
             translate(0f, -5.4f, 0f)
             rotX(foot)
             cube(0f, 0.2f, 1.2f, 2.7f, 1.5f, 3.7f, LEATHER)
@@ -715,7 +717,12 @@ object Warrior3D {
     }
 
     private val hg = object : HeroGfx {
-        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Warrior3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) {
+            val o = Roupas.ocultar
+            Roupas.ocultar = false
+            this@Warrior3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+            Roupas.ocultar = o
+        }
         override fun push() = this@Warrior3D.push()
         override fun pop() = this@Warrior3D.pop()
         override fun translate(x: Float, y: Float, z: Float) = this@Warrior3D.translate(x, y, z)
@@ -805,6 +812,7 @@ object Warrior3D {
         Roupas.cintura(hg, Classe.GUERREIRO)
         HeroKit.cauda(hg, Classe.GUERREIRO)
         Roupas.abdomen(hg, Classe.GUERREIRO)
+        Roupas.ocultar = HeroLook.peito > 0
         cube(0f, 0.6f, 0f, 5.6f, 1.4f, 3.5f, LEATHER)
         cube(0f, 0.8f, 3.55f, 1.9f, 1.4f, 0.5f, GOLD)
         cube(0f, 0.8f, 4f, 1.1f, 0.9f, 0.25f, GOLD_L)
@@ -857,6 +865,7 @@ object Warrior3D {
             Roupas.peitoEsc(hg, Classe.GUERREIRO)
             Roupas.peito(hg, Classe.GUERREIRO)
             Roupas.capa(hg, Classe.GUERREIRO)
+            Roupas.ocultar = HeroLook.peito > 0
             cube(0f, 9.8f, 0f, 6.9f, 5f, 3.9f, STEEL)
             cube(0f, 10.5f, 3.9f, 5.5f, 3.8f, 0.6f, STEEL_L)
             cube(0f, 10.5f, 4.45f, 0.5f, 3.8f, 0.2f, STEEL)
@@ -895,6 +904,7 @@ object Warrior3D {
             cube(6.6f, 13.5f, -4.5f, 1.1f, 0.9f, 0.5f, FUR_D)
             cube(-7.6f, 13.9f, 0f, 1.8f, 1f, 2.6f, FUR)
             cube(7.6f, 13.9f, 0f, 1.8f, 1f, 2.6f, FUR_D)
+            Roupas.ocultar = HeroLook.capa > 0
             push()
                 translate(0f, 13.6f, -4.1f)
                 rotX(c0)
@@ -1657,6 +1667,7 @@ object Warrior3D {
         rotX(lean)
         push()
         torso(chestTw, sp[2], sp[3], sp[4], sp[7], breath)
+        Roupas.ocultar = false
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)

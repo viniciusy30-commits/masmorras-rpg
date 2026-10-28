@@ -165,7 +165,7 @@ object Ninja3D {
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
-        if (n >= MAX) return
+        if (n >= MAX || Roupas.ocultar) return
         val m = stack[top]
         val base = if (ghost) ghostCol(color, emissive) else V.tint(color)
         val o = n * 8
@@ -661,7 +661,12 @@ object Ninja3D {
     }
 
     private val hg = object : HeroGfx {
-        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) = this@Ninja3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+        override fun cube(cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float, color: Int, emissive: Boolean) {
+            val o = Roupas.ocultar
+            Roupas.ocultar = false
+            this@Ninja3D.cube(cx, cy, cz, hx, hy, hz, color, emissive)
+            Roupas.ocultar = o
+        }
         override fun push() = this@Ninja3D.push()
         override fun pop() = this@Ninja3D.pop()
         override fun translate(x: Float, y: Float, z: Float) = this@Ninja3D.translate(x, y, z)
@@ -679,6 +684,7 @@ object Ninja3D {
             rotX(a)
             Roupas.perna(hg, Classe.NINJA)
             Roupas.coxa(hg, Classe.NINJA, side)
+            Roupas.ocultar = HeroLook.pernas > 0
             cube(0f, -2.7f, 0f, 2.2f, 2.9f, 2.3f, SUIT)
             cube(0f, -4.9f, 0f, 2.35f, 0.5f, 2.45f, CRIM_D)
             translate(0f, -5.6f, 0f)
@@ -687,6 +693,7 @@ object Ninja3D {
             cube(0f, -2.7f, 0f, 2.0f, 2.8f, 2.05f, SUIT_L)
             cube(0f, -0.2f, 2.1f, 1.3f, 0.9f, 0.25f, PLATE)
             cube(0f, -4.6f, 0f, 2.15f, 0.35f, 2.2f, CRIM)
+            Roupas.ocultar = false
             translate(0f, -5.4f, 0f)
             rotX(foot)
             cube(0f, 0.2f, 1.2f, 2.2f, 1.3f, 3.1f, SUIT_D)
@@ -828,6 +835,7 @@ object Ninja3D {
         Roupas.cintura(hg, Classe.NINJA)
         if (!ghost) HeroKit.cauda(hg, Classe.NINJA)
         Roupas.abdomen(hg, Classe.NINJA)
+        Roupas.ocultar = HeroLook.peito > 0
         // cinto, fivela e bolsas
         cube(0f, 0.6f, 0f, 5.0f, 1.2f, 3.3f, SUIT_D)
         cube(0f, 0.7f, 3.35f, 1.5f, 1.0f, 0.4f, PLATE)
@@ -866,6 +874,7 @@ object Ninja3D {
             Roupas.peitoEsc(hg, Classe.NINJA)
             Roupas.peito(hg, Classe.NINJA)
             Roupas.capa(hg, Classe.NINJA)
+            Roupas.ocultar = HeroLook.peito > 0
             cube(0f, 9.6f, 0f, 5.4f, 4.8f, 3.4f, SUIT)
             cube(0f, 10.0f, 3.45f, 4.6f, 4.2f, 0.2f, PLATE)
             cube(0f, 10.0f, 3.62f, 3.8f, 3.4f, 0.1f, PLATE_D)
@@ -883,6 +892,7 @@ object Ninja3D {
             cube(0f, 13.7f, 0f, 3.6f, 1.2f, 3.2f, SUIT_L)
             cube(0f, 14.4f, 0f, 3.9f, 0.4f, 3.4f, PLATE)
             // cachecol vermelho comprido em três segmentos
+            Roupas.ocultar = HeroLook.capa > 0
             push()
                 translate(0f, 13.0f, -3.4f)
                 rotX(c0)
@@ -913,6 +923,7 @@ object Ninja3D {
         rotX(bLean)
         push()
         torso(bChestTw, sp[2], sp[3], sp[4], sp[7].coerceIn(-0.2f, 0.2f), sp[10], bBreath)
+        Roupas.ocultar = false
         push()
         rotY(bChestTw)
         translate(0f, bBreath, 0f)
