@@ -574,17 +574,28 @@ object Archer3D {
         }
     }
 
-    private fun arm(side: Float, sx: Float, z: Float, sh: Float, roll: Float, el: Float, gl: Float) {
+    /** multiplica a matriz atual por uma base (colunas X, Y, Z) */
+    private fun basis(b: FloatArray) {
+        val m = stack[top]
+        for (r in 0..2) {
+            val a0 = m[r * 3]
+            val a1 = m[r * 3 + 1]
+            val a2 = m[r * 3 + 2]
+            m[r * 3] = a0 * b[0] + a1 * b[1] + a2 * b[2]
+            m[r * 3 + 1] = a0 * b[3] + a1 * b[4] + a2 * b[5]
+            m[r * 3 + 2] = a0 * b[6] + a1 * b[7] + a2 * b[8]
+        }
+    }
+
+    private fun arm(side: Float, sx: Float, idx: Int, gl: Float) {
         val isLeft = if (side > 0f) 1f else 0f
         push()
         translate(sx, 12.8f, 0f)
         shoulderPad(side, isLeft)
-        rotZ(z)
-        rotX(sh)
-        rotY(roll)
+        basis(armB[idx])
         upperArm()
         translate(0f, -5.7f, 0f)
-        rotX(el)
+        rotX(armB[idx][9])
         foreArm(isLeft, gl)
         pop()
     }
@@ -915,6 +926,7 @@ object Archer3D {
     private var vibA = 0f
     private var flexX = 0f
     private var flexV = 0f
+    private var reachE = 0f   // extensão do braço do arco (segura depois do disparo)
     private var volleyT = 0f
     private var boltT = 0f
     private var gatherT = 0f
@@ -931,10 +943,9 @@ object Archer3D {
     private val pjY = FloatArray(4)
 
     // resultado do IK de braço
-    private var ikZ = 0f
-    private var ikSh = 0f
-    private var ikRoll = 0f
     private var ikEl = 0f
+    private val ikB = FloatArray(9)
+    private val armB = Array(2) { FloatArray(10) }
     private var ikHX = 0f
     private var ikHY = 0f
     private var ikHZ = 0f
@@ -1062,20 +1073,23 @@ object Archer3D {
         val d2x = (ikHX - ex) / b
         val d2y = (ikHY - ey) / b
         val d2z = (ikHZ - ez) / b
-        ikSh = -asin(cl(d1z, -1f, 1f))
-        ikZ = atan2(d1x, -d1y)
-        val cz = cos(ikZ)
-        val szn = sin(ikZ)
-        val ax = cz * d2x + szn * d2y
-        val ay = -szn * d2x + cz * d2y
-        val az = d2z
-        val cs = cos(ikSh)
-        val ss = sin(ikSh)
-        val lx = ax
-        val ly = cs * ay + ss * az
-        val lz = -ss * ay + cs * az
-        ikEl = acos(cl(-ly, -1f, 1f))
-        ikRoll = atan2(-lx, -lz)
+        // base do braço sem ângulos de Euler (sem virada brusca): Y = -osso de cima, Z = lado para onde o cotovelo dobra
+        val zx = -sa * ux + ca * qx
+        val zy = -sa * uy + ca * qy
+        val zz = -sa * uz + ca * qz
+        val yx = -d1x
+        val yy = -d1y
+        val yz = -d1z
+        ikB[0] = yy * zz - yz * zy
+        ikB[1] = yz * zx - yx * zz
+        ikB[2] = yx * zy - yy * zx
+        ikB[3] = yx
+        ikB[4] = yy
+        ikB[5] = yz
+        ikB[6] = zx
+        ikB[7] = zy
+        ikB[8] = zz
+        ikEl = acos(cl(d1x * d2x + d1y * d2y + d1z * d2z, -1f, 1f))
     }
 
 
@@ -1358,36 +1372,48 @@ object Archer3D {
         // ── alvos das mãos (referencial do quadril; o peito gira em chestTw) ──
         val dirY = sin(elevS)
         val dirZ = cos(elevS)
-        val ax0 = -3.4f
-        val ay0 = 16.4f + 1.2f * sin(elevS)
-        val az0 = 3.2f
+        val dE = ease(drawT)
+        if (casting) {
+            reachE = if (t >= tR) 1f else dE
+        } else {
+            reachE += (0f - reachE) * min(1f, dt * 6f)
+        }
+        // eixo da flecha: passa ao lado do rosto (nunca por dentro da cabeça), na altura dos olhos
+        val ax0 = -7.8f
+        val ay0 = 16.2f + 1.2f * sin(elevS)
+        val az0 = 3.0f
+        // o braço do arco estica enquanto a corda é puxada
+        val gLen = lerp(6.0f, 13.2f, reachE)
         val gAimX = ax0
-        val gAimY = ay0 + dirY * 13.8f
-        val gAimZ = az0 + dirZ * 13.8f + 0.9f * recoilV
+        val gAimY = ay0 + dirY * gLen
+        val gAimZ = az0 + dirZ * gLen + 0.9f * recoilV
         val swg = sin(phase) * 4.5f * mvs
         val stp = abs(sin(phase)) * 0.8f * mvs
-        var gRX = 9.0f
-        var gRY = 8.4f + stp
-        var gRZ = 5.6f - swg * 0.5f
-        var rRX = -8.6f
-        var rRY = 8.0f + stp
-        var rRZ = 2.4f + swg
+        var gRX = 9.4f
+        var gRY = 2.4f + stp
+        var gRZ = 3.8f - swg * 0.25f
+        var rRX = -9.2f
+        var rRY = 2.0f + stp
+        var rRZ = 1.2f + swg
         if (airW > 0.001f) {
             gRX = lerp(gRX, 8.8f, airW); gRY = lerp(gRY, 13.6f, airW); gRZ = lerp(gRZ, 4.5f, airW)
             rRX = lerp(rRX, -8.8f, airW); rRY = lerp(rRY, 12.6f, airW); rRZ = lerp(rRZ, 0.5f, airW)
         }
         if (hopW > 0.001f) {
-            gRX = lerp(gRX, 7.4f, hopW); gRY = lerp(gRY, 9.4f, hopW); gRZ = lerp(gRZ, 5.4f, hopW)
-            rRX = lerp(rRX, -6.6f, hopW); rRY = lerp(rRY, 9.2f, hopW); rRZ = lerp(rRZ, 4.2f, hopW)
+            gRX = lerp(gRX, 10.0f, hopW); gRY = lerp(gRY, 7.0f, hopW); gRZ = lerp(gRZ, 6.5f, hopW)
+            rRX = lerp(rRX, -9.5f, hopW); rRY = lerp(rRY, 7.5f, hopW); rRZ = lerp(rRZ, 5.5f, hopW)
         }
         val gX = lerp(gRX, gAimX, aimW)
         val gY = lerp(gRY, gAimY, aimW)
         val gZ = lerp(gRZ, gAimZ, aimW)
         val b1 = lerp(0.5f, -elevS - 0.12f * recoilV, aimW)
         val b2 = lerp(-0.3f, 0f, aimW)
-        val nD = 2f + 11.6f * drawT
+        val nD = 8.0f + 5.6f * dE
+        // a mão da corda acompanha a corda; ao soltar, ela recua um pouco (follow-through) e volta
+        val relT = if (casting && t >= tR) ((t - tR) / 0.25f).coerceIn(0f, 1f) else 0f
+        val handNd = if (casting && t >= tR) 13.6f + 2.4f * sin(PI.toFloat() * relT) else nD
         // posição do encaixe da corda no referencial do quadril
-        rotVZ(0.35f, 0f, -nD, b2)
+        rotVZ(0.35f, 0f, -handNd, b2)
         val n1x = ovX
         val n1y = ovY
         val n1z = ovZ
@@ -1407,23 +1433,39 @@ object Archer3D {
         var rCX = ovX
         var rCY = ovY - breath
         var rCZ = ovZ
-        // buscando a flecha na aljava (nas costas, por cima do ombro direito)
-        rCX = lerp(rCX, -5.2f, quiverT)
-        rCY = lerp(rCY, 17.0f, quiverT)
-        rCZ = lerp(rCZ, -5.0f, quiverT)
+        // buscando a flecha na aljava (nas costas): a mão contorna a cabeça por fora do ombro, nunca atravessa o corpo
+        if (quiverT > 0.001f) {
+            if (quiverT < 0.5f) {
+                val u = ease(quiverT * 2f)
+                rCX = lerp(rCX, -10.5f, u)
+                rCY = lerp(rCY, 18.0f, u)
+                rCZ = lerp(rCZ, 0.5f, u)
+            } else {
+                val u = ease(quiverT * 2f - 1f)
+                rCX = lerp(-10.5f, -4.8f, u)
+                rCY = lerp(18.0f, 18.4f, u)
+                rCZ = lerp(0.5f, -5.0f, u)
+            }
+        }
+        // direção do tiro no referencial do peito (para o cotovelo da mão da corda apontar para trás)
+        rotVY(0f, 0f, 1f, -chestTw)
+        val fwX = ovX
+        val fwZ = ovZ
+        var pRX = lerp(0.2f, -1.0f - fwX * 0.4f, aimW)
+        var pRY = lerp(-0.3f, 0.35f, aimW)
+        var pRZ = lerp(-1f, -fwZ * 0.4f, aimW)
+        pRX = lerp(pRX, -1f, quiverT)
+        pRY = lerp(pRY, 0.3f, quiverT)
+        pRZ = lerp(pRZ, -0.4f, quiverT)
         solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, 0.7f, -0.9f, 0f)
-        val zL = ikZ
-        val shL = ikSh
-        val rollL = ikRoll
-        val elL = ikEl
+        System.arraycopy(ikB, 0, armB[0], 0, 9)
+        armB[0][9] = ikEl
         val hLX = ikHX
         val hLY = ikHY
         val hLZ = ikHZ
-        solveArm(-7.2f, 12.8f, 0f, rCX, rCY, rCZ, lerp(0.2f, -0.5f, aimW), lerp(-0.3f, 0.5f, aimW), -1f)
-        val zR = ikZ
-        val shR = ikSh
-        val rollR = ikRoll
-        val elR = ikEl
+        solveArm(-7.2f, 12.8f, 0f, rCX, rCY, rCZ, pRX, pRY, pRZ)
+        System.arraycopy(ikB, 0, armB[1], 0, 9)
+        armB[1][9] = ikEl
         val hRXs = ikHX
         val hRYs = ikHY
         val hRZs = ikHZ
@@ -1481,8 +1523,8 @@ object Archer3D {
         rotY(chestTw)
         translate(0f, breath, 0f)
         head(-chestTw * 0.92f + sp[8], -lean * 0.6f - elevS * 0.5f * aimW, sp[9], sp[9] * 0.8f, sp[11])
-        arm(-1f, -7.2f, zR, shR, rollR, elR, 0f)
-        arm(1f, 7.2f, zL, shL, rollL, elL, if (casting && kind >= 3) chargeG * 0.8f else 0f)
+        arm(-1f, -7.2f, 1, 0f)
+        arm(1f, 7.2f, 0, if (casting && kind >= 3) chargeG * 0.8f else 0f)
         // arco na mão esquerda (alinhado ao quadril, não ao peito)
         push()
         translate(hLX, hLY, hLZ)
@@ -1491,7 +1533,7 @@ object Archer3D {
         rotZ(b2)
         rotY(-0.6f * (1f - aimW))
         nockD = nD + sin(clock * 58f) * 1.3f * vibA
-        bowModel(flexX.coerceIn(-0.35f, 1.15f), bowGlow)
+        bowModel(flexX.coerceIn(-0.35f, 1.15f) * (1f - 0.5f * min(1f, elevS)), bowGlow)
         if (arrowOn > 0.5f) arrowModel(bowGlow)
         pop()
         pop()
