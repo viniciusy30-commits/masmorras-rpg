@@ -41,7 +41,11 @@ enum class Raca(
     DRACONATO("Draconato", "Herdeiro dos dragões: focinho, chifres e cauda. +2 Força, +1 Carisma.", intArrayOf(2, 0, 0, 0, 0, 1), 0, 2, false, 2, 2, 1f, 0xFF3F8F5B.toInt(), 1f, 1f, 0f, 0f),
     GOLIAS("Golias", "Gigante das montanhas, bem maior. +2 Força, +1 Constituição, um pouco mais lento.", intArrayOf(2, 0, 1, 0, 0, 0), 0, 0, false, 0, 0, 1.18f, 0xFF8E9FB4.toInt(), 0.98f, 1f, 0f, 0f),
     FELINO("Felino", "Caçador de orelhas, focinho e cauda de gato. +2 Destreza, +1 Carisma, rápido.", intArrayOf(0, 2, 0, 0, 0, 1), 2, 0, true, 1, 3, 1f, 0xFFD9A066.toInt(), 1f, 1f, 0f, 0.02f),
-    GOBLIN("Goblin", "Pequeno e esperto, com orelhas grandes e presas. +2 Destreza, +1 Constituição.", intArrayOf(0, 2, 1, 0, 0, 0), 3, 0, true, 0, 0, 0.86f, 0xFF8DB04A.toInt(), 1.05f, 0.95f, 0f, 0f);
+    GOBLIN("Goblin", "Pequeno e esperto, com orelhas grandes e presas. +2 Destreza, +1 Constituição.", intArrayOf(0, 2, 1, 0, 0, 0), 3, 0, true, 0, 0, 0.86f, 0xFF8DB04A.toInt(), 1.05f, 0.95f, 0f, 0f),
+    MEIOELFO("Meio-elfo", "Entre dois mundos, de orelhas curtas e muito carisma. +2 Carisma, +1 Destreza, +1 Constituição.", intArrayOf(0, 1, 1, 0, 0, 2), 4, 0, false, 0, 0, 1f, null, 1f, 1f, 0f, 0f),
+    GNOMO("Gnomo", "Pequeno, curioso e inventivo. +2 Inteligência, +1 Constituição.", intArrayOf(0, 0, 1, 2, 0, 0), 4, 0, false, 0, 0, 0.8f, null, 1f, 0.95f, 0f, 0f),
+    HALFLING("Halfling", "Pequeno, sortudo e ligeiro. +2 Destreza, +1 Carisma, um pouco mais rápido.", intArrayOf(0, 2, 0, 0, 0, 1), 4, 0, false, 0, 0, 0.82f, null, 1.04f, 0.95f, 0f, 0.02f),
+    AASIMAR("Aasimar", "Toque celestial: pele dourada e cura lenta. +2 Carisma, +1 Sabedoria.", intArrayOf(0, 0, 0, 0, 1, 2), 0, 0, false, 0, 0, 1f, 0xFFF2D58A.toInt(), 1f, 1f, 0.4f, 0f);
 
     fun bonusDe(a: Atrib): Int = bonus[a.ordinal]
 }
@@ -73,6 +77,10 @@ class HeroiPerfil(val classe: Classe) {
     var skin: Int? = null
     var hair: Int? = null
     var eye: Int? = null
+    var cicatriz: Int = 0
+    var pintura: Int = 0
+    var acess: Int = 0
+    var altura: Int = 2
 
     fun nota(a: Atrib): Int = notas[a.ordinal]
     fun total(a: Atrib): Int = notas[a.ordinal] + raca.bonusDe(a)
@@ -99,6 +107,10 @@ class HeroiPerfil(val classe: Classe) {
         p.skin = skin
         p.hair = hair
         p.eye = eye
+        p.cicatriz = cicatriz
+        p.pintura = pintura
+        p.acess = acess
+        p.altura = altura
         return p
     }
 
@@ -108,6 +120,10 @@ class HeroiPerfil(val classe: Classe) {
         skin = o.skin
         hair = o.hair
         eye = o.eye
+        cicatriz = o.cicatriz
+        pintura = o.pintura
+        acess = o.acess
+        altura = o.altura
     }
 
     // ── conta final: tudo e relativo ao herói padrão da classe, então o padrão dá os mesmos números de antes ──

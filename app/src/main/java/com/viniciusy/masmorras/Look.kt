@@ -12,13 +12,22 @@ object HeroLook {
     var hairC: Int? = null
     var eyeC: Int? = null
     var escala: Float = 1f
+    var cicatriz: Int = 0
+    var pintura: Int = 0
+    var acess: Int = 0
+
+    /** Fatores de altura do herói (Muito baixo ... Muito alto). */
+    val ALTURAS = floatArrayOf(0.85f, 0.93f, 1f, 1.07f, 1.15f)
 
     fun aplicar(p: HeroiPerfil) {
         raca = p.raca
         skinC = p.skin
         hairC = p.hair
         eyeC = p.eye
-        escala = p.raca.escala
+        escala = p.raca.escala * ALTURAS[p.altura.coerceIn(0, ALTURAS.size - 1)]
+        cicatriz = p.cicatriz
+        pintura = p.pintura
+        acess = p.acess
     }
 
     private fun peleBase(): Int? = skinC ?: raca.pele
@@ -79,6 +88,10 @@ object Herois {
             p.skin = if (sp.contains("skin")) sp.getInt("skin", 0) else null
             p.hair = if (sp.contains("hair")) sp.getInt("hair", 0) else null
             p.eye = if (sp.contains("eye")) sp.getInt("eye", 0) else null
+            p.cicatriz = sp.getInt("cicatriz", 0).coerceIn(0, 4)
+            p.pintura = sp.getInt("pintura", 0).coerceIn(0, 4)
+            p.acess = sp.getInt("acess", 0).coerceIn(0, 6)
+            p.altura = sp.getInt("altura", 2).coerceIn(0, 4)
         } catch (e: Exception) {
             // dados antigos ou corrompidos: volta ao herói padrão
             return HeroiPerfil(classe)
@@ -98,6 +111,10 @@ object Herois {
         if (h != null) e.putInt("hair", h) else e.remove("hair")
         val y = p.eye
         if (y != null) e.putInt("eye", y) else e.remove("eye")
+        e.putInt("cicatriz", p.cicatriz)
+        e.putInt("pintura", p.pintura)
+        e.putInt("acess", p.acess)
+        e.putInt("altura", p.altura)
         e.apply()
     }
 }

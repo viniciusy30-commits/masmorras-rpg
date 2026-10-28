@@ -1,3 +1,12 @@
+#id 2026-10-28-g
+#titulo Criação de herói: mais raças, rosto e altura
+- 4 raças novas: Meio-elfo, Gnomo, Halfling e Aasimar (13 no total). Gnomo e Halfling são bem menores; o Aasimar tem pele dourada e cura aos poucos
+- Altura do herói: de Muito baixo a Muito alto, só visual
+- Cicatrizes: no olho, na bochecha, no lábio ou garras
+- Pinturas de rosto: listras de guerra, máscara, lágrima dourada e tigre
+- Acessórios: tapa-olho, brincos, aro na sobrancelha, aro no nariz, óculos e monóculo
+- Tudo aparece no herói que gira na tela e fica salvo por classe
+
 #id 2026-10-28-f
 #titulo Criação de herói: raças, atributos e aparência
 - Depois de escolher a classe abre a criação do herói, com o seu herói de verdade (o mesmo modelo 3D do jogo) girando ao lado; arraste para girar

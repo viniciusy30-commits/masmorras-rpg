@@ -284,10 +284,46 @@ object HeroCreator {
             }
             painel.addView(hs)
         }
+        // ── opções em fichas (cicatriz, pintura, acessório, altura) ──
+        fun linhaOpcoes(nome: String, opcoes: List<String>, atual: () -> Int, mudar: (Int) -> Unit) {
+            val t = TextView(act)
+            t.text = nome
+            t.setTextColor(TEXTO)
+            t.textSize = 13f
+            t.setPadding(0, dp(8f), 0, dp(2f))
+            painel.addView(t)
+            val hs = HorizontalScrollView(act)
+            hs.isHorizontalScrollBarEnabled = false
+            val fila = LinearLayout(act)
+            fila.orientation = LinearLayout.HORIZONTAL
+            fila.gravity = Gravity.CENTER_VERTICAL
+            hs.addView(fila)
+            for (i in opcoes.indices) {
+                val b = botao(opcoes[i], false)
+                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36f))
+                lp.setMargins(dp(3f), dp(2f), dp(3f), dp(2f))
+                fila.addView(b, lp)
+                b.setOnClickListener {
+                    mudar(i)
+                    refresh()
+                }
+                atualizadores.add {
+                    val sel = atual() == i
+                    b.background = fundo(if (sel) 0xFF5A4318.toInt() else 0xFF3A3024.toInt(), dp(10f).toFloat(), if (sel) OURO else 0xFF3A3024.toInt(), dp(2f))
+                    b.setTextColor(if (sel) OURO else TEXTO)
+                }
+            }
+            painel.addView(hs)
+        }
         painel.addView(titulo("Aparência"))
         linhaCores("Pele", PELES, { ed.skin }, { ed.skin = it })
         linhaCores("Cabelo e barba", CABELOS, { ed.hair }, { ed.hair = it })
         linhaCores("Olhos", OLHOS, { ed.eye }, { ed.eye = it })
+        linhaOpcoes("Altura", listOf("Muito baixo", "Baixo", "Normal", "Alto", "Muito alto"), { ed.altura }, { ed.altura = it })
+        painel.addView(titulo("Rosto"))
+        linhaOpcoes("Cicatriz", listOf("Nenhuma", "No olho", "Na bochecha", "No lábio", "Garras"), { ed.cicatriz }, { ed.cicatriz = it })
+        linhaOpcoes("Pintura", listOf("Nenhuma", "Listras de guerra", "Máscara", "Lágrima dourada", "Tigre"), { ed.pintura }, { ed.pintura = it })
+        linhaOpcoes("Acessório", listOf("Nenhum", "Tapa-olho", "Brincos", "Aro na sobrancelha", "Aro no nariz", "Óculos", "Monóculo"), { ed.acess }, { ed.acess = it })
         val folga = View(act)
         painel.addView(folga, LinearLayout.LayoutParams(1, dp(16f)))
 

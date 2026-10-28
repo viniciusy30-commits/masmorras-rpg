@@ -68,6 +68,182 @@ object HeroKit {
             1 -> focinhoGato(g, sp, skL)
             2 -> focinhoDragao(g, sp, sk, skD)
         }
+        rosto(g, c)
+    }
+
+    // ───────────── rosto: cicatrizes, pinturas e acessórios ─────────────
+
+    /** fz = plano à frente dos olhos; ex = meia distância dos olhos; ec = desvio do centro dos olhos; fw = meia largura do rosto. */
+    private class Face(val fz: Float, val eyeY: Float, val ex: Float, val ec: Float, val fw: Float)
+
+    private fun face(c: Classe): Face = when (c) {
+        Classe.MAGO -> Face(4.7f, 5.2f, 2f, 0f, 4.4f)
+        Classe.GUERREIRO -> Face(5.3f, 4.7f, 2f, 0f, 5f)
+        Classe.BARBARO -> Face(5.15f, 4.8f, 2.2f, 0f, 4.8f)
+        Classe.ARQUEIRO -> Face(4.7f, 5.6f, 2f, 0.15f, 4.7f)
+    }
+
+    private const val CICATRIZ = 0xFFD98B80.toInt()
+    private const val CICATRIZ_D = 0xFF8E3B3B.toInt()
+    private const val TINTA_RED = 0xFFB0242A.toInt()
+    private const val TINTA_PRETA = 0xFF1E1E22.toInt()
+    private const val OURO = 0xFFE8B83A.toInt()
+    private const val OURO_D = 0xFFB8861F.toInt()
+    private const val COURO = 0xFF1A1512.toInt()
+
+    private fun rosto(g: HeroGfx, c: Classe) {
+        val f = face(c)
+        val sp = spec(c)
+        when (HeroLook.cicatriz) {
+            1 -> cicatrizOlho(g, f)
+            2 -> cicatrizBochecha(g, f, sp)
+            3 -> cicatrizLabio(g, f, sp)
+            4 -> cicatrizGarras(g, f)
+        }
+        when (HeroLook.pintura) {
+            1 -> pinturaListras(g, f)
+            2 -> pinturaMascara(g, f)
+            3 -> pinturaLagrima(g, f)
+            4 -> pinturaTigre(g, f)
+        }
+        when (HeroLook.acess) {
+            1 -> tapaOlho(g, f)
+            2 -> brincos(g, f, sp)
+            3 -> aroSobrancelha(g, f)
+            4 -> aroNariz(g, sp)
+            5 -> oculos(g, f)
+            6 -> monoculo(g, f)
+        }
+    }
+
+    private fun cicatrizOlho(g: HeroGfx, f: Face) {
+        g.push()
+        g.translate(-f.ex + f.ec, f.eyeY, f.fz)
+        g.rotZ(0.45f)
+        g.cube(0f, 0f, 0f, 0.2f, 3.2f, 0.08f, CICATRIZ)
+        for (i in -2..2) g.cube(0f, i * 1.15f, 0.03f, 0.6f, 0.11f, 0.08f, CICATRIZ_D)
+        g.pop()
+    }
+
+    private fun cicatrizBochecha(g: HeroGfx, f: Face, sp: Spec) {
+        g.push()
+        g.translate(f.fw * 0.6f, sp.noseY + 0.4f, f.fz)
+        g.rotZ(-0.35f)
+        g.cube(0f, 0f, 0f, 0.17f, 1.9f, 0.08f, CICATRIZ)
+        for (i in -1..1) g.cube(0f, i * 1.1f, 0.03f, 0.5f, 0.1f, 0.08f, CICATRIZ_D)
+        g.pop()
+    }
+
+    private fun cicatrizLabio(g: HeroGfx, f: Face, sp: Spec) {
+        g.push()
+        g.translate(1.3f, sp.mouthY + 0.2f, f.fz)
+        g.cube(0f, 0f, 0f, 0.17f, 1.5f, 0.08f, CICATRIZ)
+        for (i in -1..1) g.cube(0f, i * 0.9f, 0.03f, 0.45f, 0.1f, 0.08f, CICATRIZ_D)
+        g.pop()
+    }
+
+    private fun cicatrizGarras(g: HeroGfx, f: Face) {
+        for (i in -1..1) {
+            g.push()
+            g.translate(f.ex + f.ec + i * 0.95f, f.eyeY - 1.1f, f.fz)
+            g.rotZ(-0.3f)
+            g.cube(0f, -0.4f, 0f, 0.14f, 2.5f, 0.08f, CICATRIZ)
+            g.cube(0f, -0.4f, 0.03f, 0.05f, 2.5f, 0.08f, CICATRIZ_D)
+            g.pop()
+        }
+    }
+
+    private fun pinturaListras(g: HeroGfx, f: Face) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            val x = sd * f.ex + f.ec
+            g.cube(x, f.eyeY - 2.0f, f.fz, 1.5f, 0.28f, 0.08f, TINTA_RED)
+            g.cube(x, f.eyeY - 2.8f, f.fz, 1.2f, 0.28f, 0.08f, TINTA_RED)
+        }
+    }
+
+    private fun pinturaMascara(g: HeroGfx, f: Face) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            val x = sd * f.ex + f.ec
+            g.cube(x, f.eyeY + 1.3f, f.fz, 1.8f, 0.3f, 0.08f, TINTA_PRETA)
+            g.cube(x, f.eyeY - 1.3f, f.fz, 1.8f, 0.3f, 0.08f, TINTA_PRETA)
+            g.cube(x + sd * 1.7f, f.eyeY, f.fz, 0.3f, 1.3f, 0.08f, TINTA_PRETA)
+        }
+        g.cube(f.ec, f.eyeY + 0.9f, f.fz, 0.5f, 0.3f, 0.08f, TINTA_PRETA)
+    }
+
+    private fun pinturaLagrima(g: HeroGfx, f: Face) {
+        g.push()
+        g.translate(f.ex + f.ec, f.eyeY - 2.1f, f.fz)
+        g.rotZ(0.785f)
+        g.cube(0f, 0f, 0f, 0.5f, 0.5f, 0.08f, OURO)
+        g.cube(0f, 0f, 0.03f, 0.25f, 0.25f, 0.08f, OURO_D)
+        g.pop()
+    }
+
+    private fun pinturaTigre(g: HeroGfx, f: Face) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            for (i in 0..2) {
+                val x = sd * (f.fw * 0.55f + i * 0.8f)
+                g.cube(x, f.eyeY - 2.2f - i * 0.2f, f.fz, 0.13f, 1.1f - i * 0.15f, 0.08f, TINTA_PRETA)
+            }
+        }
+    }
+
+    private fun anelFrente(g: HeroGfx, x: Float, y: Float, z: Float, w: Float, h: Float, cor: Int) {
+        val t = 0.1f
+        g.cube(x, y + h, z, w, t, t, cor)
+        g.cube(x, y - h, z, w, t, t, cor)
+        g.cube(x - w, y, z, t, h, t, cor)
+        g.cube(x + w, y, z, t, h, t, cor)
+    }
+
+    private fun tapaOlho(g: HeroGfx, f: Face) {
+        val x = -f.ex + f.ec
+        g.cube(x, f.eyeY, f.fz + 0.1f, 1.5f, 1.3f, 0.12f, COURO)
+        g.push()
+        g.translate(f.ec, f.eyeY + 1.6f, f.fz - 0.2f)
+        g.rotZ(0.3f)
+        g.cube(0f, 0f, 0f, f.fw * 0.85f, 0.17f, 0.1f, COURO)
+        g.pop()
+    }
+
+    private fun brincos(g: HeroGfx, f: Face, sp: Spec) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            val x = sd * (f.fw + 0.7f)
+            val y = sp.earY - 0.8f
+            val z = sp.earZ
+            g.cube(x, y + 0.55f, z, 0.18f, 0.12f, 0.5f, OURO)
+            g.cube(x, y - 0.55f, z, 0.18f, 0.12f, 0.5f, OURO)
+            g.cube(x, y, z - 0.5f, 0.18f, 0.55f, 0.12f, OURO)
+            g.cube(x, y, z + 0.5f, 0.18f, 0.55f, 0.12f, OURO)
+            g.cube(x, y - 1.1f, z, 0.22f, 0.22f, 0.22f, TINTA_RED)
+        }
+    }
+
+    private fun aroSobrancelha(g: HeroGfx, f: Face) {
+        anelFrente(g, f.ex + f.ec + 0.4f, f.eyeY + 1.5f, f.fz, 0.35f, 0.35f, OURO)
+    }
+
+    private fun aroNariz(g: HeroGfx, sp: Spec) {
+        anelFrente(g, 0f, sp.noseY - 1.0f, sp.noseZ + 0.45f, 0.4f, 0.4f, OURO)
+    }
+
+    private fun oculos(g: HeroGfx, f: Face) {
+        for (k in 0..1) {
+            val sd = if (k == 0) 1f else -1f
+            anelFrente(g, sd * f.ex + f.ec, f.eyeY, f.fz, 1.5f, 1.3f, OURO_D)
+        }
+        g.cube(f.ec, f.eyeY + 0.5f, f.fz, (f.ex - 1.5f).coerceAtLeast(0.2f), 0.1f, 0.1f, OURO_D)
+    }
+
+    private fun monoculo(g: HeroGfx, f: Face) {
+        val x = f.ex + f.ec
+        anelFrente(g, x, f.eyeY, f.fz, 1.5f, 1.4f, OURO)
+        g.cube(x + 1.6f, f.eyeY - 2.8f, f.fz, 0.07f, 1.5f, 0.08f, OURO)
     }
 
     private fun elfa(g: HeroGfx, sd: Float, sp: Spec, sk: Int, skD: Int, k: Float) {
