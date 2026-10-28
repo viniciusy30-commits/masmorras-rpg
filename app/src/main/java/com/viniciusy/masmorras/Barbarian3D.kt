@@ -1210,6 +1210,7 @@ object Barbarian3D {
         val tuck = max(rollW, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(rollW, airW)
         val mvs = still * (if (attacking) blend * 0.35f else blend)
+        val lmv = still * blend
         furyW += ((if (attacking) 1f else 0f) - furyW) * min(1f, dt * (if (attacking) 14f else 3f))
 
         // ── poses de descanso: machados em guarda, balançam com o passo ──
@@ -1372,9 +1373,9 @@ object Barbarian3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.8f * mvs
-            var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.08f + crouch * 0.9f
-            val ft = max(0f, cos(pp)) * 0.38f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var a = sin(pp) * 0.8f * lmv
+            var kn = max(0f, -cos(pp)) * 1.1f * lmv + 0.08f + crouch * 0.9f
+            val ft = max(0f, cos(pp)) * 0.38f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             if (sd > 0f) {
                 a -= 0.35f * lk
             } else {

@@ -1072,6 +1072,7 @@ object Mage3D {
         val tuck = max(rollW, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(rollW, airW)
         val mvs = still * (if (attacking) blend * 0.35f else blend)
+        val lmv = still * blend
         castW += ((if (attacking) 1f else 0f) - castW) * min(1f, dt * (if (attacking) 14f else 4f))
         val flyOn = flying && !rolling
         flyW += ((if (flyOn) 1f else 0f) - flyW) * min(1f, dt * (if (flyOn) 6f else 5f))
@@ -1217,9 +1218,9 @@ object Mage3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.62f * mvs
-            var kn = max(0f, -cos(pp)) * 0.95f * mvs + 0.08f + crouch * 0.9f
-            var ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var a = sin(pp) * 0.62f * lmv
+            var kn = max(0f, -cos(pp)) * 0.95f * lmv + 0.08f + crouch * 0.9f
+            var ft = max(0f, cos(pp)) * 0.35f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             if (sd > 0f) {
                 a -= 0.35f * lk
             } else {

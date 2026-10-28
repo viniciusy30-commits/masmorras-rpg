@@ -1095,6 +1095,7 @@ object Ninja3D {
         val still = 1f - max(rollW, max(airW, dashW))
         val cast = skillOn && (ki == 3 || ki == 4)
         val mvs = if (cast) 0f else still * (if (acting) blend * 0.35f else blend)
+        val lmv = if (cast) 0f else still * blend
 
         // ── poses ──
         kI[0] = -0.55f + sin(phase) * 0.55f * mvs + sin(clock * 1.3f) * 0.04f * (1f - mvs)
@@ -1254,9 +1255,9 @@ object Ninja3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.72f * mvs
-            var kn = max(0f, -cos(pp)) * 1.05f * mvs + 0.08f + crouch * 0.9f
-            var ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var a = sin(pp) * 0.72f * lmv
+            var kn = max(0f, -cos(pp)) * 1.05f * lmv + 0.08f + crouch * 0.9f
+            var ft = max(0f, cos(pp)) * 0.35f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             a = a * (1f - airW) - tuck + sd * 0.3f * airW
             kn = (kn + tuck * 1.5f + (if (sd > 0f) 0.5f else -0.1f) * airW).coerceAtLeast(0f)
             if (dashW > 0.001f) {

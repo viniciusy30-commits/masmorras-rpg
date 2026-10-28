@@ -1583,6 +1583,7 @@ object Archer3D {
         val tuck = max(hopW * 0.9f, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(hopW, airW)
         val mvs = still * (if (casting) blend * 0.3f else blend)
+        val lmv = still * blend
 
         // ── linha do tempo do gesto: mira, flecha na aljava, puxada, elevação ──
         var quiverT = 0f
@@ -1827,9 +1828,9 @@ object Archer3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.7f * mvs
-            var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.08f + crouch * 0.9f
-            var ft = max(0f, cos(pp)) * 0.4f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var a = sin(pp) * 0.7f * lmv
+            var kn = max(0f, -cos(pp)) * 1.1f * lmv + 0.08f + crouch * 0.9f
+            var ft = max(0f, cos(pp)) * 0.4f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             a -= sd * 0.2f * aimW
             if (sd > 0f) kn += 0.25f * aimW
             a = a * (1f - airW) - tuck + sd * 0.3f * airW

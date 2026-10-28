@@ -6,6 +6,7 @@
 - Nova animação de troca só de fumaça negra: o ninja se desmancha numa nuvem escura, um rastro de fumaça corre até a sombra e a nuvem se abre na chegada
 - O Ninja não trava mais ao usar skills: continua andando (quase na velocidade normal) e pode pular durante elas
 - Marca da Morte (R) removida por enquanto
+- Todas as classes: as pernas continuam andando normalmente ao atacar em movimento (antes o passo encolhia e travava)
 
 #id 2026-10-28-h
 #titulo Nova classe: Ninja das sombras

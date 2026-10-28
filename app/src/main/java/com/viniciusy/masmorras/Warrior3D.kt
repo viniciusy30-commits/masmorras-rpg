@@ -1442,6 +1442,7 @@ object Warrior3D {
         val tuck = max(rollW, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(rollW, airW)
         val mvs = still * (if (attacking) blend * 0.35f else blend)
+        val lmv = still * blend
 
         // ── pose do braço da espada ──
         val idleSh = -0.5f + sin(phase) * 0.18f * mvs + sin(clock * 1.3f) * 0.04f * (1f - mvs)
@@ -1593,9 +1594,9 @@ object Warrior3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.85f * mvs
-            var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.10f + crouch * 0.9f
-            val ft = max(0f, cos(pp)) * 0.35f * mvs + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
+            var a = sin(pp) * 0.85f * lmv
+            var kn = max(0f, -cos(pp)) * 1.1f * lmv + 0.10f + crouch * 0.9f
+            val ft = max(0f, cos(pp)) * 0.35f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             if (attacking) {
                 val front = (combo % 2 == 0) == (sd > 0f)
                 val lk = lunge / KL[sw]
