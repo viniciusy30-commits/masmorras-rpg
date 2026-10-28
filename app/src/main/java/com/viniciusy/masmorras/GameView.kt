@@ -1857,7 +1857,7 @@ class GameView @JvmOverloads constructor(
         if (darkFlash > 0.01f) {
             // troca de sombra: a tela escurece num lampejo roxo-negro
             paint.style = Paint.Style.FILL
-            paint.color = ((darkFlash * darkFlash * 150f).toInt() shl 24) or 0x0A0314
+            paint.color = ((darkFlash * darkFlash * 70f).toInt() shl 24) or 0x0A0314
             canvas.drawRect(0f, 0f, w, h, paint)
         }
 

@@ -374,13 +374,36 @@ object Ninja3D {
             }
         }
 
-        val b = ensureBmp(rw, rh)
+        // o canvas de hardware só desenha no fim do quadro: cada silhueta precisa do seu próprio bitmap e paint,
+        // senão a sombra e o herói acabam mostrando a mesma imagem (a "foto" da sombra em cima do boneco)
+        val b: Bitmap
+        val pt: Paint
+        if (ghost) {
+            val gi = gNext
+            gNext = (gNext + 1) % G_POOL
+            val cur = gBmp[gi]
+            if (cur != null && cur.width >= rw && cur.height >= rh) {
+                b = cur
+            } else {
+                b = Bitmap.createBitmap(((max(rw, cur?.width ?: 0) + 63) / 64) * 64, ((max(rh, cur?.height ?: 0) + 63) / 64) * 64, Bitmap.Config.ARGB_8888)
+                gBmp[gi] = b
+            }
+            pt = gPaint[gi]
+        } else {
+            b = ensureBmp(rw, rh)
+            pt = bmpPaint
+        }
         b.setPixels(cb, 0, rw, 0, 0, rw, rh)
         srcR.set(0, 0, rw, rh)
         dstR.set(bx0, by0, bx0 + rw / ss, by0 + rh / ss)
-        bmpPaint.alpha = (alphaV.coerceIn(0f, 1f) * 255f).toInt()
-        c.drawBitmap(b, srcR, dstR, bmpPaint)
+        pt.alpha = (alphaV.coerceIn(0f, 1f) * 255f).toInt()
+        c.drawBitmap(b, srcR, dstR, pt)
     }
+
+    private const val G_POOL = 6
+    private val gBmp = arrayOfNulls<Bitmap>(G_POOL)
+    private val gPaint = Array(G_POOL) { Paint(bmpPaint) }
+    private var gNext = 0
 
     private fun emitDust(x: Float, y: Float, vx: Float, vy: Float, size: Float) {
         val i = dNext
@@ -539,14 +562,14 @@ object Ninja3D {
         floatArrayOf(-0.7f, 0.4f, -0.6f, -0.9f, -0.7f, -0.4f, -0.6f, -0.9f, 0f, 0.1f, 0.1f)
     )
     private val SQ = arrayOf(
-        floatArrayOf(-2.4f, -0.5f, -0.7f, -0.3f, -1.0f, 0.4f, -1.2f, -0.8f, 0.6f, -0.15f, 0.15f),
-        floatArrayOf(-1.5f, -0.1f, -0.1f, -1.4f, -0.9f, 0.3f, -1.3f, -0.8f, -0.5f, 0.3f, 0.3f),
-        floatArrayOf(-0.9f, 0.1f, -0.6f, -1.0f, -0.8f, 0.25f, -1.2f, -0.9f, -0.2f, 0.15f, 0.2f)
+        floatArrayOf(-2.4f, -0.5f, -0.7f, -0.3f, -1.0f, 0.4f, -1.2f, -0.8f, 0.35f, -0.05f, 0.08f),
+        floatArrayOf(-1.5f, -0.1f, -0.1f, -1.4f, -0.9f, 0.3f, -1.3f, -0.8f, -0.3f, 0.08f, 0.08f),
+        floatArrayOf(-0.9f, 0.1f, -0.6f, -1.0f, -0.8f, 0.25f, -1.2f, -0.9f, -0.1f, 0.05f, 0.06f)
     )
     private val SW = arrayOf(
-        floatArrayOf(-1.0f, -0.2f, -1.2f, -0.9f, -1.0f, 0.2f, -1.2f, -0.9f, 0.3f, 0f, 0.2f),
-        floatArrayOf(-1.6f, 0f, -0.05f, -1.5f, -1.6f, 0f, -0.05f, -1.5f, 0f, 0.35f, 0.3f),
-        floatArrayOf(-0.9f, 0.1f, -0.6f, -1.0f, -0.9f, -0.1f, -0.6f, -1.0f, 0f, 0.15f, 0.15f)
+        floatArrayOf(-1.0f, -0.2f, -1.2f, -0.9f, -1.0f, 0.2f, -1.2f, -0.9f, 0.15f, 0f, 0.06f),
+        floatArrayOf(-1.5f, -0.1f, -0.1f, -0.2f, -0.5f, 0.4f, -0.6f, -0.5f, 0.25f, 0.06f, 0.06f),
+        floatArrayOf(-0.9f, 0.1f, -0.6f, -1.0f, -0.7f, 0.2f, -0.7f, -0.9f, 0.1f, 0.04f, 0.05f)
     )
     private val SE = arrayOf(
         floatArrayOf(-1.5f, -1.5f, -0.2f, -0.5f, -1.5f, 1.5f, -0.2f, -0.5f, 0f, -0.05f, 0.5f),
@@ -924,9 +947,9 @@ object Ninja3D {
         if (mode == 1 || mode == 2) {
             // mesma pose e mesma linha do tempo da skill do herói
             poseFrom(if (mode == 1) 3 else 5, pr)
-            lean = 0.2f
-            dip = 0.6f
-            bend = 0.3f
+            lean = 0.08f
+            dip = 0.2f
+            bend = 0.16f
             if (mode == 2) {
                 rotY(TWO_PI * 2f * ease(((pr - 0.12f) / 0.66f).coerceIn(0f, 1f)))
                 dip = 1.2f
@@ -1070,7 +1093,8 @@ object Ninja3D {
         val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
         val tuck = max(rollW, airW * (0.30f + 0.35f * max(0f, vzN) - 0.2f * max(0f, -vzN)))
         val still = 1f - max(rollW, max(airW, dashW))
-        val mvs = still * (if (acting) blend * 0.35f else blend)
+        val cast = skillOn && (ki == 3 || ki == 4)
+        val mvs = if (cast) 0f else still * (if (acting) blend * 0.35f else blend)
 
         // ── poses ──
         kI[0] = -0.55f + sin(phase) * 0.55f * mvs + sin(clock * 1.3f) * 0.04f * (1f - mvs)
@@ -1108,7 +1132,7 @@ object Ninja3D {
             } else {
                 poseFrom(ki, t)
                 val la = TW[ki] - 0.04f
-                if (t > la && t < TE[ki]) {
+                if (ki != 3 && ki != 4 && t > la && t < TE[ki]) {
                     lunge = -sin(((t - la) / (TE[ki] - la)) * PI.toFloat()) * 1.3f
                 }
             }
