@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Archer3D {
     private val V = VoxelArt
 
-    private const val MAX = 760
+    private const val MAX = 1200
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -467,6 +467,9 @@ object Archer3D {
     private val LEATHER_D = 0xFF45301B.toInt()
     private val PANTS = 0xFF4A3A2A.toInt()
     private val PANTS_L = 0xFF5F4B37.toInt()
+    private val PANTS_D = 0xFF372A1D.toInt()
+    private val EYE_W = 0xFFF4F1E6.toInt()
+    private val BLUSH = 0xFFE59A6A.toInt()
     private val BOOT = 0xFF5A3A22.toInt()
     private val BOOT_L = 0xFF7A5232.toInt()
     private val FUR = 0xFFE9E0C8.toInt()
@@ -511,28 +514,59 @@ object Archer3D {
         translate(side * 3f, hipY, 0f)
         rotZ(side * spread)
         rotX(a)
+        // coxa: calça com dobras, costura lateral e faixas de couro
         cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
-        cube(0f, -2.7f, 2.25f, 0.9f, 2.5f, 0.12f, PANTS_L)
+        cube(0f, -1.0f, 2.24f, 1.5f, 0.9f, 0.05f, PANTS_L)
+        cube(0f, -3.6f, 2.24f, 1.1f, 0.5f, 0.05f, PANTS_L)
+        cube(side * 2.14f, -2.3f, 0f, 0.05f, 2.3f, 0.5f, PANTS_L)
+        cube(-side * 2.14f, -2.3f, 0f, 0.05f, 2.3f, 0.5f, PANTS_D)
+        cube(0f, -0.15f, 0f, 2.18f, 0.2f, 2.28f, PANTS_D)
+        cube(0f, -4.3f, 0f, 2.2f, 0.3f, 2.3f, LEATHER_D)
+        cube(0f, -4.3f, 2.34f, 0.45f, 0.38f, 0.07f, BRASS)
+        cube(0f, -4.3f, 2.42f, 0.22f, 0.2f, 0.05f, BRASS_L)
         cube(0f, -5.4f, 0f, 2.25f, 0.3f, 2.35f, LEATHER_D)
         translate(0f, -5.6f, 0f)
         rotX(knee)
+        // joelheira com rebites
         cube(0f, -0.1f, 2.15f, 1.5f, 1.0f, 0.4f, LEATHER_L)
-        cube(0f, -0.1f, 2.5f, 0.5f, 0.4f, 0.1f, BRASS)
+        cube(0f, -0.1f, 2.55f, 1.0f, 0.65f, 0.12f, LEATHER)
+        cube(0f, -0.1f, 2.65f, 0.42f, 0.3f, 0.08f, BRASS)
+        cube(-1.15f, 0.5f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
+        cube(1.15f, 0.5f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
+        cube(-1.15f, -0.7f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
+        cube(1.15f, -0.7f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
+        // cano da bota com pelo no topo
         cube(0f, -3.1f, 0f, 2.0f, 2.7f, 2.05f, BOOT)
+        cube(0f, -2.0f, 2.08f, 1.5f, 1.6f, 0.05f, BOOT_L)
         cube(0f, -0.7f, 0f, 2.4f, 0.8f, 2.45f, FUR)
         cube(0f, -0.2f, 0f, 2.45f, 0.25f, 2.5f, FUR_D)
-        cube(0f, -3.4f, 2.1f, 1.3f, 0.3f, 0.12f, LEATHER_D)
-        cube(0f, -3.4f, 2.2f, 0.4f, 0.3f, 0.1f, BRASS)
+        cube(-1.5f, -1.45f, 2.3f, 0.5f, 0.5f, 0.3f, FUR)
+        cube(0.1f, -1.5f, 2.35f, 0.6f, 0.55f, 0.3f, FUR_D)
+        cube(1.6f, -1.45f, 2.3f, 0.5f, 0.5f, 0.3f, FUR)
+        cube(-1.9f, -1.3f, 0f, 0.55f, 0.55f, 2.1f, FUR_D)
+        cube(1.9f, -1.3f, 0f, 0.55f, 0.55f, 2.1f, FUR_D)
+        // cadarços cruzados com ilhós
+        cube(0f, -2.2f, 2.1f, 0.12f, 1.9f, 0.05f, LEATHER_D)
+        cube(-0.6f, -1.6f, 2.14f, 0.55f, 0.12f, 0.05f, LEATHER_L)
+        cube(0.6f, -2.3f, 2.14f, 0.55f, 0.12f, 0.05f, LEATHER_L)
+        cube(-0.6f, -3.0f, 2.14f, 0.55f, 0.12f, 0.05f, LEATHER_L)
+        cube(0.6f, -3.7f, 2.14f, 0.55f, 0.12f, 0.05f, LEATHER_L)
+        cube(-0.95f, -2.2f, 2.12f, 0.1f, 0.1f, 0.05f, BRASS)
+        cube(0.95f, -2.9f, 2.12f, 0.1f, 0.1f, 0.05f, BRASS)
         cube(0f, -4.7f, 2.1f, 1.3f, 0.3f, 0.12f, LEATHER_D)
         cube(0f, -4.7f, 2.2f, 0.4f, 0.3f, 0.1f, BRASS)
         cube(side * 2.05f, -3f, 0f, 0.1f, 2.3f, 1.4f, BOOT_L)
         translate(0f, -5.4f, 0f)
         rotX(foot)
+        // pé: sola, biqueira reforçada, calcanhar e costura
         cube(0f, 0.2f, 1.2f, 2.3f, 1.4f, 3.2f, BOOT)
         cube(0f, -1.1f, 1.3f, 2.45f, 0.3f, 3.4f, LEATHER_D)
         cube(0f, 0.9f, 4.3f, 1.6f, 0.8f, 0.9f, BOOT_L)
         cube(0f, 0.5f, 5.0f, 1.2f, 0.7f, 0.4f, BOOT)
         cube(0f, 0.9f, -2.2f, 1.8f, 0.9f, 0.5f, LEATHER_D)
+        cube(0f, 1.2f, 2.5f, 1.8f, 0.12f, 1.0f, BOOT_L)
+        cube(0f, -0.8f, 4.6f, 1.5f, 0.3f, 0.5f, LEATHER_D)
+        cube(0f, 0.2f, 5.35f, 0.9f, 0.4f, 0.1f, BRASS_D)
         pop()
     }
 
@@ -556,18 +590,33 @@ object Archer3D {
 
     private fun foreArm(left: Float, gl: Float) {
         cube(0f, -2.4f, 0f, 2.35f, 2.4f, 2.35f, TUNIC_L)
+        cube(0f, -1.2f, 2.4f, 1.0f, 0.8f, 0.06f, TUNIC)
         cube(0f, -5.9f, 0f, 2.55f, 2.2f, 2.55f, LEATHER)
         cube(0f, -4.2f, 0f, 2.65f, 0.3f, 2.65f, LEATHER_D)
+        cube(0f, -7.4f, 0f, 2.6f, 0.25f, 2.6f, LEATHER_D)
         cube(0f, -5.0f, 2.6f, 1.0f, 0.3f, 0.12f, BRASS)
         cube(0f, -6.6f, 2.6f, 1.0f, 0.3f, 0.12f, BRASS)
         cube(0f, -5.8f, 2.65f, 0.35f, 1.0f, 0.1f, LEATHER_L)
+        cube(0f, -5.0f, 2.7f, 0.3f, 0.2f, 0.06f, BRASS_L)
         if (left > 0.5f) {
+            // luva do arco: punho, dorso e dedos fechados no cabo
             cube(0f, -8.0f, 0f, 1.6f, 1.4f, 1.6f, LEATHER_D)
             cube(0f, -7.3f, 0f, 1.75f, 0.3f, 1.75f, BRASS_D)
+            cube(0f, -8.0f, 1.62f, 1.3f, 0.9f, 0.1f, LEATHER)
+            cube(-0.9f, -9.0f, 1.2f, 0.35f, 0.5f, 0.45f, LEATHER_L)
+            cube(0.0f, -9.1f, 1.2f, 0.35f, 0.5f, 0.45f, LEATHER_L)
+            cube(0.9f, -9.0f, 1.2f, 0.35f, 0.5f, 0.45f, LEATHER_L)
         } else {
+            // mão da corda: dedos separados e dedeira de couro
             cube(0f, -8.0f, 0f, 1.5f, 1.3f, 1.5f, SKIN)
             cube(0f, -7.4f, 0f, 1.7f, 0.35f, 1.7f, LEATHER_D)
             cube(0f, -8.9f, 0.9f, 1.3f, 0.5f, 0.7f, SKIN_D)
+            cube(-0.85f, -9.3f, 1.0f, 0.3f, 0.55f, 0.35f, SKIN)
+            cube(-0.3f, -9.4f, 1.0f, 0.3f, 0.6f, 0.35f, SKIN)
+            cube(0.3f, -9.4f, 1.0f, 0.3f, 0.6f, 0.35f, SKIN)
+            cube(0.85f, -9.3f, 1.0f, 0.3f, 0.55f, 0.35f, SKIN)
+            cube(0f, -9.95f, 1.0f, 1.2f, 0.18f, 0.38f, LEATHER)
+            cube(-1.6f, -8.5f, 0.6f, 0.3f, 0.7f, 0.5f, SKIN_D)
         }
         if (gl > 0.04f) {
             cube(0f, -8.0f, 0.5f, 0.9f + 0.8f * gl, 0.9f + 0.8f * gl, 0.9f + 0.8f * gl, magL, true)
@@ -609,6 +658,11 @@ object Archer3D {
         cube(-0.3f, 1.55f, 0f, 0.8f, 0.3f, 0.7f, BRASS)
         cube(-0.3f, -1.55f, 0f, 0.8f, 0.3f, 0.7f, BRASS)
         cube(0.45f, 0.6f, 0f, 0.25f, 0.5f, 0.45f, BRASS_D)
+        cube(-0.3f, 0.1f, 0.05f, 0.86f, 0.12f, 0.78f, LEATHER_D)
+        cube(-0.3f, -0.1f, 0.05f, 0.86f, 0.12f, 0.78f, LEATHER_L)
+        cube(-0.3f, -0.9f, 0.05f, 0.86f, 0.12f, 0.78f, LEATHER_D)
+        cube(-0.3f, 0.95f, 0.05f, 0.86f, 0.12f, 0.78f, LEATHER_D)
+        cube(-0.95f, 0f, 0f, 0.12f, 1.0f, 0.3f, BOW_L)
         // limbo de cima
         push()
         translate(0f, 2.4f, 0f)
@@ -616,6 +670,8 @@ object Archer3D {
         cube(-0.3f, 2.0f, 0f, 0.6f, 2.1f, 0.52f, BOW)
         cube(-0.3f, 2.0f, 0.5f, 0.25f, 1.9f, 0.1f, BOW_L)
         cube(-0.3f, 3.4f, 0f, 0.62f, 0.25f, 0.54f, BRASS_D)
+        cube(-0.3f, 0.8f, 0f, 0.64f, 0.18f, 0.56f, BRASS_D)
+        cube(-0.3f, 2.0f, -0.5f, 0.3f, 1.9f, 0.08f, BOW_D)
         translate(0f, 4.2f, 0f)
         rotX(-(0.16f + 0.42f * flex))
         cube(-0.3f, 2.1f, 0f, 0.52f, 2.3f, 0.46f, BOW)
@@ -636,6 +692,8 @@ object Archer3D {
         cube(-0.3f, -2.0f, 0f, 0.6f, 2.1f, 0.52f, BOW)
         cube(-0.3f, -2.0f, 0.5f, 0.25f, 1.9f, 0.1f, BOW_L)
         cube(-0.3f, -3.4f, 0f, 0.62f, 0.25f, 0.54f, BRASS_D)
+        cube(-0.3f, -0.8f, 0f, 0.64f, 0.18f, 0.56f, BRASS_D)
+        cube(-0.3f, -2.0f, -0.5f, 0.3f, 1.9f, 0.08f, BOW_D)
         translate(0f, -4.2f, 0f)
         rotX(0.16f + 0.42f * flex)
         cube(-0.3f, -2.1f, 0f, 0.52f, 2.3f, 0.46f, BOW)
@@ -663,6 +721,14 @@ object Archer3D {
         cube(0.35f, 0f, z0 + 2.2f, 1.0f, 0.07f, 1.5f, RED)
         cube(0.35f, 0f, z0 + 2.2f, 0.07f, 1.0f, 1.5f, WHITE)
         cube(0.35f, 0f, z0 + 3.9f, 0.6f, 0.07f, 0.7f, RED)
+        push()
+        translate(0.35f, 0f, z0 + 2.2f)
+        rotZ(0.7854f)
+        cube(0f, 0f, 0f, 0.8f, 0.06f, 1.3f, SCARF_L)
+        rotZ(1.5708f)
+        cube(0f, 0f, 0f, 0.8f, 0.06f, 1.3f, SCARF_D)
+        pop()
+        cube(0.35f, 0f, z0 + 4.8f, 0.14f, 0.14f, 0.6f, SHAFT)
         cube(0.35f, 0f, z0 + len + 0.4f, 0.36f, 0.36f, 0.5f, STEEL)
         cube(0.35f, 0f, z0 + len + 1.1f, 0.24f, 0.24f, 0.5f, STEEL_L)
         cube(0.35f, 0f, z0 + len + 1.7f, 0.12f, 0.12f, 0.3f, WHITE)
@@ -824,13 +890,33 @@ object Archer3D {
         cube(0f, 0.3f, 0f, 2.3f, 1f, 2.3f, SKIN_D)
         // rosto
         cube(0f, 5f, 0f, 4.4f, 4.5f, 4.2f, SKIN)
-        cube(-2f, 5.7f, 4.25f, 1.0f, 0.9f * eyeOpen, 0.12f, EYE)
-        cube(2f, 5.7f, 4.25f, 1.0f, 0.9f * eyeOpen, 0.12f, EYE)
-        cube(-2f, 5.6f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
-        cube(2f, 5.6f, 4.36f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
-        cube(-2f, 7.0f, 4.3f, 1.5f, 0.45f, 0.2f, HAIR_D)
-        cube(2f, 7.0f, 4.3f, 1.5f, 0.45f, 0.2f, HAIR_D)
+        // olhos: esclera, íris, brilho e cílios
+        cube(-2f, 5.7f, 4.25f, 1.15f, 0.95f * eyeOpen, 0.12f, EYE_W)
+        cube(2f, 5.7f, 4.25f, 1.15f, 0.95f * eyeOpen, 0.12f, EYE_W)
+        cube(-1.85f, 5.65f, 4.34f, 0.75f, 0.85f * eyeOpen, 0.1f, EYE)
+        cube(2.15f, 5.65f, 4.34f, 0.75f, 0.85f * eyeOpen, 0.1f, EYE)
+        cube(-1.85f, 5.6f, 4.44f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
+        cube(2.15f, 5.6f, 4.44f, 0.55f, 0.5f * eyeOpen, 0.08f, eyeC, true)
+        cube(-2.2f, 6.2f, 4.52f, 0.17f, 0.17f * eyeOpen, 0.05f, WHITE)
+        cube(1.8f, 6.2f, 4.52f, 0.17f, 0.17f * eyeOpen, 0.05f, WHITE)
+        cube(-2f, 6.75f, 4.3f, 1.3f, 0.14f, 0.08f, HAIR_D)
+        cube(2f, 6.75f, 4.3f, 1.3f, 0.14f, 0.08f, HAIR_D)
+        push()
+        translate(-2.0f, 7.3f, 4.35f)
+        rotZ(-0.18f)
+        cube(0f, 0f, 0f, 1.3f, 0.26f, 0.14f, HAIR_D)
+        pop()
+        push()
+        translate(2.0f, 7.3f, 4.35f)
+        rotZ(0.18f)
+        cube(0f, 0f, 0f, 1.3f, 0.26f, 0.14f, HAIR_D)
+        pop()
+        cube(-3.3f, 4.3f, 4.28f, 0.8f, 0.45f, 0.05f, BLUSH)
+        cube(3.3f, 4.3f, 4.28f, 0.8f, 0.45f, 0.05f, BLUSH)
         cube(0f, 4.4f, 4.45f, 0.7f, 0.9f, 0.45f, SKIN_D)
+        cube(0f, 3.6f, 4.6f, 0.5f, 0.25f, 0.2f, SKIN)
+        cube(-4.5f, 5.0f, 0f, 0.1f, 1.0f, 0.8f, SKIN_D)
+        cube(4.5f, 5.0f, 0f, 0.1f, 1.0f, 0.8f, SKIN_D)
         // mascara de pano cobrindo a boca
         cube(0f, 2.2f, 4.2f, 4.5f, 1.6f, 0.35f, CLOAK_D)
         cube(0f, 3.6f, 4.3f, 4.3f, 0.25f, 0.3f, CLOAK_L)
@@ -1383,7 +1469,8 @@ object Archer3D {
         val ay0 = 16.2f + 1.2f * sin(elevS)
         val az0 = 3.0f
         // o braço do arco estica enquanto a corda é puxada
-        val gLen = lerp(6.0f, 13.2f, reachE)
+        // limite: o braço do arco (ombro esquerdo girado pelo peito) só alcança ~13 de distância; passar disso trava o braço e desalinha a corda
+        val gLen = lerp(6.0f, 11.0f - 1.5f * abs(dirY), reachE)
         val gAimX = ax0
         val gAimY = ay0 + dirY * gLen
         val gAimZ = az0 + dirZ * gLen + 0.9f * recoilV
