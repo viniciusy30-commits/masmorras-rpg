@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Warrior3D {
     private val V = VoxelArt
 
-    private const val MAX = 640
+    private const val MAX = 800
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -538,6 +538,7 @@ object Warrior3D {
         push()
             translate(side * 3.4f, hipY, 0f)
             rotX(a)
+            Roupas.coxa(hg, Classe.GUERREIRO, side)
             cube(0f, -2.7f, 0f, 2.55f, 2.9f, 2.6f, PANTS)
             cube(0f, -2.2f, 0.35f, 2.75f, 2.5f, 2.65f, STEEL_D)
             cube(0f, -2f, 2.85f, 1.5f, 2.3f, 0.25f, STEEL)
@@ -548,6 +549,7 @@ object Warrior3D {
             cube(0f, -5.2f, 0f, 2.7f, 0.35f, 2.7f, GOLD_D)
             translate(0f, -5.6f, 0f)
             rotX(knee)
+            Roupas.canela(hg, Classe.GUERREIRO, side)
             cube(0f, 0.3f, 2.2f, 2.5f, 1.7f, 1.1f, GOLD)
             cube(0f, 0.3f, 3.2f, 1.6f, 1.1f, 0.4f, STEEL_L)
             cube(0f, 0.5f, 3.8f, 0.5f, 0.5f, 0.55f, STEEL_L)
@@ -779,6 +781,7 @@ object Warrior3D {
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, tabA: Float, breath: Float) {
         HeroKit.cauda(hg, Classe.GUERREIRO)
+        Roupas.abdomen(hg, Classe.GUERREIRO)
         cube(0f, 0.6f, 0f, 5.6f, 1.4f, 3.5f, LEATHER)
         cube(0f, 0.8f, 3.55f, 1.9f, 1.4f, 0.5f, GOLD)
         cube(0f, 0.8f, 4f, 1.1f, 0.9f, 0.25f, GOLD_L)
@@ -827,6 +830,8 @@ object Warrior3D {
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peito(hg, Classe.GUERREIRO)
+            Roupas.capa(hg, Classe.GUERREIRO)
             cube(0f, 9.8f, 0f, 6.9f, 5f, 3.9f, STEEL)
             cube(0f, 10.5f, 3.9f, 5.5f, 3.8f, 0.6f, STEEL_L)
             cube(0f, 10.5f, 4.45f, 0.5f, 3.8f, 0.2f, STEEL)

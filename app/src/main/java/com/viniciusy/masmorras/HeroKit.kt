@@ -206,7 +206,7 @@ object HeroKit {
 
     fun barba(g: HeroGfx, c: Classe) {
         val st = HeroLook.barba
-        if (st < 2) return
+        if (st < 2 || HeroLook.fem) return
         val k = cranio(c)
         val f = face(c)
         val sp = spec(c)
@@ -316,6 +316,7 @@ object HeroKit {
     private fun rosto(g: HeroGfx, c: Classe) {
         val f = face(c)
         val sp = spec(c)
+        if (HeroLook.fem && !(c == Classe.NINJA && HeroLook.elmo)) feminino(g, f, sp)
         when (HeroLook.cicatriz) {
             1 -> cicatrizOlho(g, f)
             2 -> cicatrizBochecha(g, f, sp)
@@ -336,6 +337,20 @@ object HeroKit {
             5 -> oculos(g, f)
             6 -> monoculo(g, f)
         }
+    }
+
+    /** Rosto feminino: cílios, lábios e bochechas coradas. */
+    private fun feminino(g: HeroGfx, f: Face, sp: Spec) {
+        val z = f.fz + 0.06f
+        for (i in 0..1) {
+            val sd = if (i == 0) 1f else -1f
+            val x = sd * f.ex + f.ec
+            g.cube(x, f.eyeY + 0.95f, z, 0.95f, 0.14f, 0.06f, TINTA_PRETA)
+            g.cube(x + sd * 0.85f, f.eyeY + 0.75f, z, 0.18f, 0.3f, 0.06f, TINTA_PRETA)
+            g.cube(sd * f.fw * 0.62f, f.eyeY - 1.5f, z, 0.8f, 0.5f, 0.05f, 0xFFE89A9A.toInt())
+        }
+        g.cube(0f, sp.mouthY, z, 0.95f, 0.28f, 0.06f, 0xFFC2475A.toInt())
+        g.cube(0f, sp.mouthY - 0.3f, z, 0.6f, 0.15f, 0.06f, 0xFFA83A4C.toInt())
     }
 
     private fun cicatrizOlho(g: HeroGfx, f: Face) {

@@ -326,6 +326,7 @@ object HeroCreator {
             painel.addView(hs)
         }
         painel.addView(titulo("Aparência"))
+        linhaOpcoes("Sexo", listOf("Masculino", "Feminino"), { ed.sexo }, { ed.sexo = it; if (it == 1 && ed.cabelo == 0) ed.cabelo = 3 })
         linhaCores("Pele", PELES, { ed.skin }, { ed.skin = it })
         linhaCores("Cabelo e barba", CABELOS, { ed.hair }, { ed.hair = it })
         linhaCores("Olhos", OLHOS, { ed.eye }, { ed.eye = it })
@@ -347,6 +348,9 @@ object HeroCreator {
             linhaOpcoes(nomeElmo, listOf("Usar", "Tirar"), { ed.elmo }, { ed.elmo = it })
         }
         linhaOpcoes("Na cabeça", listOf("Nada", "Bandana", "Tiara", "Coroa", "Casquete de aço"), { ed.topo }, { ed.topo = it })
+        linhaOpcoes("Roupa do peito", Roupas.nomesPeito(classe), { ed.peito }, { ed.peito = it })
+        linhaOpcoes("Roupa das pernas", Roupas.nomesPernas(classe), { ed.pernas }, { ed.pernas = it })
+        linhaOpcoes("Capa", Roupas.nomesCapa(classe), { ed.capa }, { ed.capa = it })
         linhaOpcoes("Ombreiras", listOf("Usar", "Tirar"), { ed.ombro }, { ed.ombro = it })
         linhaCores("Cor da armadura (metal)", METAIS, { ed.metal }, { ed.metal = it })
         linhaCores("Cor da roupa (tecido)", TECIDOS, { ed.tecido }, { ed.tecido = it })

@@ -88,6 +88,10 @@ class HeroiPerfil(val classe: Classe) {
     var ombro: Int = 0     // 0 = com ombreiras, 1 = sem
     var metal: Int? = null
     var tecido: Int? = null
+    var sexo: Int = 0      // 0 = masculino, 1 = feminino
+    var peito: Int = 0
+    var pernas: Int = 0
+    var capa: Int = 0
 
     fun nota(a: Atrib): Int = notas[a.ordinal]
     fun total(a: Atrib): Int = notas[a.ordinal] + raca.bonusDe(a)
@@ -125,6 +129,10 @@ class HeroiPerfil(val classe: Classe) {
         p.ombro = ombro
         p.metal = metal
         p.tecido = tecido
+        p.sexo = sexo
+        p.peito = peito
+        p.pernas = pernas
+        p.capa = capa
         return p
     }
 
@@ -145,6 +153,10 @@ class HeroiPerfil(val classe: Classe) {
         ombro = o.ombro
         metal = o.metal
         tecido = o.tecido
+        sexo = o.sexo
+        peito = o.peito
+        pernas = o.pernas
+        capa = o.capa
     }
 
     // ── conta final: tudo e relativo ao herói padrão da classe, então o padrão dá os mesmos números de antes ──

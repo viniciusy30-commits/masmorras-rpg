@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Archer3D {
     private val V = VoxelArt
 
-    private const val MAX = 1200
+    private const val MAX = 1350
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -532,6 +532,7 @@ object Archer3D {
         translate(side * 3f, hipY, 0f)
         rotZ(side * spread)
         rotX(a)
+        Roupas.coxa(hg, Classe.ARQUEIRO, side)
         // coxa: calça com dobras, costura lateral e faixas de couro
         cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
         cube(0f, -1.0f, 2.24f, 1.5f, 0.9f, 0.05f, PANTS_L)
@@ -545,6 +546,7 @@ object Archer3D {
         cube(0f, -5.4f, 0f, 2.25f, 0.3f, 2.35f, LEATHER_D)
         translate(0f, -5.6f, 0f)
         rotX(knee)
+        Roupas.canela(hg, Classe.ARQUEIRO, side)
         // joelheira com rebites
         cube(0f, -0.1f, 2.15f, 1.5f, 1.0f, 0.4f, LEATHER_L)
         cube(0f, -0.1f, 2.55f, 1.0f, 0.65f, 0.12f, LEATHER)
@@ -912,6 +914,7 @@ object Archer3D {
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, flapF: Float, flapB: Float, breath: Float, quiverSw: Float, scarfSw: Float, arrows: Float) {
         HeroKit.cauda(hg, Classe.ARQUEIRO)
+        Roupas.abdomen(hg, Classe.ARQUEIRO)
         // quadril e cinto
         cube(0f, -1.6f, 0f, 5.4f, 2.2f, 3.3f, PANTS)
         cube(0f, 0.6f, 0f, 5.3f, 1.1f, 3.5f, LEATHER)
@@ -957,6 +960,8 @@ object Archer3D {
         push()
         rotY(chestTw)
         translate(0f, breath, 0f)
+        Roupas.peito(hg, Classe.ARQUEIRO)
+        Roupas.capa(hg, Classe.ARQUEIRO)
         cube(0f, 5.2f, 0f, 4.7f, 0.9f, 3.2f, TUNIC_D)
         cube(0f, 9.8f, 0f, 5.5f, 4.8f, 3.4f, TUNIC)
         cube(0f, 10.0f, 3.45f, 4.3f, 4.0f, 0.2f, LEATHER)

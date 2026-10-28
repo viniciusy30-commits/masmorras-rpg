@@ -27,7 +27,7 @@ import kotlin.math.sqrt
 object Mage3D {
     private val V = VoxelArt
 
-    private const val MAX = 760
+    private const val MAX = 900
     private const val PITCH = 0.8f
     private const val PX = 1.6f
     private val COSP = cos(PITCH)
@@ -632,9 +632,11 @@ object Mage3D {
         push()
             translate(side * 3f, hipY, 0f)
             rotX(a)
+            Roupas.coxa(hg, Classe.MAGO, side)
             cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
             translate(0f, -5.6f, 0f)
             rotX(knee)
+            Roupas.canela(hg, Classe.MAGO, side)
             cube(0f, -2.7f, 0f, 1.95f, 2.8f, 2f, LEATHER)
             cube(0f, -0.5f, 0f, 2.25f, 0.5f, 2.3f, LEATHER_L)
             cube(0f, -0.5f, 2.35f, 0.9f, 0.4f, 0.12f, GOLD)
@@ -856,6 +858,7 @@ object Mage3D {
 
     private fun torso(chestTw: Float, c0: Float, c1: Float, c2: Float, skF: Float, skB: Float, flare: Float, breath: Float, bookSw: Float, wingW: Float, flap: Float) {
         HeroKit.cauda(hg, Classe.MAGO)
+        Roupas.abdomen(hg, Classe.MAGO)
         // cinto, fivela, grimório e poção
         cube(0f, 0.6f, 0f, 5.2f, 1.2f, 3.4f, LEATHER)
         cube(0f, 0.7f, 3.45f, 1.6f, 1.1f, 0.5f, GOLD)
@@ -909,6 +912,8 @@ object Mage3D {
         push()
             rotY(chestTw)
             translate(0f, breath, 0f)
+            Roupas.peito(hg, Classe.MAGO)
+            Roupas.capa(hg, Classe.MAGO)
             cube(0f, 9.8f, 0f, 5.7f, 4.8f, 3.5f, ROBE)
             cube(0f, 10f, 3.55f, 4.7f, 4.2f, 0.15f, ROBE_L)
             cube(0f, 14.3f, 0f, 3.4f, 0.9f, 3f, ROBE_D)

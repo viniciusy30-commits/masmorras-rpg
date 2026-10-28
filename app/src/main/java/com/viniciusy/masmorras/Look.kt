@@ -22,6 +22,10 @@ object HeroLook {
     var ombro: Boolean = true // ombreiras
     var metalC: Int? = null   // cor da armadura (metal)
     var tecidoC: Int? = null  // cor da roupa (tecido)
+    var peito: Int = 0        // roupa do peito (0 = padrão da classe)
+    var pernas: Int = 0       // roupa das pernas (0 = padrão da classe)
+    var capa: Int = 0         // capa nas costas (0 = nenhuma)
+    var fem: Boolean = false  // corpo e rosto femininos
 
     /** Fatores de altura do herói (Muito baixo ... Muito alto). */
     val ALTURAS = floatArrayOf(0.85f, 0.93f, 1f, 1.07f, 1.15f)
@@ -36,12 +40,16 @@ object HeroLook {
         pintura = p.pintura
         acess = p.acess
         cabelo = p.cabelo
-        barba = p.barba
+        fem = p.sexo == 1
+        barba = if (p.sexo == 1) 1 else p.barba
         elmo = p.elmo == 0
         topo = p.topo
         ombro = p.ombro == 0
         metalC = p.metal
         tecidoC = p.tecido
+        peito = p.peito
+        pernas = p.pernas
+        capa = p.capa
     }
 
     private fun lum(c: Int): Float =
@@ -127,6 +135,10 @@ object Herois {
             p.ombro = sp.getInt("ombro", 0).coerceIn(0, 1)
             p.metal = if (sp.contains("metal")) sp.getInt("metal", 0) else null
             p.tecido = if (sp.contains("tecido")) sp.getInt("tecido", 0) else null
+            p.sexo = sp.getInt("sexo", 0).coerceIn(0, 1)
+            p.peito = sp.getInt("peito", 0).coerceIn(0, Roupas.N - 1)
+            p.pernas = sp.getInt("pernas", 0).coerceIn(0, Roupas.N - 1)
+            p.capa = sp.getInt("capa", 0).coerceIn(0, Roupas.N - 1)
         } catch (e: Exception) {
             // dados antigos ou corrompidos: volta ao herói padrão
             return HeroiPerfil(classe)
@@ -159,6 +171,10 @@ object Herois {
         if (m != null) e.putInt("metal", m) else e.remove("metal")
         val t = p.tecido
         if (t != null) e.putInt("tecido", t) else e.remove("tecido")
+        e.putInt("sexo", p.sexo)
+        e.putInt("peito", p.peito)
+        e.putInt("pernas", p.pernas)
+        e.putInt("capa", p.capa)
         e.apply()
     }
 }
