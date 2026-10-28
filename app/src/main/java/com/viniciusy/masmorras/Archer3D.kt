@@ -84,9 +84,13 @@ object Archer3D {
     private var rBx = 0f
     private var rBy = 0f
     private var rSs = 1f
-    private var bmp: Bitmap? = null
-    private var bmpW = 0
-    private var bmpH = 0
+    // vários bitmaps em rodízio: o canvas por hardware só lê os pixels no fim do quadro, então herói e armadilhas
+    // não podem dividir o mesmo bitmap (senão todos aparecem com a imagem do último que foi desenhado)
+    private const val BMP_POOL = 16
+    private val bmps = arrayOfNulls<Bitmap>(BMP_POOL)
+    private val bmpWs = IntArray(BMP_POOL)
+    private val bmpHs = IntArray(BMP_POOL)
+    private var bmpIdx = 0
     private val srcR = Rect()
     private val dstR = RectF()
     private val bmpPaint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -265,12 +269,14 @@ object Archer3D {
     // ───────────── render com z-buffer (sem peças piscando) ─────────────
 
     private fun ensureBmp(w: Int, h: Int): Bitmap {
-        val cur = bmp
-        if (cur != null && bmpW >= w && bmpH >= h) return cur
-        bmpW = max(bmpW, ((w + 63) / 64) * 64)
-        bmpH = max(bmpH, ((h + 63) / 64) * 64)
-        val nb = Bitmap.createBitmap(bmpW, bmpH, Bitmap.Config.ARGB_8888)
-        bmp = nb
+        bmpIdx = (bmpIdx + 1) % BMP_POOL
+        val i = bmpIdx
+        val cur = bmps[i]
+        if (cur != null && bmpWs[i] >= w && bmpHs[i] >= h) return cur
+        bmpWs[i] = max(bmpWs[i], ((w + 63) / 64) * 64)
+        bmpHs[i] = max(bmpHs[i], ((h + 63) / 64) * 64)
+        val nb = Bitmap.createBitmap(bmpWs[i], bmpHs[i], Bitmap.Config.ARGB_8888)
+        bmps[i] = nb
         return nb
     }
 
@@ -1735,7 +1741,10 @@ object Archer3D {
         push()
         translate(hLX, hLY, hLZ)
         rotY(-chestTw)
-        rotY(-1.25f * (1f - aimW))   // em repouso o arco gira de lado: a curva dos limbos aparece e não bate na perna
+        // em repouso o arco não fica "de pé": pende inclinado para a frente e levemente para fora, longe da perna
+        rotY(-0.45f * (1f - aimW))
+        rotZ(0.28f * (1f - aimW))
+        rotX(1.0f * (1f - aimW))
         rotX(b1)
         rotZ(b2)
         nockD = nD + sin(clock * 58f) * 1.3f * vibA

@@ -1,3 +1,8 @@
+#id 2026-10-28-a
+#titulo Arqueiro: arco inclinado e armadilha de urso corrigida
+- Armadilha de urso: corrigido o bug em que o corpo do arqueiro aparecia dentro dela (a armadilha e o herói usavam a mesma imagem interna); agora cada desenho tem a sua e a armadilha aparece inteira, com placa, corrente e mandíbulas
+- Arco em repouso: não fica mais "de pé"; ele pende inclinado para a frente e levemente para fora, longe da perna. Ao mirar, continua na posição de sempre
+
 #id 2026-10-27-d
 #titulo Arqueiro: pulo duplo com mortal e armadilha de urso 3D
 - Pulo duplo do Arqueiro: aperte o botão de pular de novo no ar e ele ganha um novo impulso e dá um mortal para a frente, com anel de ar, faíscas e rastro de giro. Ele encolhe, gira inteiro e abre o corpo para pousar de pé; a duração do mortal se ajusta ao tempo que falta para chegar ao chão
