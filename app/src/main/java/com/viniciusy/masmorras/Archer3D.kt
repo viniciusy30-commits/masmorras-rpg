@@ -1163,7 +1163,8 @@ object Archer3D {
             cube(0f, -3.6f, -0.1f, 0.4f, 0.3f, 0.26f, HAIR)
             pop()
 
-        }        HeroKit.cabeca(hg, Classe.ARQUEIRO)
+        }
+        HeroKit.cabeca(hg, Classe.ARQUEIRO)
         pop()
     }
 

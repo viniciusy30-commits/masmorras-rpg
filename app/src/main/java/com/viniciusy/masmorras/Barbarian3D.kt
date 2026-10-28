@@ -880,7 +880,8 @@ object Barbarian3D {
                 cube(-1.7f, 2.9f, 4.85f, 1.7f, 0.42f, 0.38f, HAIR)
                 cube(1.7f, 2.9f, 4.85f, 1.7f, 0.42f, 0.38f, HAIR)
 
-            }            if (HeroLook.cabelo == 0) {
+            }
+            if (HeroLook.cabelo == 0) {
                 cube(-4.75f, 2.4f, 1.8f, 0.3f, 2.3f, 2.6f, HAIR_D)
                 cube(4.75f, 2.4f, 1.8f, 0.3f, 2.3f, 2.6f, HAIR_D)
                 cube(-4.8f, 5.6f, -1.0f, 0.4f, 2.4f, 3.4f, HAIR)
@@ -888,7 +889,8 @@ object Barbarian3D {
                 cube(0f, 4.2f, -4.7f, 4.6f, 4.4f, 0.55f, HAIR)
                 cube(0f, 1.2f, -4.6f, 3.4f, 1.3f, 0.5f, HAIR_D)
 
-            }            if (HeroLook.elmo) {
+            }
+            if (HeroLook.elmo) {
                 cube(0f, 8.5f, 0f, 5.25f, 2.1f, 5.05f, IRON_D)
                 cube(0f, 6.5f, 0f, 5.35f, 0.5f, 5.15f, LEATHER)
                 cube(0f, 6.5f, 5.2f, 4.9f, 0.5f, 0.16f, IRON)
@@ -905,7 +907,8 @@ object Barbarian3D {
                 horn(1f)
                 horn(-1f)
 
-            }            if (HeroLook.barba == 0) {
+            }
+            if (HeroLook.barba == 0) {
                 push()
                     translate(0f, 1.5f, 5.2f)
                     rotX(-0.05f + b0)
@@ -926,7 +929,8 @@ object Barbarian3D {
                     cube(1.3f, -2.1f, 0.1f, 0.65f, 0.3f, 0.65f, IRON)
                 pop()
 
-            }            if (HeroLook.cabelo == 0) {
+            }
+            if (HeroLook.cabelo == 0) {
                 push()
                     translate(0f, 9.0f, -5.0f)
                     rotX(0.35f + h0)
@@ -942,7 +946,8 @@ object Barbarian3D {
                     cube(0f, -3.4f, -0.2f, 0.8f, 0.5f, 0.5f, HAIR_D)
                 pop()
 
-            }        HeroKit.cabeca(hg, Classe.BARBARO)
+            }
+        HeroKit.cabeca(hg, Classe.BARBARO)
         pop()
     }
 

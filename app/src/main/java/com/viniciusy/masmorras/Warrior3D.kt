@@ -726,7 +726,8 @@ object Warrior3D {
                 cube(-4.9f, 2.2f, 2.4f, 0.2f, 2.2f, 2.2f, BEARD)
                 cube(4.9f, 2.2f, 2.4f, 0.2f, 2.2f, 2.2f, BEARD)
 
-            }            cube(-3f, 3.4f, 4.9f, 0.18f, 1.7f, 0.12f, SCAR)
+            }
+            cube(-3f, 3.4f, 4.9f, 0.18f, 1.7f, 0.12f, SCAR)
             if (HeroLook.elmo) {
                 cube(0f, 8.6f, 0f, 5.5f, 2.9f, 5.4f, STEEL)
                 cube(0f, 11f, 0f, 4.7f, 0.8f, 4.7f, STEEL_L)
@@ -770,7 +771,8 @@ object Warrior3D {
                     cube(0f, -0.3f, -1.2f, 0.9f, 0.8f, 2f, RED_D)
                 pop()
 
-            }        HeroKit.cabeca(hg, Classe.GUERREIRO)
+            }
+        HeroKit.cabeca(hg, Classe.GUERREIRO)
         pop()
     }
 

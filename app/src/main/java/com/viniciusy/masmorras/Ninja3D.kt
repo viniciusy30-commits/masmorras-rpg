@@ -706,7 +706,8 @@ object Ninja3D {
             cube(side * 0.5f, 2.0f, 0f, 3.2f, 0.25f, 3.3f, CRIM)
             cube(side * 2.6f, -0.2f, 0f, 0.5f, 1.4f, 3.2f, PLATE_D)
 
-        }        rotZ(shZ)
+        }
+        rotZ(shZ)
         rotX(sh)
         cube(0f, -2.5f, 0f, 1.75f, 2.7f, 1.75f, SKIN)
         cube(0f, -1.2f, 0f, 1.95f, 0.5f, 1.95f, SUIT_L)
@@ -750,7 +751,8 @@ object Ninja3D {
                 cube(0.9f, 1.9f, 4.6f, 0.12f, 0.7f, 0.08f, PLATE_D)
                 cube(0f, 3.1f, 4.62f, 2.7f, 0.12f, 0.08f, PLATE_L)
 
-            }            // olhos vermelhos brilhantes, em V
+            }
+            // olhos vermelhos brilhantes, em V
             val ey = 0.38f * eyeOpen
             for (k in 0..1) {
                 val sd = if (k == 0) 1f else -1f
@@ -788,7 +790,8 @@ object Ninja3D {
                     cube(0f, 1.6f, 0f, 0.75f, 1.8f, 0.75f, HAIR)
                 pop()
 
-            }            // pontas da faixa
+            }
+            // pontas da faixa
             push()
                 translate(0f, 7.6f, -4.5f)
                 rotX(0.25f + band)

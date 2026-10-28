@@ -775,14 +775,16 @@ object Mage3D {
                 cube(-3.6f, 2.2f, 4.3f, 0.5f, 0.8f, 0.3f, HAIR_D)
                 cube(3.6f, 2.2f, 4.3f, 0.5f, 0.8f, 0.3f, HAIR_D)
 
-            }            // cabelo
+            }
+            // cabelo
             if (HeroLook.cabelo == 0) {
                 cube(-4.5f, 4.8f, 0f, 0.5f, 3.2f, 3.6f, HAIR)
                 cube(4.5f, 4.8f, 0f, 0.5f, 3.2f, 3.6f, HAIR)
                 cube(0f, 4f, -4.3f, 4.2f, 4f, 0.5f, HAIR)
                 cube(0f, 0.9f, -4.1f, 3f, 1.4f, 0.5f, HAIR_D)
 
-            }            // barba comprida em molas
+            }
+            // barba comprida em molas
             if (HeroLook.barba == 0) {
                 cube(0f, 1.4f, 4.3f, 3f, 1.2f, 0.5f, HAIR)
                 push()
@@ -797,7 +799,8 @@ object Mage3D {
                     cube(0f, -1.8f, 0.3f, 1.2f, 1.8f, 0.5f, HAIR)
                 pop()
 
-            }            // chapéu pontudo: aba, faixa, copa e ponta em molas
+            }
+            // chapéu pontudo: aba, faixa, copa e ponta em molas
             if (HeroLook.elmo) {
                 cube(0f, 9.7f, -0.4f, 8.2f, 0.45f, 6.4f, ROBE_D)
                 cube(0f, 9.7f, -0.4f, 8.35f, 0.2f, 6.55f, GOLD_D)
@@ -824,7 +827,8 @@ object Mage3D {
                     cube(0f, 2.5f, 0f, 0.55f, 0.55f, 0.55f, orbL, true)
                 pop()
 
-            }        HeroKit.cabeca(hg, Classe.MAGO)
+            }
+        HeroKit.cabeca(hg, Classe.MAGO)
         pop()
     }
 
