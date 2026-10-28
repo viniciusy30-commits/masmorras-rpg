@@ -1366,25 +1366,25 @@ object Archer3D {
         val gAimZ = az0 + dirZ * 13.8f + 0.9f * recoilV
         val swg = sin(phase) * 4.5f * mvs
         val stp = abs(sin(phase)) * 0.8f * mvs
-        var gRX = 5.4f
-        var gRY = 8.8f + stp
-        var gRZ = 3.0f - swg
-        var rRX = -5.4f
-        var rRY = 8.6f + stp
-        var rRZ = 2.0f + swg
+        var gRX = 9.0f
+        var gRY = 8.4f + stp
+        var gRZ = 5.6f - swg * 0.5f
+        var rRX = -8.6f
+        var rRY = 8.0f + stp
+        var rRZ = 2.4f + swg
         if (airW > 0.001f) {
-            gRX = lerp(gRX, 5.8f, airW); gRY = lerp(gRY, 13.6f, airW); gRZ = lerp(gRZ, 3.5f, airW)
-            rRX = lerp(rRX, -5.8f, airW); rRY = lerp(rRY, 12.6f, airW); rRZ = lerp(rRZ, 0.5f, airW)
+            gRX = lerp(gRX, 8.8f, airW); gRY = lerp(gRY, 13.6f, airW); gRZ = lerp(gRZ, 4.5f, airW)
+            rRX = lerp(rRX, -8.8f, airW); rRY = lerp(rRY, 12.6f, airW); rRZ = lerp(rRZ, 0.5f, airW)
         }
         if (hopW > 0.001f) {
-            gRX = lerp(gRX, 3.2f, hopW); gRY = lerp(gRY, 9.4f, hopW); gRZ = lerp(gRZ, 4.4f, hopW)
-            rRX = lerp(rRX, -3.2f, hopW); rRY = lerp(rRY, 9.2f, hopW); rRZ = lerp(rRZ, 4.2f, hopW)
+            gRX = lerp(gRX, 7.4f, hopW); gRY = lerp(gRY, 9.4f, hopW); gRZ = lerp(gRZ, 5.4f, hopW)
+            rRX = lerp(rRX, -6.6f, hopW); rRY = lerp(rRY, 9.2f, hopW); rRZ = lerp(rRZ, 4.2f, hopW)
         }
         val gX = lerp(gRX, gAimX, aimW)
         val gY = lerp(gRY, gAimY, aimW)
         val gZ = lerp(gRZ, gAimZ, aimW)
-        val b1 = lerp(0.25f, -elevS - 0.12f * recoilV, aimW)
-        val b2 = lerp(-0.25f, 0f, aimW)
+        val b1 = lerp(0.5f, -elevS - 0.12f * recoilV, aimW)
+        val b2 = lerp(-0.3f, 0f, aimW)
         val nD = 2f + 11.6f * drawT
         // posição do encaixe da corda no referencial do quadril
         rotVZ(0.35f, 0f, -nD, b2)
@@ -1489,6 +1489,7 @@ object Archer3D {
         rotY(-chestTw)
         rotX(b1)
         rotZ(b2)
+        rotY(-0.6f * (1f - aimW))
         nockD = nD + sin(clock * 58f) * 1.3f * vibA
         bowModel(flexX.coerceIn(-0.35f, 1.15f), bowGlow)
         if (arrowOn > 0.5f) arrowModel(bowGlow)
