@@ -10,6 +10,7 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 abstract class Entity(
     var x: Float,
@@ -130,6 +131,11 @@ class Player(
     var swapUntil = 0L
     // arqueiro: salto-dash (planta armadilha) e skills (1 = chuva de flechas, 2 = flecha trovão)
     var hopping = false
+    // pulo duplo do arqueiro: segundo toque no ar = mortal (flipT conta de flipDur até 0)
+    var airJumped = false
+    var flipT = 0f
+    var flipDur = 0.5f
+    val flipping: Boolean get() = flipT > 0f
     var trapFx = false
     // armadilha arremessada no meio do salto (o GameView cria o objeto quando trapThrowReq liga)
     var trapThrown = false
@@ -147,7 +153,7 @@ class Player(
     val skilling: Boolean get() = skillK != 0
 
     fun canAttack(now: Long): Boolean {
-        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping) return false
+        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping || flipT > 0f) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else classe.cooldownAtaque
@@ -230,6 +236,8 @@ class Player(
         rollDur = HOP_TIME
         dashing = false
         hopping = true
+        airJumped = false
+        flipT = 0f
         vz = 330f
         alt = ground + 0.7f
         lastRoll = now
@@ -267,9 +275,29 @@ class Player(
     fun skillReleaseAt(k: Int): Float = if (k == 1) Archer3D.RAIN_DUR * Archer3D.RAIN_REL else Archer3D.THUNDER_DUR * Archer3D.THUNDER_REL
 
     fun jump(): Boolean {
-        if (!alive || rolling || skillK != 0 || !grounded) return false
+        if (!alive || rolling || skillK != 0) return false
+        if (!grounded) return airJump()
         vz = 340f
         alt = ground + 0.7f
+        airJumped = false
+        flipT = 0f
+        return true
+    }
+
+    /** Segundo pulo do arqueiro, no ar: impulso novo e mortal para a frente que termina de pé antes de pousar. */
+    private fun airJump(): Boolean {
+        if (classe != Classe.ARQUEIRO || airJumped || flying) return false
+        val up = (alt - ground).coerceAtLeast(0f)
+        if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
+        airJumped = true
+        vz = 315f
+        // tempo até o chão com a gravidade de 1500: o mortal dura um pouco menos, para fechar a pose antes do pouso
+        val land = (vz + sqrt(vz * vz + 3000f * up)) / 1500f
+        flipDur = (land * 0.88f).coerceIn(0.38f, 0.72f)
+        flipT = flipDur
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
         return true
     }
 
@@ -377,8 +405,11 @@ class Player(
                 }
                 alt = groundPx
                 vz = 0f
+                airJumped = false
+                flipT = 0f
             }
         } else {
+            airJumped = false
             alt += (groundPx - alt) * min(1f, dt * 30f)
             if (abs(groundPx - alt) < 0.3f) alt = groundPx
             vz = 0f
@@ -386,6 +417,7 @@ class Player(
     }
 
     override fun update(dt: Float) {
+        if (flipT > 0f) flipT = max(0f, flipT - dt)
         if (leaping) {
             leapClock += dt
             if (leapClock > 2.5f) leaping = false
@@ -496,6 +528,7 @@ class Player(
         Barbarian3D.airVz = vz
         Barbarian3D.swing = swing
         Archer3D.hopP = if (hopping && rollT > 0f) 1f - rollT / rollDur else -1f
+        Archer3D.flipP = if (classe == Classe.ARQUEIRO && flipT > 0f) 1f - flipT / flipDur else -1f
         Archer3D.inAir = up > 1f
         Archer3D.airH = up
         Archer3D.airVz = vz

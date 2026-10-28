@@ -72,8 +72,8 @@ class Trap(
         // mandíbulas: fechadas no ar, abrem com uma mola ao bater no chão (com sobra e vibração)
         val springOpen = if (inFlight) 0.12f else (1f - exp(-w * 20f) + 0.22f * wob).coerceIn(0f, 1.25f)
         val open = springOpen * (1f - closing)
-        val rx = 21f
-        val ry = 10.5f
+        val rx = 19f
+        val ry = 9.5f
 
         p.style = Paint.Style.FILL
         // sombra no chão (some quando está alto)
@@ -81,73 +81,14 @@ class Trap(
         p.color = alphaCol(0xFF000000.toInt(), 0.32f * fade * sh)
         c.drawOval(gxs - rx * 1.05f * sh, groundY - ry * 0.7f * sh, gxs + rx * 1.05f * sh, groundY + ry * 1.1f * sh, p)
 
-        c.save()
-        c.translate(gxs, groundY - hAir - bounce)
-        if (inFlight) {
-            c.rotate(u * 520f)
-            c.scale(0.8f, 0.8f)
-        } else {
-            val squash = 1f - 0.20f * exp(-w * 16f)
-            c.rotate(9f * wob)
-            c.scale(1f + 0.10f * (1f - squash), squash)
-        }
-
-        // corrente com argola de estaca
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = 2.2f
-        p.color = alphaCol(0xFF59616A.toInt(), fade)
-        for (i in 0..3) {
-            val lx = rx * 0.55f + i * 5.2f
-            val ly = -ry * 0.1f - i * 2.1f + sin(w * 30f + i) * 0.8f * decay
-            c.drawOval(lx - 2.6f, ly - 1.7f, lx + 2.6f, ly + 1.7f, p)
-        }
-        p.style = Paint.Style.FILL
-
-        // moldura de aço, mola e placa de pressão
-        p.color = alphaCol(0xFF2E343A.toInt(), fade)
-        c.drawOval(-rx, -ry, rx, ry, p)
-        p.color = alphaCol(0xFF4B545D.toInt(), fade)
-        c.drawOval(-rx * 0.9f, -ry * 0.88f, rx * 0.9f, ry * 0.88f, p)
-        p.style = Paint.Style.STROKE
-        p.strokeWidth = 1.8f
-        p.color = alphaCol(0xFF8C98A3.toInt(), fade)
-        c.drawOval(-rx, -ry, rx, ry, p)
-        p.style = Paint.Style.FILL
-        p.color = alphaCol(0xFF8E5A2B.toInt(), fade)
-        c.drawOval(-rx * 0.2f, -ry * 0.28f, rx * 0.2f, ry * 0.28f, p)
-        p.color = alphaCol(0xFFD4A94A.toInt(), fade)
-        c.drawOval(-rx * 0.12f, -ry * 0.18f, rx * 0.12f, ry * 0.18f, p)
-
-        // duas mandíbulas de semicírculo com dentes; juntas = interligadas
-        val jr = 0.62f
-        for (side in intArrayOf(-1, 1)) {
-            val jx = side * rx * 0.46f * open
-            val jrx = rx * jr
-            val jry = ry * jr * 1.35f
-            val start = if (side < 0) 90f else 270f
-            p.style = Paint.Style.STROKE
-            p.strokeWidth = 3.4f
-            p.color = alphaCol(0xFF7C8A96.toInt(), fade)
-            c.drawArc(jx - jrx, -jry, jx + jrx, jry, start, 180f, false, p)
-            p.strokeWidth = 1.4f
-            p.color = alphaCol(0xFFD7E0E8.toInt(), fade)
-            c.drawArc(jx - jrx, -jry * 0.97f, jx + jrx, jry * 0.97f, start, 180f, false, p)
-            p.style = Paint.Style.FILL
-            p.color = alphaCol(0xFFEAF1F6.toInt(), fade)
-            val path = Path()
-            val teeth = 7
-            for (i in 0 until teeth) {
-                val a0 = (start + 180f * (i + 0.22f) / teeth) * PI.toFloat() / 180f
-                val a1 = (start + 180f * (i + 0.78f) / teeth) * PI.toFloat() / 180f
-                val am = (start + 180f * (i + 0.5f) / teeth) * PI.toFloat() / 180f
-                path.moveTo(jx + jrx * cos(a0), jry * sin(a0))
-                path.lineTo(jx + jrx * 0.62f * cos(am), jry * 0.62f * sin(am))
-                path.lineTo(jx + jrx * cos(a1), jry * sin(a1))
-                path.close()
-            }
-            c.drawPath(path, p)
-        }
-        c.restore()
+        // armadilha de urso em 3D: gira fechada no ar, abre com mola ao cair, fecha com estalo quando pisada
+        val sc = 1.15f
+        Archer3D.drawTrap(
+            c, p, gxs, groundY, sc,
+            (hAir + bounce) / (sc * 1.6f),
+            if (inFlight) u else -1f,
+            open, closing, wob, fade
+        )
 
         // clarão do estalo
         if (snapT in 0f..0.2f) {

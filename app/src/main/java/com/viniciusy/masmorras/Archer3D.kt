@@ -685,7 +685,7 @@ object Archer3D {
     }
 
     /** segmento fino de A até B (referencial do arco) feito de cubo: entra no z-buffer como o resto do corpo */
-    private fun segCube(ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, th: Float, col: Int) {
+    private fun segCube(ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, th: Float, col: Int, thin: Boolean = true) {
         val dx = bx - ax
         val dy = by - ay
         val dz = bz - az
@@ -722,8 +722,8 @@ object Archer3D {
         push()
         translate((ax + bx) * 0.5f, (ay + by) * 0.5f, (az + bz) * 0.5f)
         basis(segB)
-        nextNoOut = true
-        cube(0f, 0f, 0f, th, len * 0.5f, th, col, true)
+        nextNoOut = thin
+        cube(0f, 0f, 0f, th, len * 0.5f, th, col, thin)
         nextNoOut = false
         pop()
     }
@@ -1054,6 +1054,7 @@ object Archer3D {
     const val HOP_THROW = 0.40f   // instante (0..1 do salto) em que a armadilha sai da mão
     private var trapHold = 0f
     var hopP = -1f              // 0..1 durante o salto-dash; <0 = sem salto
+    var flipP = -1f             // 0..1 durante o mortal do pulo duplo; <0 = sem mortal
     var trapReq = false         // o Player liga isso no instante em que a armadilha é solta
     var skillK = 0              // 0 nada, 1 chuva de flechas, 2 flecha trovão
     var skillP = -1f            // 0..1 durante a skill; <0 = sem skill
@@ -1089,6 +1090,8 @@ object Archer3D {
     private var spd = 0f
     private var wasAir = false
     private var wasHop = false
+    private var prevFlipP = -1f
+    private var flipRingT = 0f
     private var landDip = 0f
     private var airTimer = 0f
     private var prevFlash = 0f
@@ -1212,7 +1215,7 @@ object Archer3D {
     /** IK de dois ossos: acha os ângulos do braço para a mão chegar em (tx,ty,tz); (px,py,pz) diz para onde o cotovelo aponta. */
     private fun solveArm(sx: Float, sy: Float, sz: Float, tx: Float, ty: Float, tz: Float, px: Float, py: Float, pz: Float) {
         val a = 5.7f
-        val b = 7.6f
+        val b = 8.0f
         val dx = tx - sx
         val dy = ty - sy
         val dz = tz - sz
@@ -1412,7 +1415,10 @@ object Archer3D {
         val airCand = inAir && !hopping && (airH > 8f || airVz > 60f)
         airTimer = if (airCand) airTimer + dt else 0f
         val airT = if (airTimer > 0.04f) 1f else 0f
-        val hopTgt = if (hopping) 1f else 0f
+        // mortal: encolhe no começo, fica em bolinha girando e abre os braços e pernas antes de pousar
+        val flipOn = flipP >= 0f
+        val flipEnv = if (flipOn) sstep(0.0f, 0.14f, flipP) * (1f - sstep(0.68f, 0.92f, flipP)) else 0f
+        val hopTgt = if (hopping) 1f else flipEnv
         if (first) {
             airW = airT
             hopW = hopTgt
@@ -1566,12 +1572,12 @@ object Archer3D {
         val gAimZ = az0 + dirZ * gLen + 0.9f * recoilV
         val swg = sin(phase) * 4.5f * mvs
         val stp = abs(sin(phase)) * 0.8f * mvs
-        var gRX = 8.4f
-        var gRY = 2.0f + stp
-        var gRZ = 1.6f - swg * 0.25f
-        var rRX = -9.2f
-        var rRY = 2.0f + stp
-        var rRZ = 1.2f + swg
+        var gRX = 8.8f
+        var gRY = 1.0f + stp
+        var gRZ = 2.0f - swg * 0.25f
+        var rRX = -8.4f
+        var rRY = 1.0f + stp
+        var rRZ = 1.4f + swg
         if (airW > 0.001f) {
             gRX = lerp(gRX, 8.8f, airW); gRY = lerp(gRY, 13.6f, airW); gRZ = lerp(gRZ, 4.5f, airW)
             rRX = lerp(rRX, -8.8f, airW); rRY = lerp(rRY, 12.6f, airW); rRZ = lerp(rRZ, 0.5f, airW)
@@ -1637,14 +1643,14 @@ object Archer3D {
         rotVY(0f, 0f, 1f, -chestTw)
         val fwX = ovX
         val fwZ = ovZ
-        var pRX = lerp(0.2f, -1.0f - fwX * 0.4f, aimW)
+        var pRX = lerp(-0.22f, -1.0f - fwX * 0.4f, aimW)
         var pRY = lerp(-0.3f, 0.35f, aimW)
         var pRZ = lerp(-1f, -fwZ * 0.4f, aimW)
         pRX = lerp(pRX, -1f, quiverT)
         pRY = lerp(pRY, 0.3f, quiverT)
         pRZ = lerp(pRZ, -0.4f, quiverT)
         // cotovelo do braço do arco: para trás no repouso, para fora/baixo ao mirar
-        solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, lerp(0.6f, 0.7f, aimW), lerp(-0.1f, -0.9f, aimW), lerp(-1f, 0f, aimW))
+        solveArm(7.2f, 12.8f, 0f, gCX, gCY, gCZ, lerp(0.22f, 0.7f, aimW), lerp(-0.15f, -0.9f, aimW), lerp(-1f, 0f, aimW))
         System.arraycopy(ikB, 0, armB[0], 0, 9)
         armB[0][9] = ikEl
         val hLX = ikHX
@@ -1680,6 +1686,16 @@ object Archer3D {
             rotY(tw)
             rotX(-0.20f * sin(hr * PI.toFloat()))
             translate(0f, -11f, 0f)
+        }
+
+        if (flipOn) {
+            // mortal para a frente (o topo da cabeça passa pela frente): giro completo em volta do centro do corpo
+            val fu = (flipP / 0.9f).coerceIn(0f, 1f)
+            val rot = TWO_PI * sstep(0.03f, 0.90f, flipP)
+            val lift = 3.2f * sin(fu * PI.toFloat())
+            translate(0f, 12f + lift, 0f)
+            rotX(rot)
+            translate(0f, -12f, 0f)
         }
 
         // pernas: passada, postura aberta ao mirar, encolhidas no ar e na cambalhota
@@ -1719,6 +1735,7 @@ object Archer3D {
         push()
         translate(hLX, hLY, hLZ)
         rotY(-chestTw)
+        rotY(-1.25f * (1f - aimW))   // em repouso o arco gira de lado: a curva dos limbos aparece e não bate na perna
         rotX(b1)
         rotZ(b2)
         nockD = nD + sin(clock * 58f) * 1.3f * vibA
@@ -1789,6 +1806,63 @@ object Archer3D {
             val a = (dL[i] / dM[i]).coerceIn(0f, 1f)
             p.color = (((a * 0.34f * 255f).toInt()) shl 24) or 0x00D9CDB4
             c.drawCircle(dX[i], dY[i], dS[i] * (1.6f - 0.6f * a), p)
+        }
+
+        // mortal: no início do pulo duplo um anel de ar e faíscas; durante o giro um rastro curvo atrás do corpo
+        if (flipOn && prevFlipP < 0f) {
+            flipRingT = 1f
+            for (i in 0..9) {
+                val ang = i * 0.6283f
+                emitSpark(
+                    fx + cos(ang) * 4f * rs, fy + sin(ang) * 2f * rs,
+                    cos(ang) * 40f * rs, sin(ang) * 18f * rs - 6f * rs, 0.30f + rnd.nextFloat() * 0.15f, 26f * rs,
+                    if (i % 2 == 0) 0xFFD6FFD9.toInt() else 0xFF7CFF8A.toInt(), 0.9f
+                )
+            }
+        }
+        prevFlipP = flipP
+        if (flipRingT > 0.02f) {
+            val u = 1f - flipRingT
+            val rr = (5f + 26f * (1f - (1f - u) * (1f - u))) * rs
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(1.5f, rs * 1.6f * flipRingT)
+            p.color = (((flipRingT * 0.8f * 255f).toInt()) shl 24) or 0x00D6FFD9
+            c.drawOval(fx - rr, fy - rr * 0.5f, fx + rr, fy + rr * 0.5f, p)
+            p.style = Paint.Style.FILL
+            flipRingT = max(0f, flipRingT - dt * 4.2f)
+        }
+        if (flipOn) {
+            val fu = (flipP / 0.9f).coerceIn(0f, 1f)
+            val rotNow = TWO_PI * sstep(0.03f, 0.90f, flipP)
+            val env = sstep(0.04f, 0.2f, flipP) * (1f - sstep(0.86f, 1f, flipP))
+            val cxs = fx
+            val cys = fy - (12f + 3.2f * sin(fu * PI.toFloat())) * COSP * rs
+            val upX = 0f
+            val upY = -COSP * rs
+            val fwX2 = sin(yaw) * rs
+            val fwY2 = cos(yaw) * SINP * rs
+            p.style = Paint.Style.STROKE
+            p.strokeCap = Paint.Cap.ROUND
+            for (rg in 0..1) {
+                val r = if (rg == 0) 15f else 9.5f
+                var px0 = 0f
+                var py0 = 0f
+                for (k in 0..12) {
+                    val th = rotNow - k * 0.12f
+                    val qx = cxs + r * (cos(th) * upX + sin(th) * fwX2)
+                    val qy = cys + r * (cos(th) * upY + sin(th) * fwY2)
+                    if (k > 0) {
+                        val a = (1f - k / 13f) * env * (if (rg == 0) 0.65f else 0.4f)
+                        p.strokeWidth = max(1.2f, rs * (1.9f - k * 0.1f) * (if (rg == 0) 1f else 0.7f))
+                        p.color = (((a * 255f).toInt()) shl 24) or (if (k < 5) 0x00D6FFD9 else 0x007CFF8A)
+                        c.drawLine(px0, py0, qx, qy, p)
+                    }
+                    px0 = qx
+                    py0 = qy
+                }
+            }
+            p.strokeCap = Paint.Cap.BUTT
+            p.style = Paint.Style.FILL
         }
 
         // anel no chão (antes do corpo, para ficar embaixo dele)
@@ -1940,6 +2014,130 @@ object Archer3D {
             p.color = (((a * 255f).toInt()) shl 24) or (spC[i] and 0x00FFFFFF)
             c.drawRect(spX[i] - sz, spY[i] - sz, spX[i] + sz, spY[i] + sz, p)
         }
+    }
+
+    // ───────────── armadilha de urso em 3D (mesmo motor de cubos do herói) ─────────────
+    private const val TR = 9.5f     // raio das mandíbulas
+    private const val THW = 1.5f    // meia largura da faixa central, onde ficam as dobradiças
+    private const val TJY = 0.8f    // altura das dobradiças
+    private val RUST = 0xFF8A4B2A.toInt()
+
+    /** Meia mandíbula: arco de aço com dentes, presa à dobradiça. side = +1/-1; ang 0 = deitada aberta no chão. */
+    private fun trapJaw(side: Float, ang: Float) {
+        push()
+        translate(0f, TJY, side * THW)
+        if (side < 0f) rotY(PI.toFloat())
+        rotX(-ang)
+        val rc = TR - 0.7f
+        val segs = 12
+        var ax = rc
+        var az = 0f
+        for (i in 1..segs) {
+            val th = PI.toFloat() * i / segs
+            val bx = rc * cos(th)
+            val bz = rc * sin(th)
+            segCube(ax, 0f, az, bx, 0f, bz, 0.55f, STEEL_D, false)
+            segCube(ax, 0.52f, az, bx, 0.52f, bz, 0.24f, STEEL, false)
+            ax = bx
+            az = bz
+        }
+        // dentes apontando para dentro do arco; um lado fica entre os dentes do outro (engrenam ao fechar)
+        val nT = if (side > 0f) 7 else 6
+        for (k in 0 until nT) {
+            val th = if (side > 0f) PI.toFloat() * (k + 0.5f) / 7f else PI.toFloat() * (k + 1f) / 7f
+            push()
+            translate((rc - 0.55f) * cos(th), 0.1f, (rc - 0.55f) * sin(th))
+            rotY(PI.toFloat() - th)
+            cube(0.55f, 0f, 0f, 0.7f, 0.42f, 0.42f, STEEL)
+            cube(1.55f, 0f, 0f, 0.45f, 0.3f, 0.3f, STEEL_L)
+            cube(2.15f, 0f, 0f, 0.22f, 0.18f, 0.18f, WHITE)
+            pop()
+        }
+        // reforço junto da dobradiça
+        cube(rc, 0.2f, 0.6f, 0.7f, 0.4f, 0.6f, STEEL_D)
+        cube(-rc, 0.2f, 0.6f, 0.7f, 0.4f, 0.6f, STEEL_D)
+        pop()
+    }
+
+    /**
+     * Armadilha de urso 3D no chão.
+     * gx,gy = ponto do chão na tela; sc = escala; lift = altura em unidades do modelo;
+     * tumble >= 0 = voando (giro fechada, 0..1); open 0 (fechada) a ~1.2 (aberta, com sobra da mola);
+     * press 0..1 = pisada (placa afunda); wob = balanço do impacto; fade = transparência.
+     */
+    fun drawTrap(
+        c: Canvas, p: Paint, gx: Float, gy: Float, sc: Float,
+        lift: Float, tumble: Float, open: Float, press: Float, wob: Float, fade: Float
+    ) {
+        rs = sc * PX
+        ox = gx
+        oy = gy
+        n = 0
+        top = 0
+        zMode = true
+        lYc = 1f
+        lYs = 0f
+        val keepFlash = V.flash
+        V.flash = 0f
+        identity()
+        translate(0f, lift, 0f)
+        if (tumble >= 0f) {
+            // em voo: gira fechada (duas voltas inteiras, assim chega ao chão na posição certa)
+            translate(0f, 5f, 0f)
+            rotY(tumble * TWO_PI)
+            rotX(tumble * 2f * TWO_PI)
+            translate(0f, -5f, 0f)
+        } else {
+            rotZ(wob * 0.10f)
+            rotX(wob * 0.06f)
+        }
+
+        // placa de aço com moldura e rebites
+        cube(0f, 0.5f, 0f, TR + 1.6f, 0.5f, THW + 1.0f, STEEL_D)
+        cube(0f, 1.1f, THW + 0.65f, TR + 1.6f, 0.18f, 0.35f, STEEL)
+        cube(0f, 1.1f, -(THW + 0.65f), TR + 1.6f, 0.18f, 0.35f, STEEL)
+        cube(TR + 1.25f, 1.1f, 0f, 0.35f, 0.18f, THW + 1.0f, STEEL)
+        cube(-(TR + 1.25f), 1.1f, 0f, 0.35f, 0.18f, THW + 1.0f, STEEL)
+        for (sx in intArrayOf(-1, 1)) {
+            for (sz in intArrayOf(-1, 1)) {
+                cube(sx * (TR + 0.9f), 1.35f, sz * (THW + 0.5f), 0.28f, 0.22f, 0.28f, BRASS_D)
+            }
+        }
+        // placa de pressão e pino do gatilho (afundam quando pisada)
+        val pr = 0.55f * press
+        cube(0f, 1.15f - pr, 0f, 3.2f, 0.35f, 0.95f, RUST)
+        cube(0f, 1.52f - pr, 0f, 2.5f, 0.1f, 0.7f, BRASS)
+        cube(0f, 1.95f - pr, 0f, 0.3f, 0.4f, 0.3f, BRASS_L)
+        // dobradiças
+        cube(0f, 1.05f, THW, TR + 0.3f, 0.28f, 0.28f, STEEL_L)
+        cube(0f, 1.05f, -THW, TR + 0.3f, 0.28f, 0.28f, STEEL_L)
+        // molas nas pontas (colunas de espiras)
+        for (sx in intArrayOf(-1, 1)) {
+            for (i in 0..4) {
+                cube(sx * (TR + 0.55f), 1.55f + (i % 2) * 0.3f, -1.2f + i * 0.6f, 0.34f, 0.5f, 0.2f, if (i % 2 == 0) STEEL else STEEL_D)
+            }
+        }
+        // corrente com estaca
+        val cx0 = TR + 2.0f
+        for (i in 0..2) {
+            val x = cx0 + 1.1f + i * 2.3f
+            if (i % 2 == 0) cube(x, 0.7f, 0f, 1.15f, 0.3f, 0.55f, STEEL_D) else cube(x, 0.8f, 0f, 1.15f, 0.55f, 0.3f, STEEL)
+        }
+        val stk = cx0 + 1.1f + 3 * 2.3f + 0.5f
+        cube(stk, 0.85f, 0f, 0.75f, 0.75f, 0.2f, STEEL)
+        cube(stk + 0.9f, 0.9f, 0f, 0.35f, 0.9f, 0.35f, STEEL_D)
+        cube(stk + 0.9f, 1.9f, 0f, 0.5f, 0.2f, 0.5f, BRASS)
+
+        // mandíbulas: fechadas no ar, abrem com mola ao bater no chão, fecham de novo ao serem pisadas
+        val closeMax = acos((-THW / TR).coerceIn(-1f, 1f))
+        val ang = (closeMax * (1f - open)).coerceIn(0f, closeMax)
+        trapJaw(1f, ang)
+        trapJaw(-1f, ang)
+
+        alphaV = fade
+        flushZ(c)
+        alphaV = 1f
+        V.flash = keepFlash
     }
 
     /** Corda do arco (linha 2D entre as pontas e o encaixe) com brilho quando a skill está carregada. */

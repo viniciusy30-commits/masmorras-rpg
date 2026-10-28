@@ -1,3 +1,10 @@
+#id 2026-10-27-d
+#titulo Arqueiro: pulo duplo com mortal e armadilha de urso 3D
+- Pulo duplo do Arqueiro: aperte o botão de pular de novo no ar e ele ganha um novo impulso e dá um mortal para a frente, com anel de ar, faíscas e rastro de giro. Ele encolhe, gira inteiro e abre o corpo para pousar de pé; a duração do mortal se ajusta ao tempo que falta para chegar ao chão
+- Durante o mortal o arqueiro não atira; o pulo duplo só pode ser usado uma vez por salto
+- Armadilha de urso refeita em 3D: placa de aço com rebites e moldura, pino de pressão, molas, corrente com estaca e duas mandíbulas com dentes que engrenam. Ela gira fechada no ar, abre com mola e quicada ao cair e fecha com estalo quando alguém pisa
+- Braços e arco do Arqueiro corrigidos: braços caem naturalmente junto ao corpo (sem o jeito de asa de galinha), cotovelos para trás e o arco em repouso fica de lado, com a curva visível
+
 #id 2026-10-27-c
 #titulo Arqueiro em 3D, salto com armadilha e 2 skills
 - Arqueiro refeito em blocos 3D articulados, no mesmo nível das outras classes: capuz verde com pena vermelha em mola, máscara, cachecol, capa curta em três partes, aljava nas costas com flechas, bolsa e adaga no cinto, botas com pele

@@ -250,7 +250,16 @@ class GameView @JvmOverloads constructor(
     fun jump() {
         val p = player ?: return
         if (gameOver) return
-        if (p.jump()) burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+        val wasAir = !p.grounded
+        if (p.jump()) {
+            if (wasAir) {
+                // pulo duplo: cancela o tiro que estava saindo e solta um anel de poeira no ar
+                pendingShotT = -1f
+                burst(p.x, p.y + p.radius * 0.55f - p.alt, 7, 0xFFD6FFD9.toInt())
+            } else {
+                burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+            }
+        }
     }
 
     private var jumpHeld = false
