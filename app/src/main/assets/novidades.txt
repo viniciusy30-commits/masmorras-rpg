@@ -1,3 +1,16 @@
+#id 2026-10-28-e
+#titulo Som em tudo: efeitos e música
+- Música nova no menu (harpa e cordas sombrias) e outra, mais tensa, durante o jogo; ela abaixa quando você vence ou perde
+- Passos no chão (mais pesados no bárbaro), pulo, pulo duplo, pouso suave e pouso forte, rolamento, salto do arqueiro e impulso do bárbaro
+- Cada arma tem o seu som: 3 golpes de espada diferentes, estocadas e varrida da lança, arremesso, lança cravando na parede e recuperando, machado do bárbaro e a batida no chão, salto com carga e pouso com estrondo
+- Mago: carga e disparo do feitiço, teleporte (saída e chegada) e voo com som de asas enquanto voa
+- Arqueiro: arco rangendo ao puxar, estalo da corda (mais grave e forte quando carregado), flecha batendo na parede, Chuva de Flechas, Flecha Trovão com raio e faíscas, armadilha de urso sendo lançada, caindo e fechando
+- Impactos diferentes para espada, machado, flecha e magia, som de acerto crítico, ossos desmoronando quando o inimigo morre, esqueleto chiando ao te ver e golpeando
+- Você grunhe ao levar dano e, com a vida baixa, o coração bate; fanfarra de vitória e som triste de derrota
+- Menus: cliques nos botões e cartões, som de confirmar ao escolher a classe, voltar e erro (skill em recarga, sem mana, sem lança); aviso sonoro quando a skill do arqueiro fica pronta; o editor de mapas faz som ao colocar e apagar blocos
+- Em Configurações há duas barras: volume dos efeitos e da música (a música pode ser zerada)
+- Os sons ficam mais baixos e mais para um lado conforme a distância do inimigo
+
 #id 2026-10-28-d
 #titulo Arqueiro: segurar o ataque para mirar, adagas novas
 - Segure o botão de ataque: o elfo puxa o arco e fica mirando (anda mais devagar e a corda vibra). Solte para atirar. Quanto mais tempo mirando, mais forte o tiro: a flecha vai mais rápida, mais longe e causa até 50% mais dano. O anel de carga do botão mostra a força

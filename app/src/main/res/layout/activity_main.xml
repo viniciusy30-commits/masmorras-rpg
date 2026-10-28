@@ -830,6 +830,53 @@
                     style="@style/Mc.Text"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
+                    android:text="Som"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"/>
+
+                <TextView
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="Efeitos sonoros"
+                    android:textSize="13sp"/>
+
+                <SeekBar
+                    android:id="@+id/sbSfx"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="85"/>
+
+                <TextView
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:text="Música"
+                    android:textSize="13sp"/>
+
+                <SeekBar
+                    android:id="@+id/sbMusic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:max="100"
+                    android:progress="50"/>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="#55000000"/>
+
+                <TextView
+                    style="@style/Mc.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
                     android:text="@string/sobre"
                     android:textColor="@color/mc_gold"
                     android:textSize="15sp"

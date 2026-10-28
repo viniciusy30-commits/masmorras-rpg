@@ -24,6 +24,8 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Toast
+import android.widget.SeekBar
+import android.content.res.ColorStateList
 import androidx.activity.OnBackPressedCallback
 import androidx.appcompat.app.AlertDialog
 import android.os.Build
@@ -58,6 +60,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSkill1Cd: TextView
     private lateinit var tvSkill2Cd: TextView
     private lateinit var hudLayer: View
+    private var prevCd1 = 0f
+    private var prevCd2 = 0f
     private lateinit var menuBg: MenuBgView
     private lateinit var overlayFim: View
     private lateinit var tvFim: TextView
@@ -105,6 +109,7 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(R.layout.activity_main)
         MapTex.init(this)
+        Sfx.init(this)
 
         menuLayout = findViewById(R.id.menuLayout)
         classLayout = findViewById(R.id.classLayout)
@@ -163,6 +168,42 @@ class MainActivity : AppCompatActivity() {
 
         // Mostra novidades se primeira vez após update
         checkNovidades()
+        Sfx.playMusic("music_menu")
+    }
+
+    // ───────────────────────── sons de interface ─────────────────────────
+
+    private val silentIds: Set<Int> by lazy {
+        setOf(R.id.btnAttack, R.id.btnJump, R.id.btnRoll, R.id.btnWeapon, R.id.btnSkill1, R.id.btnSkill2, R.id.joystickArea)
+    }
+
+    /** Qualquer toque num botão/cartão da interface faz um "clique"; os botões de combate têm sons próprios. */
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+            val v = clickableAt(window.decorView, ev.rawX.toInt(), ev.rawY.toInt())
+            if (v != null && v.id !in silentIds) {
+                val back = v.id == R.id.btnVoltarClasse || v.id == R.id.btnVoltarMapas || v.id == R.id.btnVoltarConfig ||
+                    v.id == R.id.btnFecharNovidades || v.id == R.id.btnMenu || v.id == R.id.btnSairJogo
+                val confirm = v.id == R.id.btnJogar || v.id == R.id.btnTentar ||
+                    (v.parent != null && (v.parent as? View)?.id == R.id.rvClasses)
+                Sfx.play(if (back) "ui_back" else if (confirm) "ui_confirm" else "ui_click", 0.8f)
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
+    private fun clickableAt(v: View, x: Int, y: Int): View? {
+        if (!v.isShown) return null
+        val loc = IntArray(2)
+        v.getLocationOnScreen(loc)
+        if (x < loc[0] || x >= loc[0] + v.width || y < loc[1] || y >= loc[1] + v.height) return null
+        if (v is ViewGroup) {
+            for (i in v.childCount - 1 downTo 0) {
+                val r = clickableAt(v.getChildAt(i), x, y)
+                if (r != null) return r
+            }
+        }
+        return if (v.isClickable && v.isEnabled) v else null
     }
 
     /** Tela cheia: esconde status bar e barra de navegação (deslize da borda para mostrar). */
@@ -337,6 +378,9 @@ class MainActivity : AppCompatActivity() {
                         val nowMs = System.currentTimeMillis()
                         val c1 = p.skillCd(1, nowMs)
                         val c2 = p.skillCd(2, nowMs)
+                        if ((prevCd1 > 0f && c1 <= 0f) || (prevCd2 > 0f && c2 <= 0f)) Sfx.play("ui_ping", 0.6f)
+                        prevCd1 = c1
+                        prevCd2 = c2
                         tvSkill1Cd.text = if (c1 > 0f) Math.ceil(c1.toDouble()).toInt().toString() else ""
                         tvSkill2Cd.text = if (c2 > 0f) Math.ceil(c2.toDouble()).toInt().toString() else ""
                         btnSkill1.alpha = if (c1 > 0f) 0.45f else 1f
@@ -358,6 +402,31 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.btnVoltarConfig).setOnClickListener {
             show(menuLayout)
         }
+        val gold = ColorStateList.valueOf(0xFFF2B63D.toInt())
+        val sbSfx = findViewById<SeekBar>(R.id.sbSfx)
+        val sbMusic = findViewById<SeekBar>(R.id.sbMusic)
+        for (sb in listOf(sbSfx, sbMusic)) {
+            sb.progressTintList = gold
+            sb.thumbTintList = gold
+        }
+        sbSfx.progress = (Sfx.sfxVol * 100f).toInt()
+        sbMusic.progress = (Sfx.musicVol * 100f).toInt()
+        sbSfx.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) {
+                if (fromUser) Sfx.setSfxVolume(p / 100f)
+            }
+            override fun onStartTrackingTouch(s: SeekBar) {}
+            override fun onStopTrackingTouch(s: SeekBar) {
+                Sfx.play("sword1", 0.9f)
+            }
+        })
+        sbMusic.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) {
+                if (fromUser) Sfx.setMusicVolume(p / 100f)
+            }
+            override fun onStartTrackingTouch(s: SeekBar) {}
+            override fun onStopTrackingTouch(s: SeekBar) {}
+        })
     }
 
     private fun setupNovidades() {
@@ -471,6 +540,7 @@ class MainActivity : AppCompatActivity() {
     private fun setupBack() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {
+                Sfx.play("ui_back", 0.8f)
                 when {
                     novidadesLayout.visibility == View.VISIBLE -> findViewById<View>(R.id.btnFecharNovidades).performClick()
                     editorLayout.visibility == View.VISIBLE -> exitEditor()
@@ -1026,17 +1096,28 @@ class MainActivity : AppCompatActivity() {
             gameView.stopGame()
         }
         menuBg.setRunning(target != gameContainer && target != editorLayout)
+        Sfx.playMusic(if (target == gameContainer) "music_game" else "music_menu")
     }
 
     override fun onPause() {
         super.onPause()
+        Sfx.pauseAll()
         gameView.stopGame()
         if (editorLayout.visibility == View.VISIBLE) saveEditing()
     }
 
     override fun onResume() {
         super.onResume()
+        Sfx.resumeAll()
         // não reinicia automaticamente
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (isFinishing) {
+            Sfx.stopLoops()
+            Sfx.stopMusic()
+        }
     }
 }
 

@@ -123,6 +123,44 @@ class GameView @JvmOverloads constructor(
     var onCharge: ((Float) -> Unit)? = null // 0 = sem carga, 0..1 enquanto segura o ataque
     private var lastChargeSent = -1f
 
+    // ── áudio ──
+    private var stepAcc = 0f
+    private var stepIdx = 0
+    private var hbT = 0f
+    private var flyWas = false
+    private var noLandSnd = false
+
+    private fun snd(name: String, vol: Float = 1f, rate: Float = 1f) {
+        Sfx.play(name, vol, rate)
+    }
+
+    private fun sndAt(name: String, x: Float, y: Float, vol: Float = 1f, rate: Float = 1f) {
+        val p = player ?: return
+        Sfx.playAt(name, x - p.x, y - p.y, vol, rate)
+    }
+
+    private fun vary(): Float = 0.94f + Random.nextFloat() * 0.12f
+
+    private fun swingSound(p: Player) {
+        when (p.classe) {
+            Classe.BARBARO -> snd("axe1", 1f, if (p.swing == 2) 0.78f else if (p.swing == 1) 0.92f else 1.02f)
+            Classe.GUERREIRO -> if (p.weapon == 1) {
+                when (p.swing) {
+                    0 -> snd("spear_thrust", 0.9f, vary())
+                    1 -> snd("spear_sweep", 0.9f, vary())
+                    else -> snd("spear_thrust", 1f, 0.82f)
+                }
+            } else {
+                when (p.swing) {
+                    0 -> snd("sword1", 0.9f, vary())
+                    1 -> snd("sword2", 0.9f, vary())
+                    else -> snd("sword3", 1f, vary())
+                }
+            }
+            else -> {}
+        }
+    }
+
     private val loop = object : Runnable {
         override fun run() {
             if (!running) return
@@ -183,6 +221,12 @@ class GameView @JvmOverloads constructor(
         bowHeld = false
         bowT = 0f
         queuedAt = 0L
+        Sfx.duck(false)
+        Sfx.stopLoops()
+        stepAcc = 0f
+        hbT = 0f
+        flyWas = false
+        noLandSnd = false
         camVX = 0f
         camVY = 0f
         lookAheadX = 0f
@@ -199,6 +243,7 @@ class GameView @JvmOverloads constructor(
     }
 
     fun stopGame() {
+        Sfx.stopLoops()
         running = false
         removeCallbacks(loop)
     }
@@ -251,6 +296,7 @@ class GameView @JvmOverloads constructor(
         p.comboStep = -1
         burst(p.x, p.y + p.radius * 0.55f - p.ground, 7, 0xFFFFE08A.toInt())
         onWeapon?.invoke(p.weapon)
+        snd("weapon_swap", 0.9f)
     }
 
     fun jump() {
@@ -262,8 +308,10 @@ class GameView @JvmOverloads constructor(
                 // pulo duplo: cancela o tiro que estava saindo e solta um anel de poeira no ar
                 pendingShotT = -1f
                 burst(p.x, p.y + p.radius * 0.55f - p.alt, 7, 0xFFD6FFD9.toInt())
+                snd("jump_air", 0.85f, vary())
             } else {
                 burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+                snd("jump", 0.75f, vary())
             }
         }
     }
@@ -278,7 +326,7 @@ class GameView @JvmOverloads constructor(
         jumpHeld = true
         jumpHoldT = 0f
         if (p.classe == Classe.BARBARO) {
-            p.startLeapCharge()
+            if (p.startLeapCharge()) snd("leap_charge", 0.85f)
             return
         }
         if (p.classe == Classe.MAGO && p.flying) return
@@ -291,6 +339,7 @@ class GameView @JvmOverloads constructor(
         val p = player ?: return
         if (p.leapCharging) {
             if (p.releaseLeap()) {
+                snd("leap_launch", 0.95f)
                 groundSmash(p, 62f, 0.6f, 1.2f, 6)
             }
             return
@@ -345,6 +394,8 @@ class GameView @JvmOverloads constructor(
         burst(p.tpFromX, p.tpFromY + p.radius * 0.55f - p.alt, 10, 0xFF5FD4FF.toInt())
         burst(nx, ny + p.radius * 0.55f - p.alt, 10, 0xFFC4F4FF.toInt())
         shake = max(shake, 0.08f)
+        snd("teleport_out", 0.85f)
+        snd("teleport_in", 0.85f)
     }
 
     fun roll() {
@@ -359,6 +410,7 @@ class GameView @JvmOverloads constructor(
             val oy = p.y
             val gz = p.ground
             if (p.startHop(System.currentTimeMillis())) {
+                snd("hop", 0.9f, vary())
                 pendingShotT = -1f
                 burst(ox, oy + p.radius * 0.55f - gz, 7, 0xFFB8B0A8.toInt())
             }
@@ -368,11 +420,13 @@ class GameView @JvmOverloads constructor(
             val ax = if (aimOn) aimX else p.facingX
             val ay = if (aimOn) aimY else p.facingY
             if (p.startDash(System.currentTimeMillis(), ax, ay)) {
+                snd("dash", 0.95f, vary())
                 groundSmash(p, 58f, 0.5f, 1f, 6)
             }
             return
         }
         if (p.startRoll(System.currentTimeMillis())) {
+            snd("roll", 0.9f, vary())
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
         }
     }
@@ -391,13 +445,17 @@ class GameView @JvmOverloads constructor(
     fun skill(k: Int) {
         val p = player ?: return
         if (gameOver || p.classe != Classe.ARQUEIRO) return
-        if (!p.startSkill(k, System.currentTimeMillis())) return
+        if (!p.startSkill(k, System.currentTimeMillis())) {
+            snd("ui_error", 0.5f)
+            return
+        }
         pendingShotT = -1f
         queuedAt = 0L
         skillDX = p.facingX
         skillDY = p.facingY
         pendingSkillK = k
         pendingSkillT = p.skillReleaseAt(k)
+        snd(if (k == 1) "rain_cast" else "thunder_cast", 0.9f)
     }
 
     /** Instante em que a flecha sai do arco na skill. */
@@ -435,6 +493,7 @@ class GameView @JvmOverloads constructor(
             ty = ty.coerceIn(40f, map.worldHeight() - 40f)
             rains.add(RainZone(tx, ty, map.heightAt(tx, ty), 100f))
             shake = max(shake, 0.1f)
+            snd("rain_release", 0.95f)
         } else {
             // leve ímã: se tem inimigo bem na linha, a flecha trovão corrige a mira
             var bestDot = 0.94f
@@ -453,11 +512,13 @@ class GameView @JvmOverloads constructor(
             }
             bolts.add(ThunderBolt(p.x + dx * 24f, p.y + dy * 24f, dx, dy, p.classe.danoBase * 2.3f))
             shake = max(shake, 0.2f)
+            snd("thunder_fire", 1f)
         }
     }
 
     private fun thunderHit(b: ThunderBolt, e: Enemy) {
-        damageEnemy(e, b.damage, b.x - b.dx * 20f, b.y - b.dy * 20f, 1.2f)
+        damageEnemy(e, b.damage, b.x - b.dx * 20f, b.y - b.dy * 20f, 1.2f, "")
+        sndAt("thunder_hit", e.x, e.y, 0.95f, vary())
         e.stunT = max(e.stunT, 0.5f)
         burst(e.x, e.y - 14f - e.alt, 8, 0xFFFFF27A.toInt())
         shake = max(shake, 0.12f)
@@ -477,7 +538,8 @@ class GameView @JvmOverloads constructor(
             val n = next ?: break
             b.hit.add(n)
             zaps.add(ZapFx(prev.x, prev.y - 18f - prev.alt, n.x, n.y - 18f - n.alt))
-            damageEnemy(n, b.damage * 0.5f, prev.x, prev.y, 0.6f)
+            damageEnemy(n, b.damage * 0.5f, prev.x, prev.y, 0.6f, "")
+            sndAt("thunder_hit", n.x, n.y, 0.7f, vary() + 0.1f)
             n.stunT = max(n.stunT, 0.4f)
             burst(n.x, n.y - 14f - n.alt, 5, 0xFFFFF27A.toInt())
             prev = n
@@ -492,12 +554,14 @@ class GameView @JvmOverloads constructor(
             traps.add(Trap(p.hopX0 + p.rollDX / dl * 6f, p.hopY0 + p.rollDY / dl * 6f, p.ground, p.trapRelX, p.trapRelY, p.trapRelUp + 22f))
             if (traps.size > 4) traps.removeAt(0)
             p.trapFx = true
+            snd("trap_throw", 0.9f)
         }
         // armadilhas: quem pisar leva stun de 1 segundo
         for (t in traps) {
             t.update(dt)
             if (t.landedFx) {
                 t.landedFx = false
+                sndAt("trap_land", t.x, t.y, 0.9f)
                 burst(t.x, t.y + 13.2f - t.gz, 8, 0xFFB8B0A8.toInt())
                 shake = max(shake, 0.05f)
             }
@@ -511,6 +575,7 @@ class GameView @JvmOverloads constructor(
             }
             if (stepped) {
                 t.trigger()
+                sndAt("trap_snap", t.x, t.y, 1f)
                 for (e in enemies) {
                     if (e.alive && hypot(e.x - t.x, e.y - t.y) < e.radius + 40f) {
                         e.stunT = max(e.stunT, 1f)
@@ -551,6 +616,7 @@ class GameView @JvmOverloads constructor(
             for (a in z.arrows) {
                 if (a.landed || a.t < RainZone.FALL) continue
                 a.landed = true
+                sndAt("rain_land", a.tx, a.ty, 0.55f, vary() + Random.nextFloat() * 0.2f)
                 burst(a.tx, a.ty + 13.2f - a.gz, 2, 0xFFB8B0A8.toInt())
                 for (e in enemies) {
                     if (e.alive && hypot(e.x - a.tx, e.y - a.ty) < 34f + e.radius * 0.5f) {
@@ -597,17 +663,23 @@ class GameView @JvmOverloads constructor(
         }
 
         if (p.classe.isRanged) {
-            if (p.classe == Classe.MAGO && p.mp < 12f) return
+            if (p.classe == Classe.MAGO && p.mp < 12f) {
+                snd("ui_error", 0.6f)
+                return
+            }
             if (p.classe == Classe.MAGO) p.mp -= 12f
             p.doAttack(now)
             if (p.classe == Classe.MAGO) {
                 // o orbe só sai do cajado no instante do gesto (sincronizado com a animação)
                 pendingCastT = p.castDelay()
+                snd("spell_charge", 0.8f)
                 return
             }
             if (p.classe == Classe.ARQUEIRO) {
                 // a flecha só sai do arco no instante do gesto (sincronizado com Archer3D.T_SHOT)
                 pendingShotT = p.shotDelay()
+                pendingShotPow = 0f
+                snd("bow_draw", 0.55f, 1.6f)
                 return
             }
             val speed = 280f
@@ -623,6 +695,7 @@ class GameView @JvmOverloads constructor(
             )
         } else {
             p.doAttack(now)
+            swingSound(p)
             if (p.classe == Classe.BARBARO) {
                 // o machado só acerta no instante do impacto (sincronizado com a animação)
                 pendingBarbT = p.barbDelay()
@@ -670,6 +743,8 @@ class GameView @JvmOverloads constructor(
     /** Pouso do salto: levanta poeira e causa dano em área. */
     private fun leapLand(p: Player) {
         Barbarian3D.slamReq = true
+        noLandSnd = true
+        snd("leap_land", 1f)
         groundSmash(p, 110f, 1.8f, 2.2f, 10)
     }
 
@@ -716,6 +791,7 @@ class GameView @JvmOverloads constructor(
             }
         }
         shake = max(shake, if (slam) 0.16f else 0.07f)
+        if (slam) snd("axe_slam", 1f, vary())
         if (slam) burst(p.x + p.facingX * 26f, p.y + p.facingY * 26f + p.radius * 0.55f - p.ground, 7, 0xFFB8B0A8.toInt())
     }
 
@@ -749,6 +825,7 @@ class GameView @JvmOverloads constructor(
         p.doAttack(now)
         p.bowHold = true
         bowT = 0f
+        snd("bow_draw", 0.9f)
     }
 
     /** Solta a corda: a flecha sai no instante do gesto, com força proporcional ao tempo que ficou mirando. */
@@ -793,6 +870,7 @@ class GameView @JvmOverloads constructor(
     private fun spearHint(p: Player) {
         if (hintCd > 0f) return
         hintCd = 1.3f
+        snd("ui_error", 0.7f)
         texts.add(DmgText(p.x, p.y - p.radius - 40f, "Sem lança!", 0.9f, 0xFFFF8A80.toInt()))
     }
 
@@ -821,7 +899,7 @@ class GameView @JvmOverloads constructor(
                 along > -10f && along < reach + e.radius * 0.6f && perp < e.radius + half
             }
             if (ok) {
-                damageEnemy(e, dmg, p.x, p.y, if (sw == 2) 2.4f else if (sw == 1) 1.5f else 1f)
+                damageEnemy(e, dmg, p.x, p.y, if (sw == 2) 2.4f else if (sw == 1) 1.5f else 1f, if (sw == 2) "hit_heavy" else "hit_blade")
                 hits++
             }
         }
@@ -906,6 +984,7 @@ class GameView @JvmOverloads constructor(
         p.spearOut = true
         burst(sx, sy - 18f, 8, 0xFFFFE08A.toInt())
         shake = max(shake, 0.12f)
+        snd("spear_throw", 1f, vary())
     }
 
     private fun updateThrown(dt: Float, p: Player) {
@@ -916,6 +995,7 @@ class GameView @JvmOverloads constructor(
                 ts.x -= ts.dx * 12f
                 ts.y -= ts.dy * 12f
                 ts.land(true)
+                sndAt("spear_wall", ts.x, ts.y, 1f)
                 burst(ts.x + ts.dx * 10f, ts.y - 14f, 8, 0xFFB0BEC5.toInt())
                 shake = max(shake, 0.12f)
             } else {
@@ -923,7 +1003,7 @@ class GameView @JvmOverloads constructor(
                     if (!e.alive || ts.hit.contains(e)) continue
                     if (hypot(e.x - ts.x, e.y - ts.y) < e.radius + 12f) {
                         ts.hit.add(e)
-                        damageEnemy(e, ts.damage, ts.x - ts.dx * 30f, ts.y - ts.dy * 30f, 1.8f)
+                        damageEnemy(e, ts.damage, ts.x - ts.dx * 30f, ts.y - ts.dy * 30f, 1.8f, "hit_heavy")
                         burst(e.x, e.y - 16f, 10, 0xFFFFE08A.toInt())
                         shake = max(shake, 0.2f)
                     }
@@ -932,6 +1012,7 @@ class GameView @JvmOverloads constructor(
         } else if (ts.stuckT > 0.3f && hypot(p.x - ts.x, p.y - ts.y) < p.radius + 40f) {
             p.spearOut = false
             thrown = null
+            snd("spear_pickup", 0.9f)
             burst(p.x, p.y - 26f, 12, 0xFFFFD54F.toInt())
             texts.add(DmgText(p.x, p.y - p.radius - 40f, "Lança recuperada!", 0.9f, 0xFFFFD54F.toInt()))
         }
@@ -988,6 +1069,7 @@ class GameView @JvmOverloads constructor(
         val now = System.currentTimeMillis()
         p.doHeavy(now)
         val spear = p.weapon == 1
+        snd("heavy_swing", 1f, vary())
         val reach = p.classe.alcance * (if (spear) 1.9f else 1.35f)
         val dmg = p.classe.danoBase * (1.7f + 1.3f * power)
         enemies.forEach { e ->
@@ -997,7 +1079,7 @@ class GameView @JvmOverloads constructor(
                 val dx = e.x - p.x
                 val dy = e.y - p.y
                 val dot = dx * p.facingX + dy * p.facingY
-                if (dot > (if (spear) 0.3f else -0.35f) * dist) damageEnemy(e, dmg, p.x, p.y)
+                if (dot > (if (spear) 0.3f else -0.35f) * dist) damageEnemy(e, dmg, p.x, p.y, 1f, "hit_heavy")
             }
         }
         shake = max(shake, 0.3f)
@@ -1028,9 +1110,21 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float, kbMul: Float = 1f) {
+    /** hitSnd: null = som do golpe pela classe; "" = sem som (quem chamou toca o seu). */
+    private fun damageEnemy(e: Enemy, dmg: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
         e.takeDamage(dmg)
         val big = dmg >= 28f
+        if (hitSnd != "") {
+            val nm = hitSnd ?: when (player?.classe) {
+                Classe.BARBARO -> "hit_heavy"
+                Classe.ARQUEIRO -> "hit_arrow"
+                Classe.MAGO -> "hit_magic"
+                else -> "hit_blade"
+            }
+            sndAt(nm, e.x, e.y, 0.95f, vary())
+            if (big && nm != "hit_heavy" || (big && player?.classe == Classe.BARBARO && dmg >= 48f)) sndAt("hit_crit", e.x, e.y, 0.7f, vary())
+        }
+        if (!e.alive) sndAt("enemy_die", e.x, e.y, 0.95f, vary())
         texts.add(
             DmgText(
                 e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
@@ -1072,6 +1166,9 @@ class GameView @JvmOverloads constructor(
             if (!gameOver) {
                 gameOver = true
                 victory = false
+                Sfx.stopLoops()
+                Sfx.duck(true)
+                snd("defeat", 1f)
                 onGameOver?.invoke(false)
             }
             return
@@ -1097,6 +1194,7 @@ class GameView @JvmOverloads constructor(
             if (pendingCastT <= 0f) {
                 pendingCastT = -1f
                 if (p.alive && !p.rolling) {
+                    snd("spell_cast", 0.95f, vary())
                     projectiles.add(
                         Projectile(
                             p.x + p.facingX * 18f, p.y + p.facingY * 18f,
@@ -1122,6 +1220,7 @@ class GameView @JvmOverloads constructor(
                     )
                     arrow.life = 1.4f * (1f + 0.25f * pw)
                     projectiles.add(arrow)
+                    if (pw > 0.55f) snd("bow_shot_strong", 0.95f, vary()) else snd("bow_shot", 0.9f, vary() + 0.12f * pw)
                 }
             }
         }
@@ -1201,6 +1300,23 @@ class GameView @JvmOverloads constructor(
                 burst(p.x, p.y + p.radius * 0.55f - p.alt, 8, 0xFF5FD4FF.toInt())
             }
         }
+        if (p.flying != flyWas) {
+            flyWas = p.flying
+            if (p.flying) {
+                snd("fly_start", 0.9f)
+                Sfx.startLoop("fly_loop", 0.5f)
+            } else {
+                Sfx.stopLoop("fly_loop")
+                snd("fly_end", 0.8f)
+            }
+        }
+        if (p.hp < p.maxHp * 0.25f) {
+            hbT -= dt
+            if (hbT <= 0f) {
+                hbT = 0.95f
+                snd("heartbeat", 0.7f)
+            }
+        } else hbT = 0f
         val oldX = p.x
         val oldY = p.y
         p.update(dt)
@@ -1220,8 +1336,23 @@ class GameView @JvmOverloads constructor(
         if (p.classe == Classe.BARBARO) barbMotion(p, dt)
         if (p.landed > 0f) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
+            if (!noLandSnd) {
+                if (p.landed > 0.95f) snd("land_hard", 0.9f, vary()) else snd("land_soft", 0.45f + 0.4f * p.landed, vary())
+            }
+            noLandSnd = false
             p.landed = 0f
         }
+        // passos: um a cada tantos pixels andados no chão
+        if (p.grounded && !p.rolling && !p.flying && !p.skilling && p.flipT <= 0f) {
+            stepAcc += hypot(p.x - oldX, p.y - oldY)
+            val stride = if (p.classe == Classe.BARBARO) 38f else if (p.classe == Classe.ARQUEIRO) 46f else 42f
+            if (stepAcc >= stride) {
+                stepAcc -= stride
+                stepIdx++
+                val heavy = p.classe == Classe.BARBARO
+                snd("step" + (1 + stepIdx % 3), if (heavy) 0.5f else 0.32f, vary() * (if (heavy) 0.82f else 1f))
+            }
+        } else stepAcc = 0f
         if (p.rolling && Random.nextInt(3) == 0) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 1, 0xFFB8B0A8.toInt())
         }
@@ -1235,6 +1366,14 @@ class GameView @JvmOverloads constructor(
             val ox = e.x
             val oy = e.y
             e.update(dt, p)
+            if (e.alertFx) {
+                e.alertFx = false
+                sndAt("enemy_alert", e.x, e.y, 0.8f, vary())
+            }
+            if (e.swingFx) {
+                e.swingFx = false
+                sndAt("enemy_swing", e.x, e.y, 0.75f, vary())
+            }
             val rr = e.radius * 0.55f
             if (enemyBlocked(e.x, e.y, rr, e.alt)) {
                 val nx = e.x
@@ -1248,6 +1387,7 @@ class GameView @JvmOverloads constructor(
             val dist = hypot(e.x - p.x, e.y - p.y)
             if (e.stunT <= 0f && !p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage)
+                snd("player_hurt", 1f, vary())
                 e.lastHit = now
                 shake = 0.3f
                 burst(p.x, p.y - 14f - p.alt, 6, 0xFFD32F2F.toInt())
@@ -1286,13 +1426,14 @@ class GameView @JvmOverloads constructor(
             pr.update(dt)
             if (map.isWall(pr.x, pr.y)) {
                 pr.alive = false
+                sndAt(if (pr.kind == 1) "arrow_wall" else "spell_wall", pr.x, pr.y, 0.85f, vary())
                 burst(pr.x, pr.y - 10f, 4, 0xFFB0BEC5.toInt())
                 return@forEach
             }
             if (pr.fromPlayer) {
                 enemies.forEach { e ->
                     if (pr.alive && e.alive && hypot(e.x - pr.x, e.y - pr.y) < e.radius + pr.radius) {
-                        damageEnemy(e, pr.damage, pr.x - pr.vx * 0.05f, pr.y - pr.vy * 0.05f)
+                        damageEnemy(e, pr.damage, pr.x - pr.vx * 0.05f, pr.y - pr.vy * 0.05f, 1f, if (pr.kind == 1) "hit_arrow" else "hit_magic")
                         pr.alive = false
                     }
                 }
@@ -1304,6 +1445,9 @@ class GameView @JvmOverloads constructor(
         if (hadEnemies && enemies.isEmpty() && !gameOver) {
             gameOver = true
             victory = true
+            Sfx.stopLoops()
+            Sfx.duck(true)
+            snd("victory", 1f)
             onGameOver?.invoke(true)
         }
 

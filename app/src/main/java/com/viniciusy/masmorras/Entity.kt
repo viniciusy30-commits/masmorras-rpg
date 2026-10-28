@@ -586,6 +586,8 @@ class Enemy(
     var faceX = 0f
     var faceY = 1f
     var attackAnim = 0f
+    var alertFx = false  // o GameView consome: som de "viu o jogador"
+    var swingFx = false  // o GameView consome: som do golpe do inimigo
     var stunT = 0f   // atordoado (armadilha / raio): fica parado
     var yaw = 0f
     private var yawInit = false
@@ -618,7 +620,7 @@ class Enemy(
         val dist = kotlin.math.sqrt(dx * dx + dy * dy)
         if (player.alive) {
             if (alerted) { if (dist > aggro * 1.9f) alerted = false }
-            else if (dist < aggro) alerted = true
+            else if (dist < aggro) { alerted = true; alertFx = true }
         } else alerted = false
 
         var mx = 0f
@@ -665,6 +667,7 @@ class Enemy(
         val now = System.currentTimeMillis()
         if (alerted && player.alive && attackAnim <= 0f && dist < radius + player.radius + 22f && now - lastHit > hitCooldown - 250L) {
             attackAnim = 1f
+            swingFx = true
         }
     }
 

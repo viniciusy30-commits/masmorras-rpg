@@ -872,6 +872,7 @@ class MapEditorView @JvmOverloads constructor(
                 } else {
                     mode = MODE_DRAW
                     curTool = if (layer == L_BUILD && (tool == T_BRUSH || tool == T_LINE || tool == T_FILL)) T_RECT else tool
+                    if (curTool != T_PICK) Sfx.play(if (curTool == T_ERASE) "erase_block" else "place_block", 0.5f, 0.92f + kotlin.random.Random.nextFloat() * 0.16f)
                     beginStroke(m, e.x, e.y)
                 }
             }
