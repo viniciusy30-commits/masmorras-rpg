@@ -564,6 +564,7 @@ object Ichigo3D {
     private var colA = 0f
     private var spinA = 0f
     private var kitL = 0f
+    private const val NP = 12
     private val ps = FloatArray(NP)
     private val pt = FloatArray(NP)
     private val mkX = FloatArray(8)
@@ -616,7 +617,6 @@ object Ichigo3D {
     // ───────────── poses ─────────────
     // índices: 0 inclinação, 1 giro do tronco, 2-5 braço da espada (ombro, abertura, cotovelo, pulso),
     // 6-8 outro braço (ombro, abertura, cotovelo), 9 agachar, 10 giro completo, 11 altura do salto
-    private const val NP = 12
 
     private fun kf(
         a0: Float, a1: Float, a2: Float, a3: Float, a4: Float, a5: Float,
