@@ -421,6 +421,9 @@ object Luffy3D {
     // ───────────── modelo do Luffy ─────────────
 
     // ═══ MODEL BEGIN
+    /** true = chapéu de palha na cabeça (visual clássico); false = pendurado nas costas. */
+    private const val HAT_ON_HEAD = true
+
     private val SKIN = 0xFFF2BF8C.toInt()
     private val SKIN_L = 0xFFFBD3A6.toInt()
     private val SKIN_D = 0xFFD99B68.toInt()
@@ -507,45 +510,57 @@ object Luffy3D {
         translate(0f, 14.7f, 0f)
         rotY(turn)
         rotX(tilt)
+        // cabeça menor em relação ao corpo: proporção de adulto, não de boneco
+        scale(0.9f, 0.9f, 0.9f)
         cube(0f, 0.4f, 0f, 2.4f, 1.2f, 2.3f, SKIN_D)
-        // cabeça redonda de menino
-        cube(0f, 4.7f, 0f, 4.8f, 4.5f, 4.5f, SKIN)
-        cube(0f, 4.7f, 4.53f, 4.5f, 4.2f, 0.06f, SKIN_L)
+        // crânio largo + mandíbula mais estreita (maçã do rosto marcada)
+        cube(0f, 5.6f, 0f, 4.8f, 3.6f, 4.5f, SKIN)
+        cube(0f, 1.7f, 0.2f, 4.1f, 1.5f, 4.3f, SKIN)
+        cube(0f, 5.7f, 4.53f, 4.5f, 3.4f, 0.06f, SKIN_L)
+        cube(0f, 1.8f, 4.53f, 3.9f, 1.3f, 0.06f, SKIN_L)
+        cube(0f, 0.55f, 4.2f, 2.2f, 0.3f, 0.25f, SKIN_D)
         cube(-4.95f, 4.5f, 0.3f, 0.35f, 1.3f, 1.1f, SKIN_D)
         cube(4.95f, 4.5f, 0.3f, 0.35f, 1.3f, 1.1f, SKIN_D)
-        // olhos grandes e redondos
-        cube(-2.2f, 5.1f, 4.58f, 1.3f, 1.25f * eyeOpen, 0.06f, WHITE)
-        cube(2.2f, 5.1f, 4.58f, 1.3f, 1.25f * eyeOpen, 0.06f, WHITE)
-        cube(-2.15f, 5.05f, 4.64f, 0.86f, 1.12f * eyeOpen, 0.06f, EYE)
-        cube(2.15f, 5.05f, 4.64f, 0.86f, 1.12f * eyeOpen, 0.06f, EYE)
-        cube(-2.5f, 5.65f, 4.72f, 0.3f, 0.32f * eyeOpen, 0.05f, WHITE)
-        cube(1.8f, 5.65f, 4.72f, 0.3f, 0.32f * eyeOpen, 0.05f, WHITE)
-        // sobrancelhas grossas e determinadas
+        // olhos grandes e expressivos: contorno escuro, branco, pupila grande e brilho
+        cube(-2.2f, 6.5f, 4.6f, 1.5f, 0.17f, 0.06f, HAIR_D)
+        cube(2.2f, 6.5f, 4.6f, 1.5f, 0.17f, 0.06f, HAIR_D)
+        cube(-2.2f, 5.05f, 4.58f, 1.4f, 1.4f * eyeOpen, 0.06f, WHITE)
+        cube(2.2f, 5.05f, 4.58f, 1.4f, 1.4f * eyeOpen, 0.06f, WHITE)
+        cube(-2.1f, 5.0f, 4.65f, 0.98f, 1.28f * eyeOpen, 0.06f, EYE)
+        cube(2.1f, 5.0f, 4.65f, 0.98f, 1.28f * eyeOpen, 0.06f, EYE)
+        cube(-2.45f, 5.7f, 4.73f, 0.32f, 0.34f * eyeOpen, 0.05f, WHITE)
+        cube(1.75f, 5.7f, 4.73f, 0.32f, 0.34f * eyeOpen, 0.05f, WHITE)
+        cube(-1.85f, 4.35f, 4.73f, 0.16f, 0.16f * eyeOpen, 0.05f, WHITE)
+        cube(2.35f, 4.35f, 4.73f, 0.16f, 0.16f * eyeOpen, 0.05f, WHITE)
+        // sobrancelhas grossas, inclinadas para baixo no meio (cara de determinado)
         push()
-        translate(-2.2f, 6.95f, 4.6f)
-        rotZ(-0.16f)
-        cube(0f, 0f, 0f, 1.6f, 0.34f, 0.07f, HAIR_D)
+        translate(-2.3f, 7.15f, 4.62f)
+        rotZ(-0.2f)
+        cube(0f, 0f, 0f, 1.75f, 0.4f, 0.08f, HAIR_D)
         pop()
         push()
-        translate(2.2f, 6.95f, 4.6f)
-        rotZ(0.16f)
-        cube(0f, 0f, 0f, 1.6f, 0.34f, 0.07f, HAIR_D)
+        translate(2.3f, 7.15f, 4.62f)
+        rotZ(0.2f)
+        cube(0f, 0f, 0f, 1.75f, 0.4f, 0.08f, HAIR_D)
         pop()
-        // cicatriz embaixo do olho esquerdo
-        cube(2.2f, 3.55f, 4.6f, 1.0f, 0.14f, 0.05f, FSCAR)
-        cube(1.7f, 3.2f, 4.6f, 0.1f, 0.36f, 0.05f, FSCAR)
-        cube(2.7f, 3.2f, 4.6f, 0.1f, 0.36f, 0.05f, FSCAR)
-        // nariz
-        cube(0f, 3.6f, 4.65f, 0.6f, 0.85f, 0.3f, SKIN_D)
-        cube(0f, 3.1f, 4.9f, 0.55f, 0.32f, 0.2f, SKIN_L)
-        // sorrisão
+        // cicatriz embaixo do olho esquerdo (lado direito da tela)
+        cube(2.2f, 3.4f, 4.62f, 1.05f, 0.17f, 0.05f, FSCAR)
+        cube(1.65f, 3.0f, 4.62f, 0.12f, 0.42f, 0.05f, FSCAR)
+        cube(2.2f, 3.0f, 4.62f, 0.12f, 0.42f, 0.05f, FSCAR)
+        cube(2.75f, 3.0f, 4.62f, 0.12f, 0.42f, 0.05f, FSCAR)
+        // bochechas coradas
+        cube(-3.6f, 3.5f, 4.6f, 0.9f, 0.4f, 0.05f, SKIN_DD)
+        // nariz pequeno
+        cube(0f, 3.7f, 4.65f, 0.55f, 0.8f, 0.3f, SKIN_D)
+        cube(0f, 3.15f, 4.9f, 0.5f, 0.3f, 0.2f, SKIN_L)
+        // sorrisão de orelha a orelha
         val mh = 0.6f + 0.95f * shout
-        val my = 2.1f - 0.25f * shout
-        cube(0f, my, 4.58f, 3.1f, mh, 0.06f, MOUTH)
-        cube(0f, my + mh - 0.34f, 4.64f, 2.9f, 0.34f, 0.06f, WHITE)
-        cube(0f, my - mh + 0.4f, 4.64f, 1.5f, 0.32f, 0.06f, TONGUE)
-        cube(-3.15f, my + mh - 0.05f, 4.62f, 0.3f, 0.55f, 0.06f, MOUTH)
-        cube(3.15f, my + mh - 0.05f, 4.62f, 0.3f, 0.55f, 0.06f, MOUTH)
+        val my = 1.95f - 0.25f * shout
+        cube(0f, my, 4.58f, 3.2f, mh, 0.06f, MOUTH)
+        cube(0f, my + mh - 0.36f, 4.65f, 3.0f, 0.36f, 0.06f, WHITE)
+        cube(0f, my - mh + 0.42f, 4.65f, 1.5f, 0.32f, 0.06f, TONGUE)
+        cube(-3.25f, my + mh - 0.05f, 4.62f, 0.3f, 0.6f, 0.06f, MOUTH)
+        cube(3.25f, my + mh - 0.05f, 4.62f, 0.3f, 0.6f, 0.06f, MOUTH)
         // cabelo preto bagunçado
         cube(0f, 9.35f, -0.3f, 5.0f, 1.05f, 4.9f, HAIR)
         cube(0f, 5.7f, -4.65f, 5.0f, 4.4f, 0.6f, HAIR)
@@ -554,12 +569,12 @@ object Luffy3D {
         cube(-4.85f, 5.4f, 2.4f, 0.2f, 1.5f, 1.0f, HAIR_D)
         cube(4.85f, 5.4f, 2.4f, 0.2f, 1.5f, 1.0f, HAIR_D)
         // franja picotada (fica acima das sobrancelhas)
-        cube(0f, 8.7f, 4.35f, 4.85f, 0.95f, 0.55f, HAIR)
-        cube(-3.8f, 7.95f, 4.7f, 0.95f, 0.75f, 0.35f, HAIR)
-        cube(-1.9f, 8.1f, 4.75f, 0.9f, 0.55f, 0.35f, HAIR)
-        cube(0.2f, 7.85f, 4.78f, 1.0f, 0.8f, 0.35f, HAIR)
-        cube(2.2f, 8.05f, 4.75f, 0.9f, 0.6f, 0.35f, HAIR)
-        cube(3.9f, 7.9f, 4.7f, 0.95f, 0.75f, 0.35f, HAIR)
+        cube(0f, 8.8f, 4.35f, 4.85f, 0.9f, 0.55f, HAIR)
+        cube(-3.8f, 8.0f, 4.7f, 0.95f, 0.8f, 0.35f, HAIR)
+        cube(-1.9f, 8.2f, 4.75f, 0.9f, 0.6f, 0.35f, HAIR)
+        cube(0.2f, 7.95f, 4.78f, 1.0f, 0.85f, 0.35f, HAIR)
+        cube(2.2f, 8.15f, 4.75f, 0.9f, 0.65f, 0.35f, HAIR)
+        cube(3.9f, 8.0f, 4.7f, 0.95f, 0.8f, 0.35f, HAIR)
         if (!hatHead) {
             spike(-3.4f, 10.0f, 1.2f, 0.5f, 0.2f - hs0, 1.4f, 2.4f)
             spike(3.4f, 10.0f, 1.4f, -0.5f, 0.25f - hs0, 1.4f, 2.2f)
@@ -569,15 +584,22 @@ object Luffy3D {
             spike(0.0f, 9.8f, -3.0f, 0.0f, -0.8f - hs0, 2.0f, 2.6f)
             spike(-3.7f, 9.6f, -2.6f, 0.65f, -0.55f - hs0, 1.6f, 2.3f)
             spike(3.8f, 9.6f, -2.5f, -0.65f, -0.55f - hs0, 1.6f, 2.3f)
+        } else {
+            // mechas espetadas que escapam por baixo do chapéu (laterais e nuca)
+            spike(-4.7f, 6.6f, 1.4f, 1.0f, 0.15f - hs0, 1.1f, 1.9f)
+            spike(4.7f, 6.6f, 1.4f, -1.0f, 0.15f - hs0, 1.1f, 1.9f)
+            spike(-4.7f, 7.6f, -1.8f, 0.9f, -0.4f - hs0, 1.2f, 2.2f)
+            spike(4.7f, 7.6f, -1.8f, -0.9f, -0.4f - hs0, 1.2f, 2.2f)
         }
         // mechas da nuca
         spike(-2.5f, 4.9f, -5.2f, 0.1f, -1.4f - hs1, 1.4f, 2.6f)
         spike(2.5f, 4.6f, -5.2f, -0.1f, -1.45f - hs1, 1.4f, 2.4f)
         spike(0.0f, 3.2f, -5.2f, 0.0f, -1.5f - hs1, 1.5f, 2.4f)
         if (hatHead) {
+            // chapéu de palha inclinado para trás: deixa o rosto à mostra
             push()
-            translate(0f, 9.4f, 0.5f)
-            rotX(-0.14f)
+            translate(0f, 9.1f, -0.2f)
+            rotX(-0.3f)
             strawHat()
             pop()
         }
@@ -611,11 +633,19 @@ object Luffy3D {
         rotZ(-0.22f)
         cube(0f, -1.6f, 0f, 0.62f, 1.7f, 0.23f, SASH_D)
         pop()
-        // barriga
+        // barriga: tanquinho de seis gomos
         cube(0f, 6.1f, 0f, 4.7f, 1.9f, 3.3f, SKIN)
         cube(0f, 6.1f, 3.32f, 4.4f, 1.7f, 0.06f, SKIN_L)
-        cube(0f, 6.2f, 3.38f, 0.07f, 1.6f, 0.05f, SKIN_DD)
-        cube(0f, 6.9f, 3.38f, 3.6f, 0.07f, 0.05f, SKIN_DD)
+        for (r in 0..2) {
+            val ay = 5.0f + r * 1.25f
+            cube(-1.85f, ay, 3.37f, 1.6f, 0.5f, 0.05f, SKIN_L)
+            cube(1.85f, ay, 3.37f, 1.6f, 0.5f, 0.05f, SKIN_L)
+        }
+        cube(0f, 6.2f, 3.4f, 0.08f, 1.8f, 0.05f, SKIN_DD)
+        cube(0f, 5.62f, 3.4f, 3.6f, 0.08f, 0.05f, SKIN_DD)
+        cube(0f, 6.87f, 3.4f, 3.6f, 0.08f, 0.05f, SKIN_DD)
+        cube(-4.5f, 6.0f, 2.2f, 0.25f, 1.6f, 1.2f, SKIN_D)
+        cube(4.5f, 6.0f, 2.2f, 0.25f, 1.6f, 1.2f, SKIN_D)
     }
 
     /** Peito, cicatriz em X, colete vermelho aberto, pescoço e chapéu nas costas. */
@@ -683,28 +713,41 @@ object Luffy3D {
         }
     }
 
-    /** Braço (side = +1 esquerdo / -1 direito): ombro, cotovelo e punho fechado. Ângulo negativo = para a frente. */
-    private fun arm(side: Float, sh: Float, shZ: Float, el: Float, tw: Float, id: Int) {
+    /**
+     * Braço de borracha (side = +1 esquerdo / -1 direito). Ângulo negativo = para a frente.
+     * ext = quanto o braço estica (1 = tamanho normal); esticado, ele afina e o punho incha um pouco.
+     */
+    private fun arm(side: Float, sh: Float, shZ: Float, el: Float, tw: Float, id: Int, ext: Float) {
+        val e = max(1f, ext)
+        val th = if (e <= 1.01f) 1f else max(0.52f, 1f / sqrt(e))
+        val fs = 1f + 0.3f * min(1f, (e - 1f) / 3f)
         push()
         translate(side * 7.1f, 12.3f, 0f)
         projectTo(0f, 0f, 0f, id + 4)
         rotZ(side * shZ)
         rotX(sh)
         rotY(tw)
-        cube(0f, -2.5f, 0f, 1.85f, 2.75f, 1.85f, SKIN)
-        cube(side * 0.2f, -1.7f, 1.2f, 1.45f, 1.5f, 0.75f, SKIN_L)
-        translate(0f, -5.3f, 0f)
+        // ombro / deltoide (não estica)
+        cube(0f, -0.4f, 0f, 2.35f, 2.2f, 2.3f, SKIN)
+        cube(side * 0.5f, 0.4f, 0.4f, 1.6f, 0.9f, 1.6f, SKIN_L)
+        // braço
+        val h1 = 2.75f * e
+        cube(0f, 0.25f - h1, 0f, 1.85f * th, h1, 1.85f * th, SKIN)
+        cube(side * 0.2f * th, -0.2f - 1.5f * e, 1.2f * th, 1.45f * th, 1.5f * e, 0.75f * th, SKIN_L)
+        translate(0f, 0.2f - 2f * h1, 0f)
         rotX(el)
-        cube(0f, -2.4f, 0f, 1.7f, 2.65f, 1.7f, SKIN)
-        cube(0f, -1.2f, 1.2f, 1.2f, 1.3f, 0.55f, SKIN_L)
-        translate(0f, -5.0f, 0f)
+        // antebraço
+        val h2 = 2.65f * e
+        cube(0f, 0.25f - h2, 0f, 1.7f * th, h2, 1.7f * th, SKIN)
+        cube(0f, 0.1f - 1.3f * e, 1.2f * th, 1.2f * th, 1.3f * e, 0.55f * th, SKIN_L)
+        translate(0f, 0.3f - 2f * h2, 0f)
         // punho fechado
-        cube(0f, -1.4f, 0.1f, 2.0f, 1.55f, 2.0f, SKIN)
-        cube(0f, -1.0f, 2.05f, 1.75f, 1.05f, 0.1f, SKIN_L)
-        cube(0f, -2.95f, 0.1f, 1.8f, 0.12f, 1.8f, SKIN_D)
-        cube(0f, -1.35f, 2.12f, 1.7f, 0.07f, 0.05f, SKIN_DD)
-        cube(-0.6f, -1.0f, 2.12f, 0.07f, 1.0f, 0.05f, SKIN_DD)
-        cube(0.6f, -1.0f, 2.12f, 0.07f, 1.0f, 0.05f, SKIN_DD)
+        cube(0f, -1.4f * fs, 0.1f, 2.0f * fs, 1.55f * fs, 2.0f * fs, SKIN)
+        cube(0f, -1.0f * fs, 2.05f * fs, 1.75f * fs, 1.05f * fs, 0.1f, SKIN_L)
+        cube(0f, -2.95f * fs, 0.1f, 1.8f * fs, 0.12f, 1.8f * fs, SKIN_D)
+        cube(0f, -1.35f * fs, 2.12f * fs, 1.7f * fs, 0.07f, 0.05f, SKIN_DD)
+        cube(-0.6f * fs, -1.0f * fs, 2.12f * fs, 0.07f, 1.0f * fs, 0.05f, SKIN_DD)
+        cube(0.6f * fs, -1.0f * fs, 2.12f * fs, 0.07f, 1.0f * fs, 0.05f, SKIN_DD)
         projectTo(0f, -1.6f, 0.4f, id)
         pop()
     }
@@ -738,7 +781,8 @@ object Luffy3D {
         vF: Float, vB: Float, sA: Float, sB: Float, hatSw: Float,
         turn: Float, tilt: Float, shout: Float, hs0: Float, hs1: Float,
         rsh: Float, rshZ: Float, rel: Float, rtw: Float,
-        lsh: Float, lshZ: Float, lel: Float, ltw: Float, hatHead: Boolean
+        lsh: Float, lshZ: Float, lel: Float, ltw: Float, hatHead: Boolean,
+        extR: Float, extL: Float
     ) {
         leg(-1f, aR, kR, fR, hip)
         leg(1f, aL, kL, fL, hip)
@@ -752,8 +796,8 @@ object Luffy3D {
         translate(0f, breath, 0f)
         torsoUp(vF, vB, hatSw, hatHead)
         projectTo(0f, 10f, 0f, 3)
-        arm(-1f, rsh, rshZ, rel, rtw, 0)
-        arm(1f, lsh, lshZ, lel, ltw, 1)
+        arm(-1f, rsh, rshZ, rel, rtw, 0, extR)
+        arm(1f, lsh, lshZ, lel, ltw, 1, extL)
         projectTo(0f, 19.4f, 2f, 2)
         head(turn, tilt, shout, hs0, hs1, hatHead)
         pop()
@@ -782,12 +826,26 @@ object Luffy3D {
     var swing = 0          // 0 soco direito, 1 soco esquerdo, 2+ soco duplo
     var alphaV = 1f
 
-    /** Instante (0..1 da animação) em que o punho acerta. */
-    const val T_HIT = 0.22f
+    /** Instante (0..1 da animação) em que o punho esticado chega ao alvo. */
+    const val T_HIT = 0.28f
+
+    /** Fração do dash (0..1) gasta na preparação do estilingue; depois dela o corpo é lançado. */
+    const val DASH_WIND = 0.32f
+
+    /** Distância (em unidades do modelo) à frente onde as mãos se agarram no chão. */
+    private const val DASH_ANCHOR = 46f
+
+    /** Comprimento do braço normal (ombro até a base do punho), em unidades do modelo. */
+    private const val ARM_L = 13.25f
+
+    fun impactAt(@Suppress("UNUSED_PARAMETER") sw: Int): Float = T_HIT
+
+    /** Quanto o braço precisa esticar para o punho alcançar [len] unidades do modelo a partir do ombro. */
+    private fun extFor(len: Float): Float = max(1f, (len - 2.8f) / 10.8f)
 
     // ───────────── estado de animação ─────────────
     private const val MS = 0.8f   // escala do modelo (altura parecida com a dos outros heróis)
-    private const val NP = 16
+    private const val NP = 19
     private var yaw = 0f
     private var airW = 0f
     private var rollW = 0f
@@ -803,6 +861,7 @@ object Luffy3D {
     private var wasAir = false
     private var eyeOpen = 1f
     private var released = false
+    private var dashBurst = false
     private val ps = FloatArray(NP)
     private val pt = FloatArray(NP)
     private val mkX = FloatArray(6)
@@ -929,24 +988,78 @@ object Luffy3D {
         rel = lerp(rel, -0.2f, airW)
         lel = lerp(lel, -0.2f, airW)
         shout = max(shout, 0.5f * airW)
-        // rolamento: corpo deitado para a frente, braços para trás
-        lean = lerp(lean, 1.12f, rollW)
-        rsh = lerp(rsh, 0.95f, rollW)
-        lsh = lerp(lsh, 0.95f, rollW)
-        rshZ = lerp(rshZ, 0.12f, rollW)
-        lshZ = lerp(lshZ, 0.12f, rollW)
-        rel = lerp(rel, -0.4f, rollW)
-        lel = lerp(lel, -0.4f, rollW)
-        tilt = lerp(tilt, -0.5f, rollW)
+        // dash estilingue (Gomu Gomu no Rocket): as duas mãos esticam e agarram o chão à frente,
+        // o corpo se encolhe e depois é lançado; os braços encolhem e ficam para trás no voo
+        val rsNow = s * PX * MS
+        var extR = 1f
+        var extL = 1f
+        var bodyZ = 0f
+        var legW = 0f
+        if (rolling) {
+            val rp = rollP
+            val dLean: Float
+            val dCrouch: Float
+            val dRsh: Float
+            val dExt: Float
+            val dTilt: Float
+            if (rp < DASH_WIND) {
+                val u = ease(rp / DASH_WIND)
+                dLean = 0.8f * u
+                dCrouch = 1.0f * u
+                bodyZ = -6f * u
+                val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
+                val sz = 12.3f * sin(dLean) + bodyZ
+                val dz = DASH_ANCHOR - sz
+                dRsh = -atan2(dz, sy) - dLean
+                dExt = extFor(sqrt(dz * dz + sy * sy))
+                dTilt = -0.2f * u
+            } else {
+                val v = ((rp - DASH_WIND) / (1f - DASH_WIND)).coerceIn(0f, 1f)
+                val e3 = ease(min(1f, v * 3f))
+                dLean = lerp(0.8f, 1.3f, e3)
+                dCrouch = lerp(1.0f, 0.5f, e3)
+                bodyZ = lerp(-6f, 0f, ease(min(1f, v * 4f)))
+                legW = ease(min(1f, v * 4f))
+                // as mãos ficam presas no chão enquanto o corpo ainda não passou por elas
+                val f = 1f - Math.pow((1f - v).toDouble(), 2.2).toFloat()
+                val travelled = f * Player.LUFFY_DASH_DIST / rsNow
+                val pw = (1f - travelled / (DASH_ANCHOR * 0.8f)).coerceIn(0f, 1f)
+                val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
+                val sz = 12.3f * sin(dLean) + bodyZ
+                val dz = max(1f, DASH_ANCHOR - travelled - sz)
+                val rshP = -atan2(dz, sy) - dLean
+                val extP = extFor(sqrt(dz * dz + sy * sy))
+                dRsh = lerp(0.95f, rshP, pw)
+                dExt = lerp(1f, extP, pw)
+                dTilt = -0.55f
+            }
+            lean = lerp(lean, dLean, rollW)
+            crouch = lerp(crouch, dCrouch, rollW)
+            rsh = lerp(rsh, dRsh, rollW)
+            lsh = lerp(lsh, dRsh, rollW)
+            rshZ = lerp(rshZ, 0.05f, rollW)
+            lshZ = lerp(lshZ, 0.05f, rollW)
+            rel = lerp(rel, -0.05f, rollW)
+            lel = lerp(lel, -0.05f, rollW)
+            tilt = lerp(tilt, dTilt, rollW)
+            shout = max(shout, 0.8f * rollW)
+            extR = lerp(1f, dExt, rollW)
+            extL = extR
+            bodyZ *= rollW
+        }
+        val lgR = rollW * legW
 
         // ── socos ──
+        val extReach = extFor(Player.LUFFY_REACH / rsNow)
+        val extReach2 = extFor(Player.LUFFY_REACH_2 / rsNow)
         var punchSide = 0 // 1 direito, 2 esquerdo, 3 os dois
         if (attacking && rollW < 0.5f) {
             if (swing == 0) {
                 // soco direto de direita
                 punchSide = 1
-                rsh = k5(t, rsh, 0.45f, -1.58f, -1.45f, rsh)
+                rsh = k5(t, rsh, 0.9f, -1.58f, -1.45f, rsh)
                 rshZ = k5(t, rshZ, 0.25f, 0.0f, 0.02f, rshZ)
+                extR = k5(t, 1f, 1f, extReach, extReach * 0.96f, 1f)
                 rel = k5(t, rel, -2.4f, -0.05f, -0.2f, rel)
                 lsh = k5(t, lsh, -0.9f, -0.75f, -0.85f, lsh)
                 lel = k5(t, lel, -2.0f, -2.1f, -2.0f, lel)
@@ -959,8 +1072,9 @@ object Luffy3D {
             } else if (swing == 1) {
                 // soco direto de esquerda
                 punchSide = 2
-                lsh = k5(t, lsh, 0.45f, -1.58f, -1.45f, lsh)
+                lsh = k5(t, lsh, 0.9f, -1.58f, -1.45f, lsh)
                 lshZ = k5(t, lshZ, 0.25f, 0.0f, 0.02f, lshZ)
+                extL = k5(t, 1f, 1f, extReach, extReach * 0.96f, 1f)
                 lel = k5(t, lel, -2.4f, -0.05f, -0.2f, lel)
                 rsh = k5(t, rsh, -0.9f, -0.75f, -0.85f, rsh)
                 rel = k5(t, rel, -2.0f, -2.1f, -2.0f, rel)
@@ -973,8 +1087,10 @@ object Luffy3D {
             } else {
                 // finalização: os dois punhos juntos, com o corpo inteiro
                 punchSide = 3
-                rsh = k5(t, rsh, 0.7f, -1.58f, -1.5f, rsh)
-                lsh = k5(t, lsh, 0.7f, -1.58f, -1.5f, lsh)
+                rsh = k5(t, rsh, 0.9f, -1.58f, -1.5f, rsh)
+                lsh = k5(t, lsh, 0.9f, -1.58f, -1.5f, lsh)
+                extR = k5(t, 1f, 1f, extReach2, extReach2 * 0.96f, 1f)
+                extL = extR
                 rshZ = k5(t, rshZ, 0.5f, 0.1f, 0.1f, rshZ)
                 lshZ = k5(t, lshZ, 0.5f, 0.1f, 0.1f, lshZ)
                 rel = k5(t, rel, -2.6f, -0.05f, -0.15f, rel)
@@ -1005,17 +1121,21 @@ object Luffy3D {
         pt[0] = lean; pt[1] = hipTw; pt[2] = chestTw; pt[3] = rsh; pt[4] = rshZ; pt[5] = rel
         pt[6] = 0f; pt[7] = lsh; pt[8] = lshZ; pt[9] = lel; pt[10] = 0f; pt[11] = hd
         pt[12] = tilt; pt[13] = shout; pt[14] = crouch; pt[15] = legB
+        pt[16] = extR; pt[17] = extL; pt[18] = bodyZ
         if (first) {
             for (i in 0 until NP) ps[i] = pt[i]
         } else {
             val k = min(1f, dt * (if (attacking) 34f else 18f))
             for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
+            // o esticar do braço não pode atrasar: o punho tem que chegar junto com o golpe
+            ps[16] = pt[16]
+            ps[17] = pt[17]
         }
 
         // ── monta o modelo ──
         val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
         val crouchT = max(ps[14], landDip * 0.5f)
-        val hip = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f - rollW * 3.5f
+        val hip = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f
         val lb = ps[15]
 
         rs = s * PX * MS
@@ -1028,7 +1148,7 @@ object Luffy3D {
         lYs = sin(yaw)
         identity()
         rotY(yaw)
-        translate(0f, 0f, -hitKick * 1.2f)
+        translate(0f, 0f, -hitKick * 1.2f + ps[18])
 
         // pernas
         var aL = 0f
@@ -1044,8 +1164,8 @@ object Luffy3D {
             var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.1f + crouchT * 1.3f
             a = lerp(a, -0.5f + sd * 0.3f - 0.2f * max(0f, vzN), airW)
             kn = lerp(kn, 0.9f, airW)
-            a = lerp(a, 0.95f + sd * 0.12f, rollW)
-            kn = lerp(kn, 0.5f, rollW)
+            a = lerp(a, 1.45f + sd * 0.1f, lgR)
+            kn = lerp(kn, 0.35f, lgR)
             // base do soco: perna da frente adiantada, a de trás esticada
             a -= sd * 0.6f * lb
             kn += 0.5f * max(0f, sd * lb) + 0.2f * max(0f, -sd * lb)
@@ -1077,7 +1197,8 @@ object Luffy3D {
             vF, vB, sA, sB, hatSw,
             ps[11] - ps[2] * 0.6f, ps[12] - ps[0] * 0.5f, ps[13], hs0, hs1,
             ps[3], ps[4], ps[5], ps[6],
-            ps[7], ps[8], ps[9], ps[10], false
+            ps[7], ps[8], ps[9], ps[10], HAT_ON_HEAD,
+            ps[16], ps[17]
         )
 
         flushZ(c)
@@ -1123,6 +1244,44 @@ object Luffy3D {
                 p.strokeCap = Paint.Cap.BUTT
                 p.style = Paint.Style.FILL
             }
+        }
+
+        // ── dash estilingue: poeira quando as mãos prendem no chão e rastro de velocidade no lançamento ──
+        if (rolling) {
+            if (rollP >= DASH_WIND && !dashBurst) {
+                dashBurst = true
+                for (k in 0..1) {
+                    for (i in 0..8) {
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (16f + rnd.nextFloat() * 36f) * rs
+                        emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0 * 0.6f - 10f * rs, 0.36f, rs * 50f, if (i % 2 == 0) 0xFFE9D9B0.toInt() else 0xFFFFC23A.toInt(), 1.1f)
+                    }
+                }
+            }
+            if (rollP >= DASH_WIND) {
+                val v = ((rollP - DASH_WIND) / (1f - DASH_WIND)).coerceIn(0f, 1f)
+                val spf = Math.pow((1f - v).toDouble(), 1.2).toFloat()
+                var dx = -sin(yaw)
+                var dy = -cos(yaw) * 0.8f
+                val dl = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+                dx /= dl
+                dy /= dl
+                p.strokeCap = Paint.Cap.ROUND
+                p.style = Paint.Style.STROKE
+                for (i in 0..6) {
+                    val off = (i - 3f) * 3.2f * rs
+                    val len = (26f + 44f * ((i * 37) % 5) / 4f) * rs * spf
+                    val bx = fx - dy * off + dx * 6f * rs
+                    val by = fy - 10f * rs + dx * off
+                    p.strokeWidth = max(1.4f, rs * (if (i == 3) 1.6f else 1.1f))
+                    p.color = VoxelArt.alpha(if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.7f * spf)
+                    c.drawLine(bx, by, bx + dx * len, by + dy * len, p)
+                }
+                p.strokeCap = Paint.Cap.BUTT
+                p.style = Paint.Style.FILL
+            }
+        } else {
+            dashBurst = false
         }
 
         // ── partículas ──

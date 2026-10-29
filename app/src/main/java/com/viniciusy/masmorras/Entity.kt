@@ -93,6 +93,12 @@ class Player(
         const val ICHI_RATE_3 = 2.1f       // velocidade do 3º golpe
         const val LUFFY_RATE_1 = 2.9f      // velocidade dos 2 primeiros socos do combo do Luffy
         const val LUFFY_RATE_3 = 2.2f      // velocidade do soco duplo
+        const val LUFFY_REACH = 150f       // alcance do soco esticado (Gomu Gomu no Pistol)
+        const val LUFFY_REACH_2 = 180f     // alcance do soco duplo (Bazooka)
+        const val LUFFY_DASH_T = 0.50f     // duração do dash estilingue (preparação + lançamento)
+        const val LUFFY_DASH_V = 1500f     // velocidade inicial do lançamento
+        // distância percorrida no lançamento (a velocidade cai com (1-v)^1.2, cuja integral vale 1/2.2)
+        val LUFFY_DASH_DIST: Float = LUFFY_DASH_V * LUFFY_DASH_T * (1f - Luffy3D.DASH_WIND) / 2.2f
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
         const val ICHI_DASH_T = 0.24f      // duração do Shunpo / Sonído (botão de rolar)
         const val ICHI_DASH_DIST = 250f    // distância do Shunpo / Sonído
@@ -337,6 +343,9 @@ class Player(
     /** Segundos até a lâmina (ou garra) do Ichigo acertar (sincronizado com Ichigo3D.impactAt). */
     fun ichiDelay(): Float = Ichigo3D.impactAt(swing) / attackRate
 
+    /** Segundos até o punho esticado do Luffy chegar ao alvo (sincronizado com Luffy3D.T_HIT). */
+    fun luffyDelay(): Float = Luffy3D.impactAt(swing) / attackRate
+
     /** Segundos até o raio sair das mãos do Pikachu (sincronizado com Pikachu3D.T_SHOT). */
     fun pikaDelay(): Float = Pikachu3D.T_SHOT / PIKA_RATE
 
@@ -547,7 +556,7 @@ class Player(
         rollDY = dy / l
         facingX = rollDX
         facingY = rollDY
-        rollT = if (classe == Classe.PIKACHU) PIKA_QUICK_T else ROLL_TIME
+        rollT = if (classe == Classe.PIKACHU) PIKA_QUICK_T else if (classe == Classe.LUFFY) LUFFY_DASH_T else ROLL_TIME
         rollDur = rollT
         dashing = false
         lastRoll = now
@@ -686,9 +695,20 @@ class Player(
                 trapRelY = y
                 trapRelUp = (alt - ground).coerceAtLeast(0f)
             }
+            if (classe == Classe.LUFFY) {
+                // estilingue: segura as mãos no chão (leve recuo) e depois dispara, freando no fim
+                val w = Luffy3D.DASH_WIND
+                val spdL = if (q < w) -60f * (1f - q / w) else {
+                    val v = ((q - w) / (1f - w)).coerceIn(0f, 1f)
+                    LUFFY_DASH_V * Math.pow((1f - v).toDouble(), 1.2).toFloat()
+                }
+                vx = rollDX * spdL
+                vy = rollDY * spdL
+            } else {
             val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else if (classe == Classe.PIKACHU) 640f * (1.35f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
+            }
         } else if (ichiT > 0f) {
             // Shunpo / Sonído: avanço veloz que freia no fim
             val q = 1f - ichiT / ichiDurNow
@@ -894,7 +914,7 @@ class Player(
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else if (classe == Classe.LUFFY) 66f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else if (classe == Classe.LUFFY) 72f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }
