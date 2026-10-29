@@ -1,0 +1,20 @@
+ARQUEIRO ELFO - Escolas Elementais + combate por alvo
+======================================================
+Copie a pasta "app" por cima do projeto (mesmos caminhos). Arquivos:
+  NOVOS:      ElfoSkills.kt, ElfoEngine.kt
+  ALTERADOS:  Entity.kt, GameView.kt, MainActivity.kt
+
+COMO JOGAR
+- Ao iniciar o Arqueiro, escolha a Escola (Brasa, Geada, Tempestade, Raiz, Vendaval).
+- Toque num inimigo para marcar o alvo (anel vermelho). Ataque basico e skills de alvo vao direto nele.
+- Skills de AREA: aperte o botao -> aparece o circulo; toque no chao (ou num inimigo) para mirar;
+  aperte o MESMO botao de novo para soltar.
+- Botoes 1 a 5 = as 5 skills da escola. Botao de rolar = salto com armadilha (como antes).
+- Matar inimigos da XP. Toque no emblema da classe (topo) para evoluir skills (3 graus) e trocar de escola.
+- Skills desbloqueiam por nivel: Nv1, 3, 6, 9 e 14 (ultimate).
+- Botao extra (onde o guerreiro troca de arma) = Passo do Vento (+40% velocidade por 5s, recarga 12s).
+- Marca do Cacador: seta vermelha na borda da tela aponta o inimigo marcado fora de vista.
+- O jogo pausa enquanto os menus do Elfo estao abertos.
+
+NAO FOI COMPILADO (sem Kotlin/Android SDK no ambiente). Rode o build do GitHub Actions
+e, se der erro, mande o log que eu corrijo.
