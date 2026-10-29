@@ -177,9 +177,10 @@ object HeroCreator {
             var linha: LinearLayout? = null
             for (i in nomes.indices) {
                 if (i % colunas == 0) {
-                    linha = LinearLayout(act)
-                    linha.orientation = LinearLayout.HORIZONTAL
-                    p.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                    val nova = LinearLayout(act)
+                    nova.orientation = LinearLayout.HORIZONTAL
+                    linha = nova
+                    p.addView(nova, LinearLayout.LayoutParams(MATCH, WRAP))
                 }
                 val b = ficha(nomes[i])
                 linha!!.addView(b, cell())
@@ -209,9 +210,10 @@ object HeroCreator {
             var linha: LinearLayout? = null
             for (i in lista.indices) {
                 if (i % porLinha == 0) {
-                    linha = LinearLayout(act)
-                    linha.orientation = LinearLayout.HORIZONTAL
-                    p.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                    val nova = LinearLayout(act)
+                    nova.orientation = LinearLayout.HORIZONTAL
+                    linha = nova
+                    p.addView(nova, LinearLayout.LayoutParams(MATCH, WRAP))
                 }
                 val cor = lista[i]
                 val v = View(act)
@@ -305,9 +307,10 @@ object HeroCreator {
         var linhaR: LinearLayout? = null
         for (i in racas.indices) {
             if (i % 3 == 0) {
-                linhaR = LinearLayout(act)
-                linhaR.orientation = LinearLayout.HORIZONTAL
-                pRaca.addView(linhaR, LinearLayout.LayoutParams(MATCH, WRAP))
+                val nova = LinearLayout(act)
+                nova.orientation = LinearLayout.HORIZONTAL
+                linhaR = nova
+                pRaca.addView(nova, LinearLayout.LayoutParams(MATCH, WRAP))
             }
             val b = ficha(racas[i].nome)
             linhaR!!.addView(b, cell())
@@ -435,9 +438,10 @@ object HeroCreator {
                 var linha: LinearLayout? = null
                 for (n in itens.indices) {
                     if (n % 2 == 0) {
-                        linha = LinearLayout(act)
-                        linha.orientation = LinearLayout.HORIZONTAL
-                        boxCab.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                        val nova = LinearLayout(act)
+                        nova.orientation = LinearLayout.HORIZONTAL
+                        linha = nova
+                        boxCab.addView(nova, LinearLayout.LayoutParams(MATCH, WRAP))
                     }
                     val e = itens[n]
                     val b = ficha(e.nome)
