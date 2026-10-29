@@ -199,13 +199,15 @@ class GetsugaWave(
 
 /**
  * Efeitos curtos do Ichigo. kind: 0 = feixe (Cero), 1 = anel no chão, 2 = rastro de Shunpo,
- * 3 = onda escura que preenche (Mugetsu / transformação), 4 = clarão de corte.
+ * 3 = onda escura que preenche (Mugetsu / transformação), 4 = clarão de corte,
+ * 5 = onda lunar rasteira (Golpe Lunar), 6 = corte em linha (garras), 7 = faísca de impacto,
+ * 8 = feixe negro (Cero Oscuras). [delay] adia o efeito.
  */
 class IchiFx(
     val kind: Int, val x0: Float, val y0: Float, val x1: Float, val y1: Float,
-    val maxLife: Float, val r: Float, val col: Int
+    val maxLife: Float, val r: Float, val col: Int, val delay: Float = 0f
 ) {
-    var life = maxLife
+    var life = maxLife + delay
     val done: Boolean get() = life <= 0f
     private val seed = (x0 * 7f + y0 * 13f).toInt() and 0xFFFF
 
@@ -219,7 +221,7 @@ class IchiFx(
     }
 
     fun draw(c: Canvas, p: Paint, camX: Float, camY: Float) {
-        if (life <= 0f) return
+        if (life <= 0f || life > maxLife) return
         val a = (life / maxLife).coerceIn(0f, 1f)
         val u = 1f - a
         val ax = x0 - camX
@@ -228,7 +230,8 @@ class IchiFx(
         val by = y1 - camY
         val tf = (life * 40f).toInt()
         when (kind) {
-            0 -> {
+            0, 8 -> {
+                val dk = kind == 8
                 val w = r * (0.30f + 0.70f * a) * (1f + 0.07f * sin(life * 70f))
                 val dxl = bx - ax
                 val dyl = by - ay
@@ -248,10 +251,10 @@ class IchiFx(
                 p.color = IchiPal.alpha(col, 0.85f * a)
                 c.drawLine(ax, ay, bx, by, p)
                 p.strokeWidth = w * 0.9f
-                p.color = IchiPal.alpha(IchiPal.RED_L, 0.9f * a)
+                p.color = IchiPal.alpha(if (dk) IchiPal.DARK else IchiPal.RED_L, 0.95f * a)
                 c.drawLine(ax, ay, bx, by, p)
                 p.strokeWidth = w * 0.45f
-                p.color = IchiPal.alpha(IchiPal.WHITE, 0.95f * a)
+                p.color = IchiPal.alpha(if (dk) IchiPal.RED_L else IchiPal.WHITE, 0.95f * a)
                 c.drawLine(ax, ay, bx, by, p)
                 p.strokeCap = Paint.Cap.BUTT
                 // anéis de energia correndo pelo feixe
@@ -392,6 +395,48 @@ class IchiFx(
                     c.drawCircle(ax, ay - 20f, r * 0.35f * (1f - u), p)
                 }
             }
+            5 -> {
+                // onda lunar rasteira: meia-lua que se abre no chão à frente do golpe
+                val ang = atan2(y1 * 0.75f, x1)
+                val rad = r * (0.35f + 0.65f * ease(u))
+                val cx = ax + x1 * r * 0.25f * u
+                val cy = ay + y1 * r * 0.25f * u * 0.75f
+                IchiPal.crescent(c, p, cx, cy, rad * 1.1f, ang, 150f, 0.40f, IchiPal.DARK, 0.5f * a)
+                IchiPal.crescent(c, p, cx, cy, rad, ang, 140f, 0.34f, col, 0.85f * a)
+                IchiPal.crescent(c, p, cx, cy, rad * 0.82f, ang, 120f, 0.30f, IchiPal.WHITE, 0.9f * a)
+                IchiPal.rays(c, p, ax, ay, r * 0.2f, r * (0.7f + 0.9f * u), 12, u * 2f, max(1.4f, r * 0.04f), IchiPal.RED_L, 0.7f * a, 41)
+                p.style = Paint.Style.FILL
+            }
+            6 -> {
+                // corte em linha (garra): risca o ar rapidamente e some
+                val prog = min(1f, u * 5f)
+                val ex = ax + (bx - ax) * prog
+                val ey = ay + (by - ay) * prog
+                p.style = Paint.Style.STROKE
+                p.strokeCap = Paint.Cap.ROUND
+                p.strokeWidth = r * 2.6f * a
+                p.color = IchiPal.alpha(IchiPal.DARK, 0.45f * a)
+                c.drawLine(ax, ay, ex, ey, p)
+                p.strokeWidth = r * 1.5f * a
+                p.color = IchiPal.alpha(col, 0.9f * a)
+                c.drawLine(ax, ay, ex, ey, p)
+                p.strokeWidth = max(1.4f, r * 0.55f * a)
+                p.color = IchiPal.alpha(IchiPal.WHITE, 0.95f * a)
+                c.drawLine(ax, ay, ex, ey, p)
+                p.strokeCap = Paint.Cap.BUTT
+                IchiPal.rays(c, p, ex, ey, r * 0.4f, r * (1.4f + 1.6f * u), 7, u * 4f, max(1.2f, r * 0.2f), IchiPal.RED_L, 0.8f * a, 61)
+                p.style = Paint.Style.FILL
+            }
+            7 -> {
+                // faísca de impacto sobre quem foi atingido
+                p.style = Paint.Style.FILL
+                p.color = IchiPal.alpha(IchiPal.WHITE, 0.7f * a)
+                c.drawCircle(ax, ay, r * (0.25f + 0.5f * u), p)
+                p.color = IchiPal.alpha(col, 0.55f * a)
+                c.drawCircle(ax, ay, r * (0.5f + 0.9f * u), p)
+                IchiPal.rays(c, p, ax, ay, r * 0.3f, r * (1.0f + 1.4f * u), 9, u * 3f, max(1.4f, r * 0.07f), IchiPal.WHITE, 0.85f * a, 71)
+                p.style = Paint.Style.FILL
+            }
             else -> {
                 // clarão de corte: duas luas cruzadas na direção (x1, y1)
                 val ang = atan2(y1 * 0.75f, x1)
@@ -411,6 +456,102 @@ class IchiFx(
                 IchiPal.rays(c, p, ax, ay, r * 0.2f, r * (0.9f + 0.9f * u), 10, ang, max(1.4f, r * 0.05f), IchiPal.RED_L, 0.8f * a, 31)
                 p.style = Paint.Style.FILL
             }
+        }
+    }
+}
+
+
+/** Getsuga Jujisho: grande cruz de reiatsu rubro-negro que avança girando e atravessa todos. */
+class CrossWave(
+    var x: Float, var y: Float, val dx: Float, val dy: Float,
+    val dmg: Float, val lift: Float
+) {
+    var alive = true
+    var age = 0f
+    var life = 0.95f
+    val speed = 400f
+    val hit = HashSet<Enemy>()
+
+    fun update(dt: Float) {
+        x += dx * speed * dt
+        y += dy * speed * dt
+        age += dt
+        life -= dt
+        if (life <= 0f) alive = false
+    }
+
+    private fun bar(c: Canvas, p: Paint, sx: Float, sy: Float, ang: Float, half: Float, w: Float, fade: Float) {
+        val ca = cos(ang)
+        val sa = sin(ang)
+        val x0 = sx - ca * half
+        val y0 = sy - sa * half * 0.8f
+        val x1 = sx + ca * half
+        val y1 = sy + sa * half * 0.8f
+        p.style = Paint.Style.STROKE
+        p.strokeCap = Paint.Cap.ROUND
+        p.strokeWidth = w * 1.9f
+        p.color = IchiPal.alpha(IchiPal.DARK, 0.55f * fade)
+        c.drawLine(x0, y0, x1, y1, p)
+        p.strokeWidth = w * 1.25f
+        p.color = IchiPal.alpha(IchiPal.RED, 0.95f * fade)
+        c.drawLine(x0, y0, x1, y1, p)
+        p.strokeWidth = w * 0.7f
+        p.color = IchiPal.alpha(IchiPal.RED_L, 0.95f * fade)
+        c.drawLine(x0, y0, x1, y1, p)
+        p.strokeWidth = w * 0.28f
+        p.color = IchiPal.alpha(IchiPal.WHITE, 0.95f * fade)
+        c.drawLine(x0, y0, x1, y1, p)
+        p.strokeCap = Paint.Cap.BUTT
+    }
+
+    fun draw(c: Canvas, p: Paint, camX: Float, camY: Float) {
+        if (!alive) return
+        val sx = x - camX
+        val sy = y - camY - lift
+        val ang = atan2(dy * 0.75f, dx)
+        val grow = min(1f, age / 0.10f)
+        val fade = min(1f, life / 0.25f)
+        val half = 54f * (0.5f + 0.5f * grow)
+        val w = 9f * (0.6f + 0.4f * grow)
+        val tl = max(0.001f, hypot(dx, dy * 0.75f))
+        val ux = dx / tl
+        val uy = dy * 0.75f / tl
+
+        // sombra no chão
+        p.style = Paint.Style.FILL
+        p.color = IchiPal.alpha(IchiPal.DARK, 0.30f * fade)
+        c.drawOval(sx - half * 0.9f, sy + lift - half * 0.18f, sx + half * 0.9f, sy + lift + half * 0.22f, p)
+        // rastro: cruzes fantasmas
+        for (i in 3 downTo 1) {
+            val gx = sx - ux * 22f * i
+            val gy = sy - uy * 22f * i
+            bar(c, p, gx, gy, ang + PI.toFloat() / 2f, half * (1f - 0.12f * i), w * 0.8f, 0.22f * fade)
+            bar(c, p, gx, gy, ang, half * 0.8f * (1f - 0.12f * i), w * 0.8f, 0.22f * fade)
+        }
+        // cruz principal (a barra maior corta de través, a menor segue o avanço)
+        bar(c, p, sx, sy, ang + PI.toFloat() / 2f, half, w, fade)
+        bar(c, p, sx, sy, ang, half * 0.8f, w, fade)
+        // chamas nas pontas e brilho central
+        p.style = Paint.Style.FILL
+        for (k in 0..3) {
+            val a0 = ang + k * PI.toFloat() / 2f
+            val hl = if (k % 2 == 0) half * 0.8f else half
+            val flick = 0.6f + 0.4f * IchiPal.rn(k + (age * 30f).toInt() * 3)
+            IchiPal.spike(c, p, sx + cos(a0) * hl, sy + sin(a0) * hl * 0.8f, a0, 16f * flick, 4f, IchiPal.RED_L, 0.85f * fade)
+        }
+        p.color = IchiPal.alpha(IchiPal.WHITE, 0.75f * fade)
+        c.drawCircle(sx, sy, w * 1.1f, p)
+        IchiPal.rays(c, p, sx, sy, w * 0.9f, w * 3.2f, 8, age * 6f, max(1.4f, w * 0.16f), IchiPal.RED_L, 0.8f * fade, 91)
+        // faíscas soltas atrás
+        p.style = Paint.Style.FILL
+        for (k in 0..7) {
+            val ph = (age * 2.6f + k * 0.131f) % 1f
+            val off = (IchiPal.rn(k + 140) - 0.5f) * half * 1.4f
+            val px = sx - ux * ph * 120f - uy * off
+            val py = sy - uy * ph * 120f + ux * off
+            val sz = 1.5f + 3f * (1f - ph)
+            p.color = IchiPal.alpha(if (k % 2 == 0) IchiPal.WHITE else IchiPal.RED_L, (1f - ph) * fade)
+            c.drawRect(px - sz, py - sz, px + sz, py + sz, p)
         }
     }
 }

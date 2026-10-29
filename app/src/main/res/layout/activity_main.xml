@@ -580,6 +580,38 @@
                     android:visibility="gone"/>
 
                 <ImageButton
+                    android:id="@+id/btnSkill5"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="152dp"
+                    android:layout_marginBottom="136dp"
+                    android:background="@drawable/hdbtn_weapon"
+                    android:contentDescription="Skill 5"
+                    android:padding="10dp"
+                    android:scaleType="fitCenter"
+                    android:src="@drawable/hd_ic_ichi_hollow"
+                    android:visibility="gone"/>
+
+                <TextView
+                    android:id="@+id/tvSkill5Cd"
+                    style="@style/Mc.Text"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="152dp"
+                    android:layout_marginBottom="136dp"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:shadowColor="#000000"
+                    android:shadowDx="2"
+                    android:shadowDy="2"
+                    android:shadowRadius="1"
+                    android:visibility="gone"/>
+
+                <ImageButton
                     android:id="@+id/btnJump"
                     android:layout_width="68dp"
                     android:layout_height="68dp"

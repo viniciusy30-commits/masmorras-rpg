@@ -514,15 +514,15 @@ object Ichigo3D {
     private val DARKFX = 0xFF1A0610.toInt()
 
     // ───────────── skills ─────────────
-    // Bankai: 1 Getsuga Tenshou, 2 Shunpo, 3 Redemoinho Getsuga, 4 Vasto Lorde (transformação)
-    // Vasto Lorde: 1 Cero, 2 Sonído (garras), 3 Grito Hollow, 4 Mugetsu (final, encerra a forma)
-    val DUR_N = floatArrayOf(0f, 0.70f, 0.55f, 0.95f, 1.70f)
-    val REL_N = floatArrayOf(0f, 0.46f, 0.30f, 0.42f, 0.58f)
-    val DUR_H = floatArrayOf(0f, 0.85f, 0.60f, 0.95f, 1.50f)
-    val REL_H = floatArrayOf(0f, 0.52f, 0.30f, 0.46f, 0.60f)
+    // Bankai: 1 Getsuga Tenshou, 2 Getsuga Jujisho (cruz), 3 Redemoinho de Getsuga, 4 Golpe Lunar (salto), 5 Vasto Lorde (transformação)
+    // Vasto Lorde: 1 Cero, 2 Garras Rasgantes, 3 Grito Hollow, 4 Cero Oscuras, 5 Mugetsu (final, encerra a forma)
+    val DUR_N = floatArrayOf(0f, 0.70f, 0.85f, 0.95f, 1.05f, 1.70f)
+    val REL_N = floatArrayOf(0f, 0.46f, 0.50f, 0.42f, 0.55f, 0.58f)
+    val DUR_H = floatArrayOf(0f, 0.85f, 0.70f, 0.95f, 1.35f, 1.50f)
+    val REL_H = floatArrayOf(0f, 0.52f, 0.36f, 0.46f, 0.68f, 0.60f)
 
-    fun dur(h: Boolean, k: Int): Float = if (h) DUR_H[k.coerceIn(1, 4)] else DUR_N[k.coerceIn(1, 4)]
-    fun rel(h: Boolean, k: Int): Float = if (h) REL_H[k.coerceIn(1, 4)] else REL_N[k.coerceIn(1, 4)]
+    fun dur(h: Boolean, k: Int): Float = if (h) DUR_H[k.coerceIn(1, 5)] else DUR_N[k.coerceIn(1, 5)]
+    fun rel(h: Boolean, k: Int): Float = if (h) REL_H[k.coerceIn(1, 5)] else REL_N[k.coerceIn(1, 5)]
 
     /** Ponto (0..1) de cada golpe do combo em que a lâmina (ou garra) acerta. */
     private val IMPACT = floatArrayOf(0.50f, 0.50f, 0.56f)
@@ -539,6 +539,7 @@ object Ichigo3D {
     var hollowOn = false
     var swing = 0
     var alphaV = 1f
+    var sky = false   // andando no céu, sobre uma plataforma de reiatsu
 
     // ───────────── estado de animação ─────────────
     private var yaw = 0f
@@ -665,44 +666,54 @@ object Ichigo3D {
         )
     )
     private val SK_N = arrayOf(
-        arrayOf( // Getsuga Tenshou
+        arrayOf( // 1 Getsuga Tenshou
             kf(-0.30f, 0.50f, -2.90f, 0.50f, -0.30f, 0.20f, -2.00f, 0.70f, -0.40f, 0.15f, 0f, 0.3f),
             kf(0.55f, -0.30f, -1.10f, 0.10f, -0.45f, 0.95f, -0.50f, 0.60f, -0.60f, 0.35f, 0f, 0f),
             kf(0.40f, -0.40f, -0.80f, 0.15f, -0.50f, 1.00f, -0.40f, 0.50f, -0.50f, 0.25f, 0f, 0f)
         ),
-        arrayOf( // Shunpo
-            kf(0.75f, 0.40f, -0.50f, 0.50f, -0.50f, 0.30f, 0.40f, 0.60f, -0.50f, 0.90f, 0f, 0f),
-            kf(1.00f, -0.30f, -1.55f, 0.10f, -0.10f, 1.15f, 0.50f, 0.80f, -0.30f, 0.50f, 0f, 0f),
-            kf(0.35f, -0.60f, -0.90f, 0.20f, -0.50f, 1.40f, -0.20f, 0.50f, -0.40f, 0.20f, 0f, 0f)
+        arrayOf( // 2 Getsuga Jujisho: espada alta com as duas mãos e golpe em cruz
+            kf(-0.35f, -0.40f, -2.90f, 0.40f, -0.30f, 0.20f, -2.30f, 0.60f, -0.40f, 0.20f, 0f, 0.4f),
+            kf(0.60f, 0.50f, -1.00f, 0.10f, -0.50f, 1.00f, -0.60f, 0.60f, -0.60f, 0.45f, 0f, 0f),
+            kf(0.35f, 0.30f, -0.80f, 0.15f, -0.50f, 1.00f, -0.40f, 0.50f, -0.50f, 0.25f, 0f, 0f)
         ),
-        arrayOf( // Redemoinho Getsuga (o giro é somado à parte)
+        arrayOf( // 3 Redemoinho de Getsuga (o giro é somado à parte)
             kf(0.20f, 1.00f, -1.50f, 1.30f, -0.10f, 1.00f, -0.50f, 1.30f, -0.10f, 0.50f, 0f, 0f),
             kf(0.25f, -1.00f, -1.50f, 1.30f, -0.10f, 1.00f, -0.50f, 1.30f, -0.10f, 0.40f, 0f, 0f),
             kf(0.10f, -0.30f, -0.80f, 0.40f, -0.50f, 1.10f, -0.30f, 0.50f, -0.50f, 0.20f, 0f, 0f)
         ),
-        arrayOf( // transformação em Vasto Lorde
+        arrayOf( // 4 Golpe Lunar: salta alto com a espada atrás da cabeça e desce cortando
+            kf(-0.45f, 0f, -3.00f, 0.30f, -0.30f, 0.10f, -2.60f, 0.40f, -0.40f, 0.10f, 0f, 1.6f),
+            kf(0.75f, 0f, -1.05f, 0.10f, -0.60f, 1.50f, -0.90f, 0.30f, -0.80f, 0.55f, 0f, 0f),
+            kf(0.50f, 0f, -0.80f, 0.15f, -0.60f, 1.70f, -0.80f, 0.30f, -0.80f, 0.40f, 0f, 0f)
+        ),
+        arrayOf( // 5 transformação em Vasto Lorde
             kf(0.70f, 0f, -0.40f, 0.50f, -0.50f, 0.30f, -0.30f, 0.50f, -0.50f, 1.00f, 0f, 0f),
             kf(-0.45f, 0f, -0.90f, 1.20f, -0.50f, 1.00f, -0.90f, 1.20f, -0.50f, 0f, 0f, 0.8f),
             kf(0.20f, 0f, -0.30f, 0.60f, -0.40f, 0.90f, -0.30f, 0.60f, -0.40f, 0.20f, 0f, 0f)
         )
     )
     private val SK_H = arrayOf(
-        arrayOf( // Cero
+        arrayOf( // 1 Cero
             kf(-0.20f, 0.20f, -1.60f, 0.35f, -0.20f, 0f, 0.10f, 0.40f, -0.40f, 0.25f, 0f, 0f),
             kf(0.35f, -0.10f, -1.55f, 0.05f, 0f, 0f, 0f, 0.40f, -0.40f, 0.35f, 0f, 0f),
             kf(0.25f, 0f, -1.20f, 0.10f, -0.10f, 0f, 0f, 0.40f, -0.40f, 0.25f, 0f, 0f)
         ),
-        arrayOf( // Sonído com garras
+        arrayOf( // 2 Garras Rasgantes: bote com as duas garras
             kf(0.90f, 0.50f, -0.50f, 0.60f, -0.40f, 0f, 0.30f, 0.60f, -0.40f, 1.00f, 0f, 0f),
             kf(1.10f, -0.50f, -1.50f, 0.20f, -0.20f, 0f, -1.50f, 0.20f, -0.20f, 0.60f, 0f, 0f),
             kf(0.50f, -0.20f, -0.80f, 0.30f, -0.30f, 0f, -0.80f, 0.30f, -0.30f, 0.30f, 0f, 0f)
         ),
-        arrayOf( // Grito Hollow
+        arrayOf( // 3 Grito Hollow
             kf(-0.45f, 0f, -0.50f, 1.50f, -0.20f, 0f, -0.50f, 1.50f, -0.20f, 0.20f, 0f, 0f),
             kf(-0.40f, 0f, -0.90f, 1.70f, -0.10f, 0f, -0.90f, 1.70f, -0.10f, 0f, 0f, 0.5f),
             kf(0.10f, 0f, -0.30f, 0.80f, -0.30f, 0f, -0.30f, 0.80f, -0.30f, 0.15f, 0f, 0f)
         ),
-        arrayOf( // Mugetsu
+        arrayOf( // 4 Cero Oscuras: as duas mãos juntas à frente, concentrando o feixe negro
+            kf(-0.30f, 0f, -1.30f, 0.60f, -0.20f, 0f, -1.30f, 0.60f, -0.20f, 0.30f, 0f, 0f),
+            kf(0.40f, 0f, -1.55f, 0.05f, 0f, 0f, -1.55f, 0.05f, 0f, 0.40f, 0f, 0f),
+            kf(0.30f, 0f, -1.20f, 0.10f, -0.10f, 0f, -1.20f, 0.10f, -0.10f, 0.30f, 0f, 0f)
+        ),
+        arrayOf( // 5 Mugetsu
             kf(-0.35f, 0f, -3.00f, 0.50f, -0.20f, 0f, -3.00f, 0.50f, -0.20f, 0f, 0f, 1.6f),
             kf(0.70f, 0f, -1.10f, 0.10f, -0.20f, 0f, -1.10f, 0.10f, -0.20f, 0.60f, 0f, 0f),
             kf(0.40f, 0f, -0.70f, 0.20f, -0.30f, 0f, -0.70f, 0.20f, -0.30f, 0.30f, 0f, 0f)
@@ -1431,7 +1442,7 @@ object Ichigo3D {
         val t = if (attack > 0.001f && sk == 0) 1f - attack else -1f
         val attacking = t >= 0f
         val rolling = rollP >= 0f
-        val airCand = inAir && !rolling && (airH > 8f || airVz > 60f)
+        val airCand = inAir && !rolling && !sky && (airH > 8f || airVz > 60f)
         airTimer = if (airCand) airTimer + dt else 0f
         val airT = if (airTimer > 0.04f) 1f else 0f
         val rollTgt = if (rolling) min(rollP / 0.12f, (1f - rollP) / 0.2f).coerceIn(0f, 1f) else 0f
@@ -1442,6 +1453,7 @@ object Ichigo3D {
             airW += (airT - airW) * min(1f, dt * 14f)
             rollW += (rollTgt - rollW) * min(1f, dt * 26f)
         }
+        if (sky) wasAir = false
         if (wasAir && airW < 0.4f) {
             wasAir = false
             landDip = 1f
@@ -1509,14 +1521,19 @@ object Ichigo3D {
                     cTgt = pre
                     trailOn = u > rl * 0.55f && u < rl + 0.22f
                 } else if (sk == 2) {
-                    aTgt = 0.6f
-                    gTgt = 0.6f
-                    trailOn = u > rl * 0.6f && u < rl + 0.3f
+                    gTgt = pre
+                    aTgt = 0.4f + 0.8f * pre
+                    cTgt = pre
+                    trailOn = u > rl * 0.5f && u < rl + 0.25f
                 } else if (sk == 3) {
                     spinT = TWO_PI * 2f * ease(((u - 0.06f) / 0.5f).coerceIn(0f, 1f))
                     gTgt = pre
                     aTgt = 0.5f + 0.5f * pre
                     trailOn = u > 0.08f && u < 0.62f
+                } else if (sk == 4) {
+                    gTgt = pre
+                    aTgt = 0.5f + 0.6f * pre
+                    trailOn = u > rl * 0.55f && u < rl + 0.3f
                 } else {
                     aTgt = 0.3f + 0.7f * pre
                     mTgt = pre
@@ -1537,6 +1554,11 @@ object Ichigo3D {
                     mTgt = pre
                     hdx = -0.6f * pre
                     aTgt = 0.5f + 0.5f * pre
+                } else if (sk == 4) {
+                    cTgt = pre
+                    mTgt = 0.9f * pre
+                    aTgt = 0.7f + 0.6f * pre
+                    hdx = -0.3f * pre
                 } else {
                     cTgt = pre
                     mTgt = 0.6f * pre
@@ -1585,11 +1607,11 @@ object Ichigo3D {
         oy = fy
 
         // ── chão: anéis das skills ──
-        val ringOn = (!skH && (sk == 3 || sk == 4)) || (skH && (sk == 3 || sk == 4))
+        val ringOn = sk == 3 || sk == 5 || (skH && sk == 4)
         if (ringOn) {
             val rl = rel(skH, sk)
             val g = if (u < rl) ease(u / rl) else 1f - ease((u - rl) / (1f - rl))
-            val big = if (skH && sk == 4) 2.2f else 1f
+            val big = if (skH && sk == 5) 2.2f else if (skH && sk == 4) 1.4f else 1f
             val rr = (9f + 13f * g) * rs * big
             p.style = Paint.Style.STROKE
             p.strokeWidth = max(1.8f, rs * 1.6f)
@@ -1601,7 +1623,7 @@ object Ichigo3D {
         }
 
         // ── imagens residuais do Shunpo / Sonído ──
-        val sh = (sk == 2 && u > rel(skH, 2) - 0.2f && u < rel(skH, 2) + 0.4f) || rollW > 0.5f
+        val sh = (skH && sk == 2 && u > rel(true, 2) - 0.2f && u < rel(true, 2) + 0.4f) || rollW > 0.5f
         if (sh) {
             val dx = sin(yaw)
             val dy = cos(yaw) * SINP
@@ -1644,11 +1666,15 @@ object Ichigo3D {
             val a = chargeS.coerceIn(0f, 1f)
             if (!hol && sk == 1) {
                 orb(c, p, mkX[2], mkY[2], (1.0f + 2.4f * a) * rs, a, RED, RED_L, WHITE)
-            } else if (!hol && sk == 4) {
+            } else if (!hol && sk == 2) {
+                orb(c, p, mkX[2], mkY[2], (1.2f + 2.6f * a) * rs, a, DARKFX, RED, WHITE)
+            } else if (!hol && sk == 5) {
                 orb(c, p, mkX[5], mkY[5], (0.9f + 2.2f * a) * rs, a, BONE_S, BONE, WHITE)
+            } else if (hol && sk == 4) {
+                orb(c, p, mkX[0], mkY[0], (1.8f + 4.8f * a) * rs * (0.95f + 0.05f * sin(clock * 40f)), a, DARKFX, RED, RED_L)
             } else if (hol && sk == 1) {
                 orb(c, p, mkX[0], mkY[0], (1.4f + 3.6f * a) * rs * (0.95f + 0.05f * sin(clock * 40f)), a, RED, RED_L, WHITE)
-            } else if (hol && sk == 4) {
+            } else if (hol && sk == 5) {
                 orb(c, p, mkX[4], mkY[4] - 14f * rs, (2.0f + 6.0f * a) * rs, a, RED, RED_L, WHITE)
             }
         }
@@ -1685,8 +1711,8 @@ object Ichigo3D {
         }
 
         // ── pilar de luz da transformação ──
-        if (!skH && sk == 4) {
-            val rl = rel(false, 4)
+        if (!skH && sk == 5) {
+            val rl = rel(false, 5)
             val g = if (u < rl) ease(u / rl) * 0.5f else 1f - ease((u - rl) / (1f - rl))
             if (g > 0.02f) {
                 val w0 = (4f + 6f * g) * rs

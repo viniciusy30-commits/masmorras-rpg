@@ -61,10 +61,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSkill2Cd: TextView
     private lateinit var btnSkill3: android.widget.ImageButton
     private lateinit var btnSkill4: android.widget.ImageButton
+    private lateinit var btnSkill5: android.widget.ImageButton
+    private lateinit var tvSkill5Cd: TextView
     private lateinit var tvSkill3Cd: TextView
     private lateinit var tvSkill4Cd: TextView
     private lateinit var hudLayer: View
-    private val prevCd = FloatArray(4)
+    private val prevCd = FloatArray(5)
     private var ichiHolShown = false
     private lateinit var shadowTimer: ShadowTimerView
     private lateinit var btnRoll: android.widget.ImageButton
@@ -141,6 +143,8 @@ class MainActivity : AppCompatActivity() {
         tvSkill2Cd = findViewById(R.id.tvSkill2Cd)
         btnSkill3 = findViewById(R.id.btnSkill3)
         btnSkill4 = findViewById(R.id.btnSkill4)
+        btnSkill5 = findViewById(R.id.btnSkill5)
+        tvSkill5Cd = findViewById(R.id.tvSkill5Cd)
         tvSkill3Cd = findViewById(R.id.tvSkill3Cd)
         tvSkill4Cd = findViewById(R.id.tvSkill4Cd)
         ivManaSlot = findViewById(R.id.ivManaSlot)
@@ -188,7 +192,7 @@ class MainActivity : AppCompatActivity() {
     // ───────────────────────── sons de interface ─────────────────────────
 
     private val silentIds: Set<Int> by lazy {
-        setOf(R.id.btnAttack, R.id.btnJump, R.id.btnRoll, R.id.btnWeapon, R.id.btnSkill1, R.id.btnSkill2, R.id.btnSkill3, R.id.btnSkill4, R.id.joystickArea)
+        setOf(R.id.btnAttack, R.id.btnJump, R.id.btnRoll, R.id.btnWeapon, R.id.btnSkill1, R.id.btnSkill2, R.id.btnSkill3, R.id.btnSkill4, R.id.btnSkill5, R.id.joystickArea)
     }
 
     /** Qualquer toque num botão/cartão da interface faz um "clique"; os botões de combate têm sons próprios. */
@@ -343,6 +347,7 @@ class MainActivity : AppCompatActivity() {
         btnSkill2.setOnClickListener { gameView.skill(2) }
         btnSkill3.setOnClickListener { gameView.skill(3) }
         btnSkill4.setOnClickListener { gameView.skill(4) }
+        btnSkill5.setOnClickListener { gameView.skill(5) }
         gameView.onWeapon = { w ->
             runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
@@ -398,10 +403,11 @@ class MainActivity : AppCompatActivity() {
                         val label = if (p.hollow) "Vasto Lorde " + Math.ceil(p.hollowT.toDouble()).toInt() + "s" else "Ichigo"
                         if (tvClasseHud.text.toString() != label) tvClasseHud.text = label
                         val nowMs = System.currentTimeMillis()
-                        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
-                        val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd)
+                        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4, btnSkill5)
+                        val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd, tvSkill5Cd)
                         var ping = false
-                        for (i in 0..3) {
+                        btnRoll.alpha = if (nowMs - p.lastIchiDash < Player.ICHI_DASH_CD) 0.45f else 1f
+                        for (i in 0..4) {
                             val c = p.skillCd(i + 1, nowMs)
                             if (prevCd[i] > 0f && c <= 0f) ping = true
                             prevCd[i] = c
@@ -594,6 +600,9 @@ class MainActivity : AppCompatActivity() {
         } else if (classe == Classe.PIKACHU) {
             btnRoll.setImageResource(R.drawable.hd_ic_pika_quick)
             btnRoll.contentDescription = "Ataque Rápido"
+        } else if (classe == Classe.ICHIGO) {
+            btnRoll.setImageResource(R.drawable.hd_ic_ichi_shunpo)
+            btnRoll.contentDescription = "Shunpo"
         } else {
             btnRoll.setImageResource(R.drawable.hd_ic_roll)
             btnRoll.contentDescription = "Rolar"
@@ -626,6 +635,7 @@ class MainActivity : AppCompatActivity() {
         btnSkill2.alpha = 1f
         btnSkill3.alpha = 1f
         btnSkill4.alpha = 1f
+        btnSkill5.alpha = 1f
         btnSkill1.visibility = skillVis
         btnSkill2.visibility = skill2Vis
         tvSkill1Cd.visibility = skillVis
@@ -636,6 +646,9 @@ class MainActivity : AppCompatActivity() {
         val skill4Vis = if (classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
         btnSkill4.visibility = skill4Vis
         tvSkill4Cd.visibility = skill4Vis
+        val skill5Vis = if (classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        btnSkill5.visibility = skill5Vis
+        tvSkill5Cd.visibility = skill5Vis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)
@@ -646,23 +659,31 @@ class MainActivity : AppCompatActivity() {
     private fun applyIchiForm(hollow: Boolean) {
         if (hollow) {
             btnSkill1.setImageResource(R.drawable.hd_ic_ichi_cero)
-            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_sonido)
+            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_garras)
             btnSkill3.setImageResource(R.drawable.hd_ic_ichi_grito)
-            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_mugetsu)
+            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_oscuras)
+            btnSkill5.setImageResource(R.drawable.hd_ic_ichi_mugetsu)
+            btnRoll.setImageResource(R.drawable.hd_ic_ichi_sonido)
             btnSkill1.contentDescription = "Cero"
-            btnSkill2.contentDescription = "Sonído"
+            btnSkill2.contentDescription = "Garras Rasgantes"
             btnSkill3.contentDescription = "Grito Hollow"
-            btnSkill4.contentDescription = "Mugetsu"
+            btnSkill4.contentDescription = "Cero Oscuras"
+            btnSkill5.contentDescription = "Mugetsu"
+            btnRoll.contentDescription = "Sonído"
             tvClasseHud.setTextColor(0xFFFF4B5C.toInt())
         } else {
             btnSkill1.setImageResource(R.drawable.hd_ic_ichi_getsuga)
-            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_shunpo)
+            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_jujisho)
             btnSkill3.setImageResource(R.drawable.hd_ic_ichi_spin)
-            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_hollow)
+            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_lunar)
+            btnSkill5.setImageResource(R.drawable.hd_ic_ichi_hollow)
+            btnRoll.setImageResource(R.drawable.hd_ic_ichi_shunpo)
             btnSkill1.contentDescription = "Getsuga Tenshou"
-            btnSkill2.contentDescription = "Shunpo"
+            btnSkill2.contentDescription = "Getsuga Jujisho"
             btnSkill3.contentDescription = "Redemoinho de Getsuga"
-            btnSkill4.contentDescription = "Vasto Lorde"
+            btnSkill4.contentDescription = "Golpe Lunar"
+            btnSkill5.contentDescription = "Vasto Lorde"
+            btnRoll.contentDescription = "Shunpo"
             tvClasseHud.setTextColor(0xFFF2B63D.toInt())
         }
     }

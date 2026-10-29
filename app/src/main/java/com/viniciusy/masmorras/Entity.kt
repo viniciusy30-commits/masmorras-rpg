@@ -92,14 +92,18 @@ class Player(
         const val ICHI_RATE_1 = 2.6f       // velocidade dos 2 primeiros golpes do combo do Ichigo
         const val ICHI_RATE_3 = 2.1f       // velocidade do 3º golpe
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
-        const val ICHI_DASH_T = 0.22f      // duração do Shunpo / Sonído
-        const val ICHI_DASH_SPD = 1200f    // velocidade inicial do Shunpo / Sonído
-        // Bankai: Getsuga, Shunpo, Redemoinho, Vasto Lorde
-        val ICHI_COST_N = floatArrayOf(0f, 20f, 14f, 26f, 40f)
-        val ICHI_CD_N = longArrayOf(0L, 3500L, 4500L, 8000L, 24000L)
-        // Vasto Lorde: Cero, Sonído, Grito Hollow, Mugetsu
-        val ICHI_COST_H = floatArrayOf(0f, 26f, 14f, 28f, 35f)
-        val ICHI_CD_H = longArrayOf(0L, 4500L, 3500L, 9000L, 12000L)
+        const val ICHI_DASH_T = 0.24f      // duração do Shunpo / Sonído (botão de rolar)
+        const val ICHI_DASH_DIST = 250f    // distância do Shunpo / Sonído
+        const val ICHI_DASH_CD = 800L      // recarga do Shunpo / Sonído (ms)
+        const val ICHI_DASH_SPD = 1200f    // velocidade de referência
+        const val ICHI_SKY_COST = 3.5f     // mana por segundo andando no céu
+        const val ICHI_SKY_H = 78f         // altura da plataforma de reiatsu
+        // Bankai: Getsuga Tenshou, Getsuga Jujisho, Redemoinho de Getsuga, Golpe Lunar, Vasto Lorde
+        val ICHI_COST_N = floatArrayOf(0f, 20f, 24f, 26f, 22f, 40f)
+        val ICHI_CD_N = longArrayOf(0L, 3500L, 5000L, 8000L, 6500L, 24000L)
+        // Vasto Lorde: Cero, Garras Rasgantes, Grito Hollow, Cero Oscuras, Mugetsu
+        val ICHI_COST_H = floatArrayOf(0f, 26f, 14f, 28f, 36f, 40f)
+        val ICHI_CD_H = longArrayOf(0L, 4500L, 3000L, 9000L, 11000L, 16000L)
     }
 
     // herói escolhido na criação de personagem (raça + atributos)
@@ -220,10 +224,15 @@ class Player(
     var ichiT = 0f
     var ichiDX = 0f
     var ichiDY = 0f
-    private val ichiReadyN = LongArray(5)
-    private val ichiReadyH = LongArray(5)
+    var ichiDurNow = ICHI_DASH_T   // duração do avanço atual
+    var ichiSpdNow = 1000f         // velocidade inicial do avanço atual
+    var ichiKind = 0               // 1 = dash (botão de rolar), 2 = avanço de skill
+    var lastIchiDash = 0L
+    var sky = false                // andando no céu (segurar pular)
+    private val ichiReadyN = LongArray(6)
+    private val ichiReadyH = LongArray(6)
 
-    fun ichiCost(k: Int): Float = (if (hollow) ICHI_COST_H else ICHI_COST_N)[k.coerceIn(1, 4)]
+    fun ichiCost(k: Int): Float = (if (hollow) ICHI_COST_H else ICHI_COST_N)[k.coerceIn(1, 5)]
 
     fun canAttack(now: Long): Boolean {
         if (rolling || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
@@ -350,10 +359,31 @@ class Player(
         return true
     }
 
+    /** Avanço veloz do Ichigo: [dist] px em [dur] s (kind 1 = Shunpo/Sonído no botão de rolar, 2 = avanço de skill). */
+    fun beginIchiDash(dx: Float, dy: Float, dist: Float, dur: Float, kind: Int) {
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        ichiDX = dx / l
+        ichiDY = dy / l
+        ichiDurNow = dur
+        ichiSpdNow = dist / (dur * 0.8f)
+        ichiKind = kind
+        ichiT = dur
+        phaseT = max(phaseT, dur + 0.1f)
+        facingX = ichiDX
+        facingY = ichiDY
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+    }
+
+    /** Dash do botão de rolar (só Ichigo): pronto quando não há skill, avanço ou recarga em andamento. */
+    fun ichiDashReady(now: Long): Boolean =
+        classe == Classe.ICHIGO && alive && skillK == 0 && ichiT <= 0f && !rolling && now - lastIchiDash >= ICHI_DASH_CD
+
     fun skillReady(k: Int, now: Long): Boolean {
         if (classe == Classe.ICHIGO) {
             val rd = if (hollow) ichiReadyH else ichiReadyN
-            return k in 1..4 && alive && skillK == 0 && ichiT <= 0f && !rolling && grounded && now >= rd[k] && mp >= ichiCost(k)
+            return k in 1..5 && alive && skillK == 0 && ichiT <= 0f && !rolling && (grounded || sky) && now >= rd[k] && mp >= ichiCost(k)
         }
         if (classe == Classe.PIKACHU) {
             return k in 1..4 && alive && skillK == 0 && voltT <= 0f && !rolling && grounded && now >= pikaReadyAt[k] && mp >= PIKA_COST[k]
@@ -369,7 +399,7 @@ class Player(
     fun skillCd(k: Int, now: Long): Float {
         if (classe == Classe.ICHIGO) {
             val rd = if (hollow) ichiReadyH else ichiReadyN
-            return if (k in 1..4) ((rd[k] - now) / 1000f).coerceAtLeast(0f) else 0f
+            return if (k in 1..5) ((rd[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         }
         if (classe == Classe.PIKACHU) return if (k in 1..4) ((pikaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
@@ -578,6 +608,14 @@ class Player(
     /** Gravidade e acompanhamento do relevo. */
     fun updateVertical(dt: Float, groundPx: Float) {
         ground = groundPx
+        if (sky) {
+            // andando no céu: sobe suave até a plataforma de reiatsu e fica flutuando
+            flyClock += dt
+            val target = groundPx + ICHI_SKY_H + sin(flyClock * 2.2f) * 2f
+            alt += (target - alt) * min(1f, dt * 3.0f)
+            vz = 0f
+            return
+        }
         if (flying) {
             // voo: flutua acima do chão com leve balanço
             flyClock += dt
@@ -643,8 +681,8 @@ class Player(
             vy = rollDY * spd
         } else if (ichiT > 0f) {
             // Shunpo / Sonído: avanço veloz que freia no fim
-            val q = 1f - ichiT / ICHI_DASH_T
-            val spd = ICHI_DASH_SPD * (1.1f - 0.6f * q)
+            val q = 1f - ichiT / ichiDurNow
+            val spd = ichiSpdNow * (1.1f - 0.6f * q)
             vx = ichiDX * spd
             vy = ichiDY * spd
         } else if (voltT > 0f) {
@@ -662,7 +700,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
             vx = inX * velH * 60f * slow
             vy = inY * velH * 60f * slow
         }
@@ -695,7 +733,15 @@ class Player(
         }
         landSquash = (landSquash - dt * 4.8f).coerceAtLeast(0f)
         attackPunch = (attackPunch - dt * 5.5f).coerceAtLeast(0f)
-        if (maxMpH > 0f && mp < maxMpH) {
+        if (!alive) sky = false
+        if (classe == Classe.ICHIGO && sky) {
+            mp -= ICHI_SKY_COST * dt
+            if (mp <= 0f) {
+                mp = 0f
+                sky = false
+                glide = true
+            }
+        } else if (maxMpH > 0f && mp < maxMpH) {
             mp = (mp + regenMpH * dt).coerceAtMost(maxMpH)
         }
         if (regenHpH > 0f && alive && hp < maxHp) {
@@ -736,6 +782,24 @@ class Player(
         paint.color = (classe.cor and 0x00FFFFFF) or 0x99000000.toInt()
         canvas.drawOval(sx - radius * 1.1f * k, gy - radius * 0.36f * k, sx + radius * 1.1f * k, gy + radius * 0.42f * k, paint)
         paint.style = Paint.Style.FILL
+
+        if (classe == Classe.ICHIGO && sky) {
+            // plataforma de reiatsu sob os pés: disco rubro-negro com anéis girando
+            val pr = radius * 1.35f
+            val pulse = 0.5f + 0.5f * sin(flyClock * 5f)
+            paint.color = 0x661A0610
+            canvas.drawOval(sx - pr * 1.25f, feet - pr * 0.42f, sx + pr * 1.25f, feet + pr * 0.52f, paint)
+            paint.color = (0x33 + (0x30 * pulse).toInt() shl 24) or 0xC8102E
+            canvas.drawOval(sx - pr, feet - pr * 0.34f, sx + pr, feet + pr * 0.42f, paint)
+            paint.color = 0x99FF4B5C.toInt()
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.5f
+            canvas.drawOval(sx - pr, feet - pr * 0.34f, sx + pr, feet + pr * 0.42f, paint)
+            paint.color = 0xCCFFFFFF.toInt()
+            paint.strokeWidth = 1.5f
+            canvas.drawOval(sx - pr * 0.62f, feet - pr * 0.21f, sx + pr * 0.62f, feet + pr * 0.26f, paint)
+            paint.style = Paint.Style.FILL
+        }
 
         VoxelArt.flash = hitFlash
         Warrior3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
@@ -784,7 +848,7 @@ class Player(
         Pikachu3D.skillK = if (classe == Classe.PIKACHU) skillK else 0
         Pikachu3D.skillP = if (classe == Classe.PIKACHU && skillK != 0) 1f - skillT / skillDur else -1f
         Pikachu3D.alphaV = 1f
-        Ichigo3D.rollP = if (classe == Classe.ICHIGO && rollT > 0f) 1f - rollT / rollDur else -1f
+        Ichigo3D.rollP = if (classe == Classe.ICHIGO && ichiT > 0f && ichiKind == 1) 1f - ichiT / ichiDurNow else -1f
         Ichigo3D.inAir = up > 1f
         Ichigo3D.airH = up
         Ichigo3D.airVz = vz
@@ -793,6 +857,7 @@ class Player(
         Ichigo3D.skillP = if (classe == Classe.ICHIGO && skillK != 0) 1f - skillT / skillDur else -1f
         Ichigo3D.skillHol = ichiSkH
         Ichigo3D.hollowOn = classe == Classe.ICHIGO && hollow
+        Ichigo3D.sky = classe == Classe.ICHIGO && sky
         Ichigo3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f

@@ -1,3 +1,12 @@
+#id 2026-10-29-c
+#titulo Ichigo com 5 skills, Shunpo no botão de rolar e andar no céu
+- Cada forma do Ichigo agora tem 5 skills (o 5º botão fica acima do de pular)
+- Bankai: Getsuga Tenshou, Getsuga Jujisho (grande cruz de reiatsu que atravessa todos e gira), Redemoinho de Getsuga, Golpe Lunar (salto com golpe de cima para baixo que racha o chão com uma lua enorme) e Vasto Lorde
+- Vasto Lorde: Cero, Garras Rasgantes (arrancada curta com chuva de cortes de garra), Grito Hollow, Cero Oscuras (feixe negro maior e mais forte que o Cero, com anel no chão) e Mugetsu
+- O botão de rolar do Ichigo virou Shunpo (Bankai) / Sonído (Vasto Lorde): avanço veloz e invulnerável de 250 px com imagens residuais, que corta quem estiver no caminho, para antes das paredes e recarrega em 0,8 s
+- Andar no céu: pule e continue segurando o botão de pular para subir numa plataforma de reiatsu e andar no ar (gasta mana por segundo); solte para descer planando. Dá para usar skills e o dash lá em cima
+- Efeitos novos: cortes em linha, faíscas de impacto, onda lunar rasteira, feixe negro e cruz do Jujisho
+
 #id 2026-10-29-b
 #titulo Ichigo (luta contra o Aizen) e forma Vasto Lorde
 - Nova classe Ichigo, em 3D de prismas facetados (muito mais polígonos que os outros heróis): Tensa Zangetsu negra, manto rasgado do Shinigami Substituto, cabelo laranja espetado e olhar fechado; ele não passa pela criação de personagem
