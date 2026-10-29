@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            if (classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
+            onClassPicked(classe) // sem customização: heróis prontos da história
         }
         findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)

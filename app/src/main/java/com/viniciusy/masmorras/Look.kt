@@ -112,6 +112,8 @@ object Herois {
         ctx?.getSharedPreferences("heroi_" + classe.name, Context.MODE_PRIVATE)
 
     private fun carregar(classe: Classe): HeroiPerfil {
+        // Sem customização: todo herói usa o visual e os atributos padrão da classe (ignora o que foi salvo antes).
+        if (true) return HeroiPerfil(classe)
         val p = HeroiPerfil(classe)
         val sp = prefs(classe) ?: return p
         try {

@@ -29,7 +29,7 @@ object Archer3D {
 
     private const val MAX = 1900
     private const val PITCH = 0.8f
-    private const val PX = 1.6f
+    private const val PX = 1.95f
     private val COSP = cos(PITCH)
     private val SINP = sin(PITCH)
     private val TWO_PI = (2.0 * PI).toFloat()
@@ -173,65 +173,50 @@ object Archer3D {
 
     // ───────────── cubos ─────────────
 
+    private val gfx = Gfx3D()
+
+    /** material do renderizador liso a partir da cor da peça (metal brilha, pele e cabelo têm brilho próprio) */
+    private fun matFor(col: Int): Int = when (col) {
+        STEEL, STEEL_L, STEEL_D, BRASS, BRASS_L, BRASS_D -> Gfx3D.M_METAL
+        SKIN, SKIN_D, LIP, BLUSH -> Gfx3D.M_SKIN
+        HAIR, HAIR_L, HAIR_D, FUR, FUR_D -> Gfx3D.M_HAIR
+        LEATHER, LEATHER_L, LEATHER_D, BOOT, BOOT_L -> Gfx3D.M_LEATHER
+        BOW, BOW_L, BOW_D, SHAFT -> Gfx3D.M_WOOD
+        else -> Gfx3D.M_CLOTH
+    }
+
     private fun cube(
         cx: Float, cy: Float, cz: Float, hx: Float, hy: Float, hz: Float,
         color: Int, emissive: Boolean = false
     ) {
         if (n >= MAX || Roupas.ocultar) return
-        val m = stack[top]
         val base = V.tint(color)
-        val o = n * 8
-        for (i in 0..7) {
-            val x = cx + (if ((i and 1) == 0) -hx else hx)
-            val y = cy + (if (((i shr 1) and 1) == 0) -hy else hy)
-            val z = cz + (if (((i shr 2) and 1) == 0) -hz else hz)
-            val wy = m[3] * x + m[4] * y + m[5] * z + m[10]
-            val wx = m[0] * x + m[1] * y + m[2] * z + m[9]
-            val wz = m[6] * x + m[7] * y + m[8] * z + m[11]
-            scrX[o + i] = ox + wx * rs
-            scrY[o + i] = oy + (wz * SINP - wy * COSP) * rs
-            scrD[o + i] = wy * SINP + wz * COSP + depthBias
-            scrH[o + i] = wy
-        }
-        val cwy = m[3] * cx + m[4] * cy + m[5] * cz + m[10]
-        val cwz = m[6] * cx + m[7] * cy + m[8] * cz + m[11]
-        keys[n] = cwy * SINP + cwz * COSP
-        noOut[n] = nextNoOut
-        for (f in 0..5) {
-            val k = AXIS[f]
-            val sg = SIGN[f]
-            val nx = sg * m[k]
-            val ny = sg * m[3 + k]
-            val nz = sg * m[6 + k]
-            val idx = n * 6 + f
-            faceEm[idx] = emissive
-            if (ny * SINP + nz * COSP > 0.001f) {
-                if (emissive) {
-                    faceCol[idx] = base
-                } else if (zMode) {
-                    // normal "de corpo": só o giro do herói, ignora o balanço dos membros
-                    var lbx = 0f
-                    var lby = 0f
-                    var lbz = 0f
-                    if (k == 0) {
-                        lbx = sg * lYc
-                        lbz = -sg * lYs
-                    } else if (k == 1) {
-                        lby = sg
-                    } else {
-                        lbx = sg * lYs
-                        lbz = sg * lYc
-                    }
-                    val dl = 0.7f * (lbx * NLX + lby * NLY + lbz * NLZ) + 0.3f * (nx * NLX + ny * NLY + nz * NLZ)
-                    val shd = 0.62f + 0.34f * max(0f, dl) + 0.10f * (ny * 0.5f + 0.5f)
-                    faceCol[idx] = V.shade(base, shd)
-                } else {
-                    val dl = nx * LX + ny * LY + nz * LZ
-                    faceCol[idx] = V.shade(base, 0.52f + 0.62f * max(0f, dl))
-                }
-            } else {
-                faceCol[idx] = 0
-            }
+        System.arraycopy(stack[top], 0, gfx.cur(), 0, 12)
+        gfx.outline = !nextNoOut
+        gfx.bias = depthBias
+        gfx.mat = if (emissive) Gfx3D.M_GLOW else matFor(color)
+        val mn = min(hx, min(hy, hz))
+        val mx = max(hx, max(hy, hz))
+        if (mn < mx * 0.22f) gfx.rbox(cx, cy, cz, hx, hy, hz, base) else gfx.pill(cx, cy, cz, hx, hy, hz, base)
+        n++
+    }
+
+    /** volumes orgânicos (coxa, bota, braço, peito, pescoço) no lugar dos blocos grandes */
+    private fun mass(color: Int, kind: Int) {
+        if (n >= MAX || Roupas.ocultar) return
+        val base = V.tint(color)
+        System.arraycopy(stack[top], 0, gfx.cur(), 0, 12)
+        gfx.outline = true
+        gfx.bias = depthBias
+        gfx.mat = matFor(color)
+        when (kind) {
+            0 -> ArcherParts.thigh(gfx, base)
+            1 -> ArcherParts.calf(gfx, base)
+            2 -> ArcherParts.foot(gfx, base)
+            3 -> ArcherParts.upperArm(gfx, base)
+            4 -> ArcherParts.foreArm(gfx, base)
+            5 -> ArcherParts.chest(gfx, base)
+            else -> ArcherParts.neck(gfx, base)
         }
         n++
     }
@@ -346,105 +331,15 @@ object Archer3D {
 
     private fun flushZ(c: Canvas) {
         if (n == 0) return
-        var minX = 1e9f
-        var minY = 1e9f
-        var maxX = -1e9f
-        var maxY = -1e9f
-        for (i in 0 until n * 8) {
-            val x = scrX[i]
-            val y = scrY[i]
-            if (x < minX) minX = x
-            if (x > maxX) maxX = x
-            if (y < minY) minY = y
-            if (y > maxY) maxY = y
-        }
-        if (!(maxX > minX) || !(maxY > minY)) return
-        val bx0 = floor(minX - 3f)
-        val by0 = floor(minY - 3f)
-        val wpx = maxX - bx0 + 3f
-        val hpx = maxY - by0 + 3f
-        if (wpx > 2000f || hpx > 2000f) return
-        var ss = min(SS_MAX * max(1f, V.zoom), 5f)
+        val ss0 = min(SS_MAX * max(1f, V.zoom), 5f)
         val lim = kotlin.math.min(BUF_MAX, VoxelArt.bufLimit)
-        if (wpx * hpx * ss * ss > lim) ss = sqrt(lim.toFloat() / (wpx * hpx)) * 0.97f
-        val rw = (wpx * ss).toInt() + 1
-        val rh = (hpx * ss).toInt() + 1
-        if (rw * rh > lim) return
-        rW = rw
-        rH = rh
-        rBx = bx0
-        rBy = by0
-        rSs = ss
-        val size = rw * rh
-        java.util.Arrays.fill(zb, 0, size, -1e9f)
-        java.util.Arrays.fill(ib, 0, size, 0)
-        java.util.Arrays.fill(cb, 0, size, 0)
-
-        // rasteriza todas as faces visíveis; a ordem de desenho só desempata faces coplanares
-        for (ci in 0 until n) {
-            val o = ci * 8
-            val bias = ci * 0.0004f
-            for (f in 0..5) {
-                val col = faceCol[ci * 6 + f]
-                if (col == 0) continue
-                val b = f * 4
-                val i0 = o + CORN[b]
-                val i1 = o + CORN[b + 1]
-                val i2 = o + CORN[b + 2]
-                val i3 = o + CORN[b + 3]
-                val id = ci * 6 + f + 1
-                val lit = !faceEm[ci * 6 + f]
-                tri(i0, i1, i2, col, id, bias, lit)
-                tri(i0, i2, i3, col, id, bias, lit)
-            }
-        }
-
-        // contorno: forte na silhueta e nos saltos de profundidade, suave nas dobras entre faces
-        for (y in 0 until rh) {
-            val row = y * rw
-            for (x in 0 until rw) {
-                val i = row + x
-                val id = ib[i]
-                if (id == 0) continue
-                if (noOut[(id - 1) / 6]) continue
-                val z = zb[i]
-                var strong = false
-                var soft = false
-                for (k in 0..7) {
-                    val nx = x + OFX[k]
-                    val ny = y + OFY[k]
-                    var nid = 0
-                    var nz = 0f
-                    if (nx >= 0 && nx < rw && ny >= 0 && ny < rh) {
-                        val j = ny * rw + nx
-                        nid = ib[j]
-                        nz = zb[j]
-                    }
-                    if (nid == 0) {
-                        strong = true
-                        break
-                    }
-                    if (nid != id) {
-                        if (nz < z - EDGE_Z) {
-                            strong = true
-                            break
-                        } else if (k < 4 && nid < id && nz <= z + EDGE_Z) {
-                            soft = true
-                        }
-                    }
-                }
-                if (strong) {
-                    cb[i] = V.shade(cb[i], 0.42f)
-                } else if (soft) {
-                    cb[i] = V.shade(cb[i], 0.74f)
-                }
-            }
-        }
-
-        val b = ensureBmp(rw, rh)
-        b.setPixels(cb, 0, rw, 0, 0, rw, rh)
-        srcR.set(0, 0, rw, rh)
-        dstR.set(bx0, by0, bx0 + rw / ss, by0 + rh / ss)
+        if (!gfx.render(ss0, lim, 1f)) return
+        val w = gfx.outW
+        val h = gfx.outH
+        val b = ensureBmp(w, h)
+        b.setPixels(gfx.pix, 0, w, 0, 0, w, h)
+        srcR.set(0, 0, w, h)
+        dstR.set(gfx.bx0, gfx.by0, gfx.bx0 + w / gfx.ss, gfx.by0 + h / gfx.ss)
         bmpPaint.alpha = (alphaV.coerceIn(0f, 1f) * 255f).toInt()
         c.drawBitmap(b, srcR, dstR, bmpPaint)
     }
@@ -545,7 +440,7 @@ object Archer3D {
         Roupas.coxa(hg, Classe.ARQUEIRO, side)
             Roupas.ocultar = HeroLook.pernas > 0
         // coxa: calça com dobras, costura lateral e faixas de couro
-        cube(0f, -2.7f, 0f, 2.1f, 2.9f, 2.2f, PANTS)
+        mass(PANTS, 0)
         cube(0f, -1.0f, 2.24f, 1.5f, 0.9f, 0.05f, PANTS_L)
         cube(0f, -3.6f, 2.24f, 1.1f, 0.5f, 0.05f, PANTS_L)
         cube(side * 2.14f, -2.3f, 0f, 0.05f, 2.3f, 0.5f, PANTS_L)
@@ -567,7 +462,7 @@ object Archer3D {
         cube(-1.15f, -0.7f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
         cube(1.15f, -0.7f, 2.62f, 0.2f, 0.2f, 0.07f, BRASS_D)
         // cano da bota com pelo no topo
-        cube(0f, -3.1f, 0f, 2.0f, 2.7f, 2.05f, BOOT)
+        mass(BOOT, 1)
         cube(0f, -2.0f, 2.08f, 1.5f, 1.6f, 0.05f, BOOT_L)
         cube(0f, -0.7f, 0f, 2.4f, 0.8f, 2.45f, FUR)
         cube(0f, -0.2f, 0f, 2.45f, 0.25f, 2.5f, FUR_D)
@@ -591,7 +486,7 @@ object Archer3D {
         translate(0f, -5.4f, 0f)
         rotX(foot)
         // pé: sola, biqueira reforçada, calcanhar e costura
-        cube(0f, 0.2f, 1.2f, 2.3f, 1.4f, 3.2f, BOOT)
+        mass(BOOT, 2)
         cube(0f, -1.1f, 1.3f, 2.45f, 0.3f, 3.4f, LEATHER_D)
         cube(0f, 0.9f, 4.3f, 1.6f, 0.8f, 0.9f, BOOT_L)
         cube(0f, 0.5f, 5.0f, 1.2f, 0.7f, 0.4f, BOOT)
@@ -617,13 +512,13 @@ object Archer3D {
     }
 
     private fun upperArm() {
-        cube(0f, -2.7f, 0f, 1.95f, 2.9f, 1.95f, TUNIC)
+        mass(TUNIC, 3)
         cube(0f, -1.2f, 2.0f, 0.8f, 1.2f, 0.1f, TUNIC_L)
         cube(0f, -5.6f, 0f, 2.15f, 0.35f, 2.15f, LEATHER_D)
     }
 
     private fun foreArm(left: Float, gl: Float) {
-        cube(0f, -2.4f, 0f, 2.35f, 2.4f, 2.35f, TUNIC_L)
+        mass(TUNIC_L, 4)
         cube(0f, -1.2f, 2.4f, 1.0f, 0.8f, 0.06f, TUNIC)
         cube(0f, -5.9f, 0f, 2.55f, 2.2f, 2.55f, LEATHER)
         cube(0f, -4.2f, 0f, 2.65f, 0.3f, 2.65f, LEATHER_D)
@@ -990,7 +885,7 @@ object Archer3D {
         Roupas.capa(hg, Classe.ARQUEIRO)
             Roupas.ocultar = HeroLook.peito > 0
         cube(0f, 5.2f, 0f, 4.7f, 0.9f, 3.2f, TUNIC_D)
-        cube(0f, 9.8f, 0f, 5.5f, 4.8f, 3.4f, TUNIC)
+        mass(TUNIC, 5)
         cube(0f, 10.0f, 3.45f, 4.3f, 4.0f, 0.2f, LEATHER)
         cube(0f, 10.0f, 3.62f, 3.9f, 3.6f, 0.08f, LEATHER_L)
         cube(0f, 7.2f, 3.5f, 4.4f, 0.3f, 0.3f, LEATHER_D)
@@ -1087,7 +982,7 @@ object Archer3D {
         rotY(turn)
         rotX(tilt)
         Roupas.cabecaEsc(hg, Classe.ARQUEIRO)
-        cube(0f, 0.3f, 0f, 2.1f, 1f, 2.1f, SKIN_D)
+        mass(SKIN, 6)
         // rosto fino e pálido
         cube(0f, 5f, 0f, 4.3f, 4.5f, 4.1f, SKIN)
         cube(0f, 1.3f, 0.3f, 3.1f, 0.7f, 3.8f, SKIN)
@@ -1839,6 +1734,7 @@ object Archer3D {
         oy = fy
         n = 0
         top = 0
+        gfx.begin(rs, ox, oy, PITCH)
         zMode = true
         lYc = cos(yaw)
         lYs = sin(yaw)
@@ -2248,6 +2144,7 @@ object Archer3D {
         oy = gy
         n = 0
         top = 0
+        gfx.begin(rs, ox, oy, PITCH)
         zMode = true
         lYc = 1f
         lYs = 0f
