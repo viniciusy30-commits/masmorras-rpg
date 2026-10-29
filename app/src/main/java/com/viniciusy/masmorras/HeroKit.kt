@@ -89,19 +89,83 @@ object HeroKit {
         Classe.NINJA -> Cranio(9.5f, 4.5f, 4.3f, 0xFF1C1626.toInt(), 0.8f)
     }
 
-    /** Base de todo penteado: topo com brilho, testa, costeletas e nuca (em camadas, no estilo dos blocos). */
+    private fun cor3(i: Int, a: Int, b: Int, c: Int): Int {
+        val m = ((i % 3) + 3) % 3
+        return if (m == 0) a else if (m == 1) b else c
+    }
+
+    /**
+     * Base de todo penteado: calota em degraus com fios em relevo, testa irregular,
+     * laterais escalonadas (sem frestas) e nuca em colunas de mechas.
+     */
     private fun base(g: HeroGfx, k: Cranio, col: Int, colL: Int, colD: Int) {
-        g.cube(0f, k.top + 0.45f, -0.1f, k.hw + 0.35f, 0.85f, k.hd + 0.35f, col)
-        g.cube(0f, k.top + 1.35f, -0.2f, k.hw * 0.72f, 0.15f, k.hd * 0.78f, colL)
-        g.cube(0f, k.top - 1.0f, k.hd + 0.2f, k.hw + 0.1f, 0.9f, 0.3f, col)
-        g.cube(0f, k.top - 1.95f, k.hd + 0.25f, k.hw * 0.78f, 0.12f, 0.25f, colD)
-        for (i in 0..1) {
-            val sd = if (i == 0) 1f else -1f
-            g.cube(sd * (k.hw + 0.25f), k.top - 2.3f, -0.5f, 0.4f, 2.3f, k.hd * 0.55f, colD)
-            g.cube(sd * (k.hw + 0.55f), k.top - 1.4f, -0.5f, 0.12f, 1.2f, k.hd * 0.45f, col)
+        val t = k.top
+        val w = k.hw
+        val d = k.hd
+        // sombra por baixo: as frestas entre as mechas nunca mostram pele
+        g.cube(0f, t - 1.0f, -0.1f, w + 0.2f, 1.2f, d + 0.2f, colD)
+        // domo em degraus
+        g.cube(0f, t + 0.45f, -0.1f, w + 0.35f, 0.85f, d + 0.35f, col)
+        g.cube(0f, t + 1.2f, -0.15f, (w + 0.1f) * 0.88f, 0.3f, (d + 0.1f) * 0.9f, col)
+        if (!HeroLook.elmo) {
+            g.cube(0f, t + 1.55f, -0.2f, w * 0.6f, 0.1f, d * 0.66f, colL)
+            // fios que saem de um redemoinho atrás do topo e se abrem para a testa e as laterais
+            for (r in 0..10) {
+                val a = -1.75f + r * 0.35f
+                val sa = kotlin.math.abs(sin(a))
+                val ca = kotlin.math.cos(a)
+                val dx = if (sa < 0.25f) 0.25f else sa
+                val dz = if (ca > 0.25f) ca else 0.25f
+                val len = minOf(w / dx, (d + 1.2f) / dz) * 0.62f
+                g.push()
+                g.translate(0f, t + 1.45f + (r % 3) * 0.05f, -1.3f)
+                g.rotY(a)
+                g.cube(0f, 0f, len * 0.5f + 0.4f, 0.3f + (r % 2) * 0.08f, 0.1f, len * 0.5f, if (r % 2 == 0) colL else col)
+                g.pop()
+            }
+            g.cube(0f, t + 1.6f, -1.3f, 0.5f, 0.08f, 0.5f, colD)
         }
-        g.cube(0f, k.top - 2.9f, -k.hd - 0.25f, k.hw + 0.25f, 3.3f, 0.5f, colD)
-        g.cube(0f, k.top - 1.4f, -k.hd - 0.55f, k.hw * 0.8f, 1.6f, 0.15f, col)
+        // testa: linha do cabelo irregular
+        val sp = w * 2f / 7f
+        for (i in -3..3) {
+            val ln = 1.7f + ((i * 7 + 21) % 3) * 0.3f
+            g.cube(i * sp, t + 0.1f - ln * 0.5f, d + 0.2f + (kotlin.math.abs(i) % 2) * 0.08f, sp * 0.5f + 0.06f, ln * 0.5f, 0.3f, cor3(i + 3, col, colL, col))
+        }
+        g.cube(0f, t - 1.95f, d + 0.25f, w * 0.78f, 0.12f, 0.25f, colD)
+        // laterais: 4 colunas da frente para trás, mais curtas na frente (costeleta) e mais longas atrás
+        val lens = floatArrayOf(2.6f, 3.6f, 4.4f, 4.7f)
+        for (si in 0..1) {
+            val sd = if (si == 0) 1f else -1f
+            for (j in 0..3) {
+                val z = d * 0.55f - j * d * 0.45f
+                val ln = lens[j]
+                g.cube(sd * (w + 0.25f), t + 0.1f - ln * 0.5f, z, 0.4f + (j % 2) * 0.08f, ln * 0.5f, d * 0.24f + 0.06f, cor3(j + si, colD, col, colD))
+                g.cube(sd * (w + 0.62f), t - ln * 0.35f, z + 0.1f, 0.13f, ln * 0.34f, d * 0.17f, if (j % 2 == 0) colL else col)
+            }
+        }
+        // nuca: colunas de comprimentos diferentes
+        for (i in -3..3) {
+            val ln = 4.3f - kotlin.math.abs(i) * 0.25f + (((i + 3) * 5) % 3) * 0.2f
+            g.cube(i * sp, t + 0.1f - ln * 0.5f, -d - 0.25f - (kotlin.math.abs(i) % 2) * 0.1f, sp * 0.5f + 0.1f, ln * 0.5f, 0.5f, cor3(i + 4, colD, col, colD))
+        }
+        g.cube(0f, t - 1.4f, -d - 0.6f, w * 0.8f, 1.6f, 0.15f, col)
+    }
+
+    /** Cortina de mechas que cai atrás da cabeça (cabelos longos). */
+    private fun cortinaTras(g: HeroGfx, k: Cranio, col: Int, colL: Int, colD: Int, n: Int, onda: Float, bal: Float) {
+        g.push(); g.translate(0f, k.top - 5.0f, -k.hd - 0.3f); g.rotX(0.05f + bal)
+        for (i in -3..3) mecha(g, i * k.hw * 0.27f, -0.4f, -0.1f * kotlin.math.abs(i), n, k.hw * 0.15f, 0.55f, 1.5f, if (i % 2 == 0) col else colL, colL, colD, onda)
+        g.pop()
+    }
+
+    /** Mechas dos dois lados do rosto, caindo sobre os ombros. */
+    private fun mechasLaterais(g: HeroGfx, k: Cranio, col: Int, colL: Int, colD: Int, n: Int, onda: Float, bal: Float, z: Float) {
+        for (sd in floatArrayOf(-1f, 1f)) {
+            g.push(); g.translate(sd * (k.hw + 0.4f), k.top - 3.4f, z); g.rotX(-0.04f - bal)
+            mecha(g, 0f, 0f, 0f, n, 0.55f, 1.0f, 1.45f, col, colL, colD, onda)
+            mecha(g, sd * 0.4f, -0.2f, 1.1f, n - 1, 0.42f, 0.5f, 1.45f, colL, colL, colD, onda)
+            g.pop()
+        }
     }
 
     /** Mecha pendurada que afina para a ponta (n camadas), com ondulação opcional. */
@@ -110,6 +174,7 @@ object HeroKit {
             val f = 1f - j.toFloat() / (n + 1)
             val xx = x + (if (j % 2 == 0) onda else -onda)
             g.cube(xx, y - j * step, z, w * (0.55f + 0.45f * f), step * 0.62f, dp * (0.6f + 0.4f * f), if (j % 3 == 1) colD else if (j % 3 == 2) colL else col)
+            if (j % 2 == 0 && j > 0) g.cube(xx - w * 0.2f, y - j * step, z + dp * 0.85f, w * 0.18f, step * 0.5f, dp * 0.2f, colL)
         }
     }
 
@@ -384,6 +449,136 @@ object HeroKit {
                     g.pop()
                 }
                 franja(g, k, col, colL, colD, 1.0f, 2.4f)
+            }
+            24 -> { // longo com franja cortina: abre ao meio e emoldura o rosto
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top + 1.65f, -0.3f, 0.1f, 0.08f, k.hd * 0.75f, colD)
+                cortinaTras(g, k, col, colL, colD, 8, 0.12f, bal)
+                mechasLaterais(g, k, col, colL, colD, 6, 0.1f, bal, 1.4f)
+                for (sd in sds) for (i in 0..3) {
+                    val h = 1.9f + i * 0.85f
+                    g.cube(sd * (0.7f + i * k.hw * 0.24f), k.top - 1.5f - h * 0.5f, k.hd + 0.45f - i * 0.1f, k.hw * 0.13f, h * 0.5f, 0.27f, if (i % 2 == 0) col else colL)
+                }
+            }
+            25 -> { // cachos longos: espirais cobrindo costas e ombros
+                base(g, k, col, colL, colD)
+                for (i in -3..3) for (j in 0..5) {
+                    val xx = i * k.hw * 0.29f + (if (j % 2 == 0) 0.5f else -0.5f)
+                    g.cube(xx, k.top - 4.6f - j * 1.25f, bz - (j % 2) * 0.25f, 0.95f, 0.7f, 0.85f, cor3(i + j, col, colL, colD))
+                }
+                for (sd in sds) for (j in 0..4) {
+                    g.cube(sd * (k.hw + 0.9f + (j % 2) * 0.35f), k.top - 3.6f - j * 1.3f, 1.6f - (j % 2) * 0.5f, 0.85f, 0.65f, 0.8f, cor3(j, col, colL, colD))
+                }
+                for (r in 0..6) g.cube(((r * 7) % 5 - 2) * 1.4f, k.top + 1.5f * v + 0.2f, ((r * 3) % 5 - 2) * 1.5f, 0.9f, 0.5f * v + 0.2f, 0.9f, colL)
+                franja(g, k, col, colL, colD, 0.5f, 2.0f)
+            }
+            26 -> { // chanel assimétrico: um lado longo até o queixo, o outro curto
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top - 3.2f, -k.hd - 0.5f, k.hw + 0.6f, 3.1f, 0.6f, col)
+                g.cube(0f, k.top - 3.2f, -k.hd - 1.0f, k.hw * 0.8f, 2.7f, 0.12f, colL)
+                g.cube(-(k.hw + 0.6f), k.top - 4.6f, 0f, 0.65f, 4.3f, k.hd * 0.85f, col)
+                g.cube(-(k.hw + 0.95f), k.top - 4.4f, 0f, 0.15f, 3.4f, k.hd * 0.65f, colL)
+                g.cube(-(k.hw - 0.1f), k.top - 9.2f, 0.4f, 0.7f, 0.4f, k.hd * 0.7f, colD)
+                g.cube(k.hw + 0.5f, k.top - 3.0f, -0.3f, 0.55f, 2.5f, k.hd * 0.75f, col)
+                g.cube(k.hw + 0.8f, k.top - 2.8f, -0.3f, 0.12f, 1.9f, k.hd * 0.55f, colL)
+                franja(g, k, col, colL, colD, -1.2f, 2.7f)
+            }
+            27 -> { // pixie repicado com franja lateral
+                base(g, k, col, colL, colD)
+                for (i in -3..3) g.cube(i * k.hw * 0.27f, k.top + 1.6f + ((i * 5 + 15) % 3) * 0.3f * v, -0.3f + (i and 1) * 0.8f, k.hw * 0.15f, 0.4f * v + 0.1f, 1.3f, if (i % 2 == 0) colL else col)
+                for (i in -2..2) g.cube(i * 1.4f + 1.2f, k.top - 1.7f, k.hd + 0.45f, 0.7f, 1.0f - kotlin.math.abs(i) * 0.1f, 0.27f, if (i % 2 == 0) col else colL)
+                for (sd in sds) g.cube(sd * (k.hw + 0.5f), k.top - 4.9f, 1.8f, 0.35f, 0.5f, 0.3f, colD)
+            }
+            28 -> { // duas tranças longas sobre os ombros, com laços
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top + 1.65f, -0.3f, 0.1f, 0.08f, k.hd * 0.75f, colD)
+                for (sd in sds) {
+                    g.push(); g.translate(sd * (k.hw + 0.5f), k.top - 3.0f, 1.4f); g.rotZ(sd * -0.08f); g.rotX(bal * 2f)
+                    for (j in 0..8) {
+                        val wv = if (j % 2 == 0) 0.4f else -0.4f
+                        g.cube(wv, -0.7f - j * 1.25f, 0f, 0.75f - j * 0.03f, 0.7f, 0.7f, if (j % 2 == 0) col else colD)
+                        g.cube(-wv, -1.3f - j * 1.25f, 0.05f, 0.7f - j * 0.03f, 0.7f, 0.65f, if (j % 2 == 0) colD else colL)
+                    }
+                    g.cube(0f, -1.2f, 0f, 0.9f, 0.3f, 0.85f, 0xFFE04A7A.toInt())
+                    g.cube(0f, -11.6f, 0f, 0.8f, 0.4f, 0.75f, 0xFFE04A7A.toInt())
+                    g.cube(0f, -12.5f, 0f, 0.5f, 0.7f, 0.45f, col)
+                    g.pop()
+                }
+                franja(g, k, col, colL, colD, 0f, 1.9f)
+            }
+            29 -> { // coque de bailarina: liso, no alto, com rede e fita
+                base(g, k, col, colL, colD)
+                g.cube(0f, k.top + 2.2f * v, -0.4f, 1.9f, 1.3f * v + 0.2f, 1.9f, col)
+                g.cube(0f, k.top + 3.2f * v + 0.2f, -0.4f, 1.4f, 0.5f, 1.4f, colL)
+                for (i in 0..5) g.cube(kotlin.math.cos(i * 1.047f) * 1.9f, k.top + 2.2f * v, -0.4f + kotlin.math.sin(i * 1.047f) * 1.9f, 0.3f, 1.0f * v + 0.2f, 0.3f, colD)
+                g.cube(0f, k.top + 1.5f, -0.4f, 2.1f, 0.2f, 2.1f, 0xFFF4A7C0.toInt())
+                for (sd in sds) g.cube(sd * (k.hw + 0.3f), k.top - 4.3f, 1.1f, 0.25f, 1.3f, 0.25f, colD)
+            }
+            30 -> { // princesa: meio presa com laço e cascata de ondas
+                base(g, k, col, colL, colD)
+                cortinaTras(g, k, col, colL, colD, 9, 0.3f, bal)
+                mechasLaterais(g, k, col, colL, colD, 7, 0.25f, bal, 1.2f)
+                g.cube(0f, k.top + 1.75f, -k.hd * 0.5f, 0.6f, 0.6f, 0.6f, 0xFFB8326A.toInt())
+                for (sd in sds) {
+                    g.push(); g.translate(sd * 1.8f, k.top + 1.8f, -k.hd * 0.5f); g.rotZ(sd * 0.35f)
+                    g.cube(0f, 0f, 0f, 1.5f, 0.75f, 0.45f, 0xFFE04A7A.toInt())
+                    g.pop()
+                }
+                franja(g, k, col, colL, colD, 0f, 1.7f)
+            }
+            31 -> { // longo em camadas, com volume nas pontas
+                base(g, k, col, colL, colD)
+                cortinaTras(g, k, col, colL, colD, 8, 0.2f, bal)
+                g.push(); g.translate(0f, k.top - 5.0f, -k.hd - 0.3f); g.rotX(0.05f + bal)
+                for (i in -3..3) g.cube(i * k.hw * 0.3f, -11.3f, -0.5f, k.hw * 0.16f, 0.9f, 0.7f, if (i % 2 == 0) colL else col)
+                g.pop()
+                mechasLaterais(g, k, col, colL, colD, 6, 0.2f, bal, 1.3f)
+                franja(g, k, col, colL, colD, -0.8f, 2.3f)
+            }
+            32 -> { // rabo lateral caindo sobre o ombro
+                base(g, k, col, colL, colD)
+                g.cube(k.hw * 0.7f, k.top - 1.6f, -k.hd * 0.55f, 1.0f, 0.9f, 0.9f, colD)
+                g.cube(k.hw * 0.7f, k.top - 1.6f, -k.hd * 0.55f, 1.2f, 0.3f, 1.1f, 0xFFE04A7A.toInt())
+                g.push(); g.translate(k.hw * 0.8f + 0.6f, k.top - 2.2f, -k.hd * 0.3f); g.rotZ(-0.2f); g.rotX(bal * 2f)
+                for (i in -1..1) {
+                    g.push(); g.translate(i * 0.8f, 0f, 0f)
+                    mecha(g, 0f, 0f, 0f, 8, 0.6f, 0.65f, 1.3f, if (i == 0) col else colL, colL, colD, 0.15f)
+                    g.pop()
+                }
+                g.pop()
+                franja(g, k, col, colL, colD, -0.9f, 2.2f)
+            }
+            33 -> { // social: risca marcada e topete penteado de lado
+                base(g, k, col, colL, colD)
+                g.cube(-1.4f, k.top + 1.65f, 0f, 0.1f, 0.08f, k.hd * 0.8f, colD)
+                g.cube(1.8f, k.top + 1.5f + 0.3f * v, 0.6f, k.hw * 0.45f, 0.4f * v + 0.15f, k.hd * 0.85f, col)
+                g.cube(2.3f, k.top + 1.85f + 0.3f * v, 0.6f, k.hw * 0.3f, 0.15f, k.hd * 0.7f, colL)
+                for (i in 0..4) g.cube(-0.9f + i * 1.25f, k.top - 1.7f, k.hd + 0.45f, 0.65f, 0.9f - i * 0.05f, 0.27f, if (i % 2 == 0) col else colL)
+            }
+            34 -> { // médio bagunçado: ondas até a nuca, mechas desencontradas
+                base(g, k, col, colL, colD)
+                for (r in 0..8) g.cube(((r * 7) % 5 - 2) * 1.5f, k.top + 1.5f * v + 0.2f + (r % 3) * 0.2f, ((r * 3) % 5 - 2) * 1.6f, 0.95f, 0.5f * v + 0.2f, 1.0f, if (r % 2 == 0) colL else col)
+                for (sd in sds) {
+                    g.push(); g.translate(sd * (k.hw + 0.4f), k.top - 3.6f, 0.4f); g.rotX(-0.03f - bal)
+                    mecha(g, 0f, 0f, 0f, 3, 0.6f, 1.2f, 1.2f, col, colL, colD, 0.3f)
+                    g.pop()
+                }
+                g.push(); g.translate(0f, k.top - 5.0f, -k.hd - 0.3f); g.rotX(0.05f + bal)
+                for (i in -3..3) mecha(g, i * k.hw * 0.27f, -0.4f, -0.1f * kotlin.math.abs(i), 2 + (i + 3) % 2, k.hw * 0.15f, 0.55f, 1.4f, if (i % 2 == 0) col else colL, colL, colD, 0.4f)
+                g.pop()
+                franja(g, k, col, colL, colD, 0.7f, 2.5f)
+            }
+            35 -> { // juba selvagem: mechas grossas até as costas
+                base(g, k, col, colL, colD)
+                cortinaTras(g, k, col, colL, colD, 9, 0.35f, bal)
+                mechasLaterais(g, k, col, colL, colD, 7, 0.3f, bal, 1.0f)
+                for (r in 0..8) g.cube(((r * 7) % 5 - 2) * 1.5f, k.top + 1.4f * v + 0.3f, ((r * 3) % 5 - 2) * 1.6f, 0.9f, 0.55f * v + 0.2f, 0.95f, if (r % 2 == 0) colL else col)
+                franja(g, k, col, colL, colD, 0.4f, 2.6f)
+            }
+            36 -> { // tonsura: coroa de cabelo ao redor, topo à mostra
+                for (sd in sds) g.cube(sd * (k.hw + 0.25f), k.top - 2.5f, -0.3f, 0.45f, 1.9f, k.hd * 0.9f, col)
+                g.cube(0f, k.top - 2.6f, -k.hd - 0.25f, k.hw + 0.2f, 1.9f, 0.5f, colD)
+                g.cube(0f, k.top - 1.9f, -k.hd - 0.5f, k.hw * 0.8f, 1.1f, 0.15f, col)
             }
         }
     }

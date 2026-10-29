@@ -1,3 +1,10 @@
+#id 2026-10-28-m
+#titulo Tela de criação em abas e penteados separados por sexo
+- Tela de criação refeita: abas Raça, Atributos, Corpo, Cabelo, Rosto e Roupas, com fichas em grade (nada de rolar para o lado) e cores em amostras grandes
+- Cabelo agora mostra só os penteados do sexo escolhido, organizados em grupos (Curtos, Médios, Longos, Presos e tranças, Ousados); a barba só aparece para o masculino
+- 13 penteados novos: femininos (franja cortina, cachos longos, chanel assimétrico, pixie, tranças duplas, coque de bailarina, princesa com laço, em camadas, rabo lateral) e masculinos (social com risca, bagunçado, juba selvagem, tonsura)
+- Todos os cabelos com textura em 3D: topo em degraus com fios em relevo, testa irregular, laterais escalonadas sem frestas, nuca em colunas e mechas com brilho
+
 #id 2026-10-28-l
 #titulo Roupas únicas, busto em 3 tamanhos e 24 cabelos
 - Cada um dos 25 trajes (peito, barriga e pernas) agora tem desenho próprio: couraça muscular de gladiador, caixa torácica de ossos, tartã do clã, selo arcano brilhante, chamas do mago de fogo, folhas do druida, lamelar com máscara oni, dragão dourado do mestre e muito mais

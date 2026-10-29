@@ -228,7 +228,7 @@ class HeroiPerfil(val classe: Classe) {
         get() = (1.6f + 0.05f * d(Atrib.CAR, ref)).coerceIn(1.3f, 2.4f)
 
     companion object {
-        const val N_CABELO = 24
+        const val N_CABELO = 37
         const val N_BARBA = 5
         const val N_TOPO = 5
         private val padraoCache = HashMap<Classe, HeroiPerfil>()

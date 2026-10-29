@@ -70,6 +70,8 @@ object HeroCreator {
         val ed = Herois.perfil(classe).copia()
         val dm = act.resources.displayMetrics
         fun dp(v: Float): Int = (v * dm.density + 0.5f).toInt()
+        val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
+        val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
 
         val dlg = Dialog(act, android.R.style.Theme_Black_NoTitleBar_Fullscreen)
         dlg.window?.setBackgroundDrawable(ColorDrawable(FUNDO))
@@ -83,21 +85,13 @@ object HeroCreator {
         val tvStats = TextView(act)
         val racas = Raca.values()
         val atribs = Atrib.values()
-        val btnRaca = ArrayList<Button>()
+        val btnRaca = ArrayList<TextView>()
         val tvNota = ArrayList<TextView>()
         val tvBase = ArrayList<TextView>()
         val btnMais = ArrayList<Button>()
         val btnMenos = ArrayList<Button>()
 
-        fun titulo(t: String): TextView {
-            val v = TextView(act)
-            v.text = t
-            v.setTextColor(OURO)
-            v.textSize = 15f
-            v.typeface = Typeface.DEFAULT_BOLD
-            v.setPadding(0, dp(14f), 0, dp(6f))
-            return v
-        }
+        // ───────────── peças de interface ─────────────
 
         fun botao(t: String, ouro: Boolean): Button {
             val b = Button(act)
@@ -114,16 +108,172 @@ object HeroCreator {
             return b
         }
 
+        fun marcar(b: TextView, sel: Boolean) {
+            b.background = fundo(
+                if (sel) 0xFF5A4318.toInt() else 0xFF2F271C.toInt(), dp(10f).toFloat(),
+                if (sel) OURO else 0xFF4A3D2A.toInt(), if (sel) dp(2f) else dp(1f)
+            )
+            b.setTextColor(if (sel) OURO else TEXTO)
+        }
+
+        fun ficha(t: String): TextView {
+            val b = TextView(act)
+            b.text = t
+            b.gravity = Gravity.CENTER
+            b.textSize = 13f
+            b.minHeight = dp(44f)
+            b.setPadding(dp(6f), dp(6f), dp(6f), dp(6f))
+            b.isClickable = true
+            marcar(b, false)
+            return b
+        }
+
+        fun secao(p: LinearLayout, t: String) {
+            val v = TextView(act)
+            v.text = t.uppercase(Locale.getDefault())
+            v.setTextColor(OURO)
+            v.textSize = 13f
+            v.typeface = Typeface.DEFAULT_BOLD
+            v.letterSpacing = 0.08f
+            v.setPadding(0, dp(16f), 0, dp(5f))
+            p.addView(v)
+            val linha = View(act)
+            linha.setBackgroundColor(0x55F2B63D)
+            p.addView(linha, LinearLayout.LayoutParams(MATCH, dp(1f)))
+        }
+
+        fun rotulo(p: LinearLayout, t: String) {
+            val v = TextView(act)
+            v.text = t
+            v.setTextColor(TEXTO)
+            v.textSize = 13f
+            v.setPadding(dp(2f), dp(10f), 0, dp(4f))
+            p.addView(v)
+        }
+
+        fun nota(p: LinearLayout, t: String): TextView {
+            val v = TextView(act)
+            v.text = t
+            v.setTextColor(TEXTO_FRACO)
+            v.textSize = 12f
+            v.setPadding(dp(2f), dp(2f), 0, dp(2f))
+            p.addView(v)
+            return v
+        }
+
+        fun vazio(): View = View(act)
+
+        // refresh() é declarado mais abaixo: as peças usam este gancho
+        var aoMudar: () -> Unit = {}
+
+        fun cell(): LinearLayout.LayoutParams {
+            val lp = LinearLayout.LayoutParams(0, WRAP, 1f)
+            lp.setMargins(dp(3f), dp(3f), dp(3f), dp(3f))
+            return lp
+        }
+
+        /** Fichas em grade (sem rolar para o lado): uma opção marcada por vez. */
+        fun grade(p: LinearLayout, nomes: List<String>, colunas: Int, atual: () -> Int, mudar: (Int) -> Unit) {
+            var linha: LinearLayout? = null
+            for (i in nomes.indices) {
+                if (i % colunas == 0) {
+                    linha = LinearLayout(act)
+                    linha.orientation = LinearLayout.HORIZONTAL
+                    p.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                }
+                val b = ficha(nomes[i])
+                linha!!.addView(b, cell())
+                b.setOnClickListener {
+                    mudar(i)
+                    aoMudar()
+                }
+                atualizadores.add { marcar(b, atual() == i) }
+            }
+            val sobra = (colunas - nomes.size % colunas) % colunas
+            for (n in 0 until sobra) linha?.addView(vazio(), cell())
+        }
+
+        /** Amostras de cor em grade, com a opção "Padrão". */
+        fun cores(p: LinearLayout, nome: String, lista: IntArray, atual: () -> Int?, mudar: (Int?) -> Unit) {
+            rotulo(p, nome)
+            val padrao = ficha("Padrão")
+            padrao.minHeight = dp(36f)
+            padrao.setPadding(dp(18f), dp(4f), dp(18f), dp(4f))
+            padrao.setOnClickListener {
+                mudar(null)
+                aoMudar()
+            }
+            p.addView(padrao, LinearLayout.LayoutParams(WRAP, WRAP))
+            atualizadores.add { marcar(padrao, atual() == null) }
+            val porLinha = 7
+            var linha: LinearLayout? = null
+            for (i in lista.indices) {
+                if (i % porLinha == 0) {
+                    linha = LinearLayout(act)
+                    linha.orientation = LinearLayout.HORIZONTAL
+                    p.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                }
+                val cor = lista[i]
+                val v = View(act)
+                val lp = LinearLayout.LayoutParams(0, dp(38f), 1f)
+                lp.setMargins(dp(3f), dp(4f), dp(3f), dp(4f))
+                linha!!.addView(v, lp)
+                v.setOnClickListener {
+                    mudar(cor)
+                    aoMudar()
+                }
+                atualizadores.add {
+                    val sel = atual() == cor
+                    val g = GradientDrawable()
+                    g.shape = GradientDrawable.OVAL
+                    g.setColor(cor)
+                    g.setStroke(if (sel) dp(3f) else dp(1f), if (sel) Color.WHITE else 0xFF000000.toInt())
+                    v.background = g
+                }
+            }
+            val sobra = (porLinha - lista.size % porLinha) % porLinha
+            for (n in 0 until sobra) {
+                val lp = LinearLayout.LayoutParams(0, dp(38f), 1f)
+                lp.setMargins(dp(3f), dp(4f), dp(3f), dp(4f))
+                linha?.addView(vazio(), lp)
+            }
+        }
+
+        // ───────────── abas ─────────────
+        val rolagem = ScrollView(act)
+        val conteudo = LinearLayout(act)
+        conteudo.orientation = LinearLayout.VERTICAL
+        rolagem.addView(conteudo, ViewGroup.LayoutParams(MATCH, WRAP))
+
+        val nomesAbas = listOf("Raça", "Atributos", "Corpo", "Cabelo", "Rosto", "Roupas")
+        val paineis = ArrayList<LinearLayout>()
+        val btnAbas = ArrayList<TextView>()
+
+        fun novoPainel(): LinearLayout {
+            val l = LinearLayout(act)
+            l.orientation = LinearLayout.VERTICAL
+            l.setPadding(dp(14f), dp(4f), dp(14f), dp(12f))
+            paineis.add(l)
+            conteudo.addView(l, LinearLayout.LayoutParams(MATCH, WRAP))
+            return l
+        }
+
+        fun abrirAba(n: Int) {
+            for (i in paineis.indices) paineis[i].visibility = if (i == n) View.VISIBLE else View.GONE
+            for (i in btnAbas.indices) {
+                val sel = i == n
+                btnAbas[i].setTextColor(if (sel) OURO else TEXTO_FRACO)
+                btnAbas[i].background = fundo(
+                    if (sel) 0xFF3A2D14.toInt() else 0xFF241E16.toInt(), dp(10f).toFloat(),
+                    if (sel) OURO else 0xFF241E16.toInt(), dp(2f)
+                )
+            }
+            rolagem.scrollTo(0, 0)
+        }
+
         fun refresh() {
             HeroLook.aplicar(ed)
-            for (i in racas.indices) {
-                val sel = racas[i] == ed.raca
-                btnRaca[i].background = fundo(
-                    if (sel) 0xFF5A4318.toInt() else 0xFF3A3024.toInt(), dp(10f).toFloat(),
-                    if (sel) OURO else 0xFF3A3024.toInt(), dp(2f)
-                )
-                btnRaca[i].setTextColor(if (sel) OURO else TEXTO)
-            }
+            for (i in racas.indices) marcar(btnRaca[i], racas[i] == ed.raca)
             tvRacaDesc.text = ed.raca.descricao
             for (i in atribs.indices) {
                 val a = atribs[i]
@@ -147,35 +297,20 @@ object HeroCreator {
             preview.invalidate()
         }
 
-        // ── raça ──
-        val painel = LinearLayout(act)
-        painel.orientation = LinearLayout.VERTICAL
-        painel.setPadding(dp(14f), dp(8f), dp(14f), dp(8f))
+        aoMudar = { refresh() }
 
-        val tit = TextView(act)
-        tit.text = "Criar herói — " + classe.nome
-        tit.setTextColor(OURO)
-        tit.textSize = 20f
-        tit.typeface = Typeface.DEFAULT_BOLD
-        painel.addView(tit)
-        val dica = TextView(act)
-        dica.text = "Arraste o herói para girar."
-        dica.setTextColor(TEXTO_FRACO)
-        dica.textSize = 12f
-        painel.addView(dica)
-
-        painel.addView(titulo("Raça"))
-        var linha: LinearLayout? = null
+        // ── aba 1: raça ──
+        val pRaca = novoPainel()
+        secao(pRaca, "Escolha a raça")
+        var linhaR: LinearLayout? = null
         for (i in racas.indices) {
             if (i % 3 == 0) {
-                linha = LinearLayout(act)
-                linha.orientation = LinearLayout.HORIZONTAL
-                painel.addView(linha, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+                linhaR = LinearLayout(act)
+                linhaR.orientation = LinearLayout.HORIZONTAL
+                pRaca.addView(linhaR, LinearLayout.LayoutParams(MATCH, WRAP))
             }
-            val b = botao(racas[i].nome, false)
-            val lp = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
-            lp.setMargins(dp(3f), dp(3f), dp(3f), dp(3f))
-            linha!!.addView(b, lp)
+            val b = ficha(racas[i].nome)
+            linhaR!!.addView(b, cell())
             b.setOnClickListener {
                 ed.raca = racas[i]
                 ed.skin = null
@@ -183,23 +318,31 @@ object HeroCreator {
             }
             btnRaca.add(b)
         }
+        val sobraR = (3 - racas.size % 3) % 3
+        for (n in 0 until sobraR) linhaR?.addView(vazio(), cell())
         tvRacaDesc.setTextColor(TEXTO)
-        tvRacaDesc.textSize = 13f
-        tvRacaDesc.setPadding(dp(4f), dp(6f), dp(4f), 0)
-        painel.addView(tvRacaDesc)
+        tvRacaDesc.textSize = 13.5f
+        tvRacaDesc.background = fundo(PAINEL, dp(10f).toFloat())
+        tvRacaDesc.setPadding(dp(12f), dp(10f), dp(12f), dp(10f))
+        val lpDesc = LinearLayout.LayoutParams(MATCH, WRAP)
+        lpDesc.topMargin = dp(10f)
+        pRaca.addView(tvRacaDesc, lpDesc)
 
-        // ── atributos ──
-        painel.addView(titulo("Atributos"))
-        tvPontos.setTextColor(TEXTO)
-        tvPontos.textSize = 13f
+        // ── aba 2: atributos ──
+        val pAtr = novoPainel()
+        secao(pAtr, "Atributos")
+        tvPontos.setTextColor(OURO)
+        tvPontos.textSize = 14f
         tvPontos.typeface = Typeface.DEFAULT_BOLD
-        painel.addView(tvPontos)
+        tvPontos.setPadding(dp(2f), dp(8f), 0, dp(4f))
+        pAtr.addView(tvPontos)
         for (i in atribs.indices) {
             val a = atribs[i]
             val row = LinearLayout(act)
             row.orientation = LinearLayout.HORIZONTAL
             row.gravity = Gravity.CENTER_VERTICAL
-            row.setPadding(0, dp(3f), 0, dp(3f))
+            row.background = fundo(if (i % 2 == 0) PAINEL else FUNDO, dp(8f).toFloat())
+            row.setPadding(dp(8f), dp(5f), dp(8f), dp(5f))
 
             val nome = LinearLayout(act)
             nome.orientation = LinearLayout.VERTICAL
@@ -213,15 +356,15 @@ object HeroCreator {
             n2.textSize = 10.5f
             nome.addView(n1)
             nome.addView(n2)
-            row.addView(nome, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(nome, LinearLayout.LayoutParams(0, WRAP, 1f))
 
             val menos = botao("−", false)
             val mais = botao("+", false)
-            val nota = TextView(act)
-            nota.setTextColor(OURO)
-            nota.textSize = 18f
-            nota.typeface = Typeface.DEFAULT_BOLD
-            nota.gravity = Gravity.CENTER
+            val nt = TextView(act)
+            nt.setTextColor(OURO)
+            nt.textSize = 18f
+            nt.typeface = Typeface.DEFAULT_BOLD
+            nt.gravity = Gravity.CENTER
             val base = TextView(act)
             base.setTextColor(TEXTO_FRACO)
             base.textSize = 11f
@@ -229,143 +372,181 @@ object HeroCreator {
 
             menos.setOnClickListener { if (ed.mudar(a, -1)) refresh() }
             mais.setOnClickListener { if (ed.mudar(a, 1)) refresh() }
-            tvNota.add(nota)
+            tvNota.add(nt)
             tvBase.add(base)
             btnMais.add(mais)
             btnMenos.add(menos)
 
-            row.addView(menos, LinearLayout.LayoutParams(dp(40f), dp(36f)))
-            row.addView(nota, LinearLayout.LayoutParams(dp(38f), ViewGroup.LayoutParams.WRAP_CONTENT))
-            row.addView(mais, LinearLayout.LayoutParams(dp(40f), dp(36f)))
-            row.addView(base, LinearLayout.LayoutParams(dp(74f), ViewGroup.LayoutParams.WRAP_CONTENT))
-            painel.addView(row)
+            row.addView(menos, LinearLayout.LayoutParams(dp(40f), dp(38f)))
+            row.addView(nt, LinearLayout.LayoutParams(dp(38f), WRAP))
+            row.addView(mais, LinearLayout.LayoutParams(dp(40f), dp(38f)))
+            row.addView(base, LinearLayout.LayoutParams(dp(74f), WRAP))
+            val lpRow = LinearLayout.LayoutParams(MATCH, WRAP)
+            lpRow.setMargins(0, dp(2f), 0, dp(2f))
+            pAtr.addView(row, lpRow)
         }
         tvStats.setTextColor(TEXTO)
         tvStats.textSize = 12.5f
-        tvStats.background = fundo(PAINEL, dp(10f).toFloat())
-        tvStats.setPadding(dp(10f), dp(8f), dp(10f), dp(8f))
-        val lpStats = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
-        lpStats.topMargin = dp(8f)
-        painel.addView(tvStats, lpStats)
+        tvStats.background = fundo(PAINEL, dp(10f).toFloat(), 0xFF4A3D2A.toInt(), dp(1f))
+        tvStats.setPadding(dp(12f), dp(10f), dp(12f), dp(10f))
+        val lpStats = LinearLayout.LayoutParams(MATCH, WRAP)
+        lpStats.topMargin = dp(10f)
+        pAtr.addView(tvStats, lpStats)
 
-        // ── aparência ──
-        fun linhaCores(nome: String, cores: IntArray, atual: () -> Int?, mudar: (Int?) -> Unit) {
-            val t = TextView(act)
-            t.text = nome
-            t.setTextColor(TEXTO)
-            t.textSize = 13f
-            t.setPadding(0, dp(8f), 0, dp(2f))
-            painel.addView(t)
-            val hs = HorizontalScrollView(act)
-            hs.isHorizontalScrollBarEnabled = false
-            val fila = LinearLayout(act)
-            fila.orientation = LinearLayout.HORIZONTAL
-            fila.gravity = Gravity.CENTER_VERTICAL
-            hs.addView(fila)
+        // ── aba 3: corpo ──
+        val pCorpo = novoPainel()
+        secao(pCorpo, "Corpo")
+        rotulo(pCorpo, "Sexo")
+        grade(pCorpo, listOf("Masculino", "Feminino"), 2, { ed.sexo }, {
+            ed.sexo = it
+            if (!Penteados.ok(ed.cabelo, it)) ed.cabelo = Penteados.inicial(it)
+        })
+        val tvCorpo = nota(pCorpo, "")
+        atualizadores.add { tvCorpo.text = "Tipo de corpo da raça: " + Roupas.tipoCorpo(ed.raca, ed.sexo == 1) }
+        val boxBusto = LinearLayout(act)
+        boxBusto.orientation = LinearLayout.VERTICAL
+        rotulo(boxBusto, "Busto")
+        grade(boxBusto, listOf("Pequeno", "Médio", "Grande"), 3, { ed.busto }, { ed.busto = it })
+        pCorpo.addView(boxBusto, LinearLayout.LayoutParams(MATCH, WRAP))
+        atualizadores.add { boxBusto.visibility = if (ed.sexo == 1) View.VISIBLE else View.GONE }
+        rotulo(pCorpo, "Altura")
+        grade(pCorpo, listOf("Muito baixo", "Baixo", "Normal", "Alto", "Muito alto"), 3, { ed.altura }, { ed.altura = it })
+        secao(pCorpo, "Cores")
+        cores(pCorpo, "Pele", PELES, { ed.skin }, { ed.skin = it })
+        cores(pCorpo, "Olhos", OLHOS, { ed.eye }, { ed.eye = it })
 
-            val padrao = botao("Padrão", false)
-            padrao.setOnClickListener {
-                mudar(null)
-                refresh()
-            }
-            fila.addView(padrao, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(34f)))
-            atualizadores.add {
-                val sel = atual() == null
-                padrao.background = fundo(if (sel) 0xFF5A4318.toInt() else 0xFF3A3024.toInt(), dp(10f).toFloat(), if (sel) OURO else 0xFF3A3024.toInt(), dp(2f))
-                padrao.setTextColor(if (sel) OURO else TEXTO)
-            }
-            for (cor in cores) {
-                val v = View(act)
-                val lp = LinearLayout.LayoutParams(dp(34f), dp(34f))
-                lp.setMargins(dp(4f), dp(2f), dp(4f), dp(2f))
-                fila.addView(v, lp)
-                v.setOnClickListener {
-                    mudar(cor)
-                    refresh()
+        // ── aba 4: cabelo (só os penteados do sexo escolhido, em grupos) ──
+        val pCab = novoPainel()
+        secao(pCab, "Penteado")
+        val tvCabAtual = nota(pCab, "")
+        val boxCab = LinearLayout(act)
+        boxCab.orientation = LinearLayout.VERTICAL
+        pCab.addView(boxCab, LinearLayout.LayoutParams(MATCH, WRAP))
+        val btnsCab = ArrayList<Pair<Int, TextView>>()
+        var sexoCab = -1
+        fun montarCabelos() {
+            boxCab.removeAllViews()
+            btnsCab.clear()
+            val lista = Penteados.para(ed.sexo)
+            for (gr in Penteados.GRUPOS) {
+                val itens = lista.filter { it.grupo == gr }
+                if (itens.isEmpty()) continue
+                rotulo(boxCab, gr)
+                var linha: LinearLayout? = null
+                for (n in itens.indices) {
+                    if (n % 2 == 0) {
+                        linha = LinearLayout(act)
+                        linha.orientation = LinearLayout.HORIZONTAL
+                        boxCab.addView(linha, LinearLayout.LayoutParams(MATCH, WRAP))
+                    }
+                    val e = itens[n]
+                    val b = ficha(e.nome)
+                    linha!!.addView(b, cell())
+                    b.setOnClickListener {
+                        ed.cabelo = e.id
+                        refresh()
+                    }
+                    btnsCab.add(Pair(e.id, b))
                 }
-                atualizadores.add {
-                    val sel = atual() == cor
-                    val g = GradientDrawable()
-                    g.shape = GradientDrawable.OVAL
-                    g.setColor(cor)
-                    g.setStroke(if (sel) dp(3f) else dp(1f), if (sel) Color.WHITE else 0xFF000000.toInt())
-                    v.background = g
-                }
+                if (itens.size % 2 == 1) linha?.addView(vazio(), cell())
             }
-            painel.addView(hs)
         }
-        // ── opções em fichas (cicatriz, pintura, acessório, altura) ──
-        fun linhaOpcoes(nome: String, opcoes: List<String>, atual: () -> Int, mudar: (Int) -> Unit) {
-            val t = TextView(act)
-            t.text = nome
-            t.setTextColor(TEXTO)
-            t.textSize = 13f
-            t.setPadding(0, dp(8f), 0, dp(2f))
-            painel.addView(t)
-            val hs = HorizontalScrollView(act)
-            hs.isHorizontalScrollBarEnabled = false
-            val fila = LinearLayout(act)
-            fila.orientation = LinearLayout.HORIZONTAL
-            fila.gravity = Gravity.CENTER_VERTICAL
-            hs.addView(fila)
-            for (i in opcoes.indices) {
-                val b = botao(opcoes[i], false)
-                val lp = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(36f))
-                lp.setMargins(dp(3f), dp(2f), dp(3f), dp(2f))
-                fila.addView(b, lp)
-                b.setOnClickListener {
-                    mudar(i)
-                    refresh()
-                }
-                atualizadores.add {
-                    val sel = atual() == i
-                    b.background = fundo(if (sel) 0xFF5A4318.toInt() else 0xFF3A3024.toInt(), dp(10f).toFloat(), if (sel) OURO else 0xFF3A3024.toInt(), dp(2f))
-                    b.setTextColor(if (sel) OURO else TEXTO)
-                }
+        atualizadores.add {
+            if (sexoCab != ed.sexo) {
+                sexoCab = ed.sexo
+                montarCabelos()
             }
-            painel.addView(hs)
+            for (pr in btnsCab) marcar(pr.second, pr.first == ed.cabelo)
+            tvCabAtual.text = "Estilo atual: " + Penteados.nome(ed.cabelo) + (if (ed.sexo == 1) "  ·  mostrando penteados femininos" else "  ·  mostrando penteados masculinos")
         }
-        painel.addView(titulo("Aparência"))
-        linhaOpcoes("Sexo", listOf("Masculino", "Feminino"), { ed.sexo }, { ed.sexo = it; if (it == 1 && ed.cabelo == 0) ed.cabelo = 3 })
-        val tvCorpo = TextView(act)
-        tvCorpo.setTextColor(TEXTO_FRACO)
-        tvCorpo.textSize = 12f
-        tvCorpo.setPadding(0, dp(2f), 0, dp(2f))
-        painel.addView(tvCorpo)
-        linhaOpcoes("Busto (corpo feminino)", listOf("Pequeno", "Médio", "Grande"), { ed.busto }, { ed.busto = it })
-        atualizadores.add { tvCorpo.text = "Corpo: " + Roupas.tipoCorpo(ed.raca, ed.sexo == 1) }
-        linhaCores("Pele", PELES, { ed.skin }, { ed.skin = it })
-        linhaCores("Cabelo e barba", CABELOS, { ed.hair }, { ed.hair = it })
-        linhaCores("Olhos", OLHOS, { ed.eye }, { ed.eye = it })
-        linhaOpcoes("Altura", listOf("Muito baixo", "Baixo", "Normal", "Alto", "Muito alto"), { ed.altura }, { ed.altura = it })
-        painel.addView(titulo("Rosto"))
-        linhaOpcoes("Cicatriz", listOf("Nenhuma", "No olho", "Na bochecha", "No lábio", "Garras"), { ed.cicatriz }, { ed.cicatriz = it })
-        linhaOpcoes("Pintura", listOf("Nenhuma", "Listras de guerra", "Máscara", "Lágrima dourada", "Tigre"), { ed.pintura }, { ed.pintura = it })
-        linhaOpcoes("Acessório", listOf("Nenhum", "Tapa-olho", "Brincos", "Aro na sobrancelha", "Aro no nariz", "Óculos", "Monóculo"), { ed.acess }, { ed.acess = it })
-        painel.addView(titulo("Cabelo e barba"))
-        linhaOpcoes("Cabelo", listOf("Padrão", "Careca", "Curto", "Longo", "Moicano", "Rabo de cavalo", "Coque", "Trança", "Espetado", "Franja", "Ondulado", "Cacheado", "Chanel", "Duas marias-chiquinhas", "Topete (pompadour)", "Rabo de samurai", "Raspado dos lados", "Black power", "Dreadlocks", "Trança lateral", "Coque duplo", "Franja reta e longo", "Meia-cauda", "Cabelo ao vento"), { ed.cabelo }, { ed.cabelo = it })
-        linhaOpcoes("Barba", listOf("Padrão", "Sem barba", "Curta", "Cavanhaque", "Bigode"), { ed.barba }, { ed.barba = it })
-        painel.addView(titulo("Roupas e armadura"))
+        secao(pCab, "Cor do cabelo")
+        cores(pCab, "Cabelo", CABELOS, { ed.hair }, { ed.hair = it })
+        val boxBarba = LinearLayout(act)
+        boxBarba.orientation = LinearLayout.VERTICAL
+        secao(boxBarba, "Barba")
+        grade(boxBarba, listOf("Padrão", "Sem barba", "Curta", "Cavanhaque", "Bigode"), 3, { ed.barba }, { ed.barba = it })
+        pCab.addView(boxBarba, LinearLayout.LayoutParams(MATCH, WRAP))
+        atualizadores.add { boxBarba.visibility = if (ed.sexo == 0) View.VISIBLE else View.GONE }
+
+        // ── aba 5: rosto ──
+        val pRosto = novoPainel()
+        secao(pRosto, "Rosto")
+        rotulo(pRosto, "Cicatriz")
+        grade(pRosto, listOf("Nenhuma", "No olho", "Na bochecha", "No lábio", "Garras"), 3, { ed.cicatriz }, { ed.cicatriz = it })
+        rotulo(pRosto, "Pintura")
+        grade(pRosto, listOf("Nenhuma", "Listras de guerra", "Máscara", "Lágrima dourada", "Tigre"), 2, { ed.pintura }, { ed.pintura = it })
+        rotulo(pRosto, "Acessório")
+        grade(pRosto, listOf("Nenhum", "Tapa-olho", "Brincos", "Aro na sobrancelha", "Aro no nariz", "Óculos", "Monóculo"), 2, { ed.acess }, { ed.acess = it })
+
+        // ── aba 6: roupas e armadura ──
+        val pRoupa = novoPainel()
+        secao(pRoupa, "Cabeça")
         val nomeElmo = when (classe) {
             Classe.MAGO -> "Chapéu"
             Classe.NINJA -> "Máscara"
             else -> "Capacete"
         }
         if (classe != Classe.ARQUEIRO) {
-            linhaOpcoes(nomeElmo, listOf("Usar", "Tirar"), { ed.elmo }, { ed.elmo = it })
+            rotulo(pRoupa, nomeElmo)
+            grade(pRoupa, listOf("Usar", "Tirar"), 2, { ed.elmo }, { ed.elmo = it })
         }
-        linhaOpcoes("Na cabeça", listOf("Nada", "Bandana", "Tiara", "Coroa", "Casquete de aço"), { ed.topo }, { ed.topo = it })
-        linhaOpcoes("Roupa do peito", Roupas.nomesPeito(classe), { ed.peito }, { ed.peito = it })
-        linhaOpcoes("Roupa das pernas", Roupas.nomesPernas(classe), { ed.pernas }, { ed.pernas = it })
-        linhaOpcoes("Capa", Roupas.nomesCapa(classe), { ed.capa }, { ed.capa = it })
-        linhaOpcoes("Ombreiras", Roupas.nomesOmbro(classe), { ed.ombro }, { ed.ombro = it })
-        linhaCores("Cor da armadura (metal)", METAIS, { ed.metal }, { ed.metal = it })
-        linhaCores("Cor da roupa (tecido)", TECIDOS, { ed.tecido }, { ed.tecido = it })
-        val folga = View(act)
-        painel.addView(folga, LinearLayout.LayoutParams(1, dp(16f)))
+        rotulo(pRoupa, "Na cabeça")
+        grade(pRoupa, listOf("Nada", "Bandana", "Tiara", "Coroa", "Casquete de aço"), 2, { ed.topo }, { ed.topo = it })
+        secao(pRoupa, "Corpo")
+        rotulo(pRoupa, "Roupa do peito")
+        grade(pRoupa, Roupas.nomesPeito(classe), 2, { ed.peito }, { ed.peito = it })
+        rotulo(pRoupa, "Roupa das pernas")
+        grade(pRoupa, Roupas.nomesPernas(classe), 2, { ed.pernas }, { ed.pernas = it })
+        secao(pRoupa, "Capa e ombreiras")
+        rotulo(pRoupa, "Capa")
+        grade(pRoupa, Roupas.nomesCapa(classe), 1, { ed.capa }, { ed.capa = it })
+        rotulo(pRoupa, "Ombreiras")
+        grade(pRoupa, Roupas.nomesOmbro(classe), 2, { ed.ombro }, { ed.ombro = it })
+        secao(pRoupa, "Cores")
+        cores(pRoupa, "Armadura (metal)", METAIS, { ed.metal }, { ed.metal = it })
+        cores(pRoupa, "Roupa (tecido)", TECIDOS, { ed.tecido }, { ed.tecido = it })
+        conteudo.addView(View(act), LinearLayout.LayoutParams(1, dp(16f)))
 
-        val rolagem = ScrollView(act)
-        rolagem.addView(painel)
+        // barra de abas
+        val abasRolar = HorizontalScrollView(act)
+        abasRolar.isHorizontalScrollBarEnabled = false
+        val abasFila = LinearLayout(act)
+        abasFila.orientation = LinearLayout.HORIZONTAL
+        abasFila.setPadding(dp(8f), dp(8f), dp(8f), dp(6f))
+        abasRolar.addView(abasFila)
+        for (i in nomesAbas.indices) {
+            val t = TextView(act)
+            t.text = nomesAbas[i]
+            t.textSize = 14f
+            t.typeface = Typeface.DEFAULT_BOLD
+            t.gravity = Gravity.CENTER
+            t.setPadding(dp(16f), dp(9f), dp(16f), dp(9f))
+            t.isClickable = true
+            t.setOnClickListener { abrirAba(i) }
+            val lp = LinearLayout.LayoutParams(WRAP, WRAP)
+            lp.setMargins(dp(3f), 0, dp(3f), 0)
+            abasFila.addView(t, lp)
+            btnAbas.add(t)
+        }
+
+        // cabeçalho
+        val cab = LinearLayout(act)
+        cab.orientation = LinearLayout.VERTICAL
+        cab.setBackgroundColor(PAINEL)
+        val tit = TextView(act)
+        tit.text = "Criar herói — " + classe.nome
+        tit.setTextColor(OURO)
+        tit.textSize = 18f
+        tit.typeface = Typeface.DEFAULT_BOLD
+        tit.setPadding(dp(14f), dp(8f), dp(14f), 0)
+        cab.addView(tit)
+        val dica = TextView(act)
+        dica.text = "Arraste o herói para girar. O que você muda aparece na hora."
+        dica.setTextColor(TEXTO_FRACO)
+        dica.textSize = 11.5f
+        dica.setPadding(dp(14f), 0, dp(14f), 0)
+        cab.addView(dica)
+        cab.addView(abasRolar, LinearLayout.LayoutParams(MATCH, WRAP))
 
         // ── barra de baixo ──
         val barra = LinearLayout(act)
@@ -377,7 +558,7 @@ object HeroCreator {
         val bJogar = botao("Jogar", true)
         bJogar.typeface = Typeface.DEFAULT_BOLD
         val lpb = { w: Float ->
-            val l = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, w)
+            val l = LinearLayout.LayoutParams(0, WRAP, w)
             l.setMargins(dp(4f), 0, dp(4f), 0)
             l
         }
@@ -399,19 +580,20 @@ object HeroCreator {
 
         val coluna = LinearLayout(act)
         coluna.orientation = LinearLayout.VERTICAL
-        coluna.addView(rolagem, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
-        coluna.addView(barra, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+        coluna.addView(cab, LinearLayout.LayoutParams(MATCH, WRAP))
+        coluna.addView(rolagem, LinearLayout.LayoutParams(MATCH, 0, 1f))
+        coluna.addView(barra, LinearLayout.LayoutParams(MATCH, WRAP))
 
         val raiz = LinearLayout(act)
         raiz.setBackgroundColor(FUNDO)
         if (dm.widthPixels > dm.heightPixels) {
             raiz.orientation = LinearLayout.HORIZONTAL
-            raiz.addView(preview, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f))
-            raiz.addView(coluna, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.4f))
+            raiz.addView(preview, LinearLayout.LayoutParams(0, MATCH, 1f))
+            raiz.addView(coluna, LinearLayout.LayoutParams(0, MATCH, 1.35f))
         } else {
             raiz.orientation = LinearLayout.VERTICAL
-            raiz.addView(preview, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, (dm.heightPixels * 0.34f).toInt()))
-            raiz.addView(coluna, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f))
+            raiz.addView(preview, LinearLayout.LayoutParams(MATCH, (dm.heightPixels * 0.36f).toInt()))
+            raiz.addView(coluna, LinearLayout.LayoutParams(MATCH, 0, 1f))
         }
 
         dlg.setContentView(raiz)
@@ -420,6 +602,7 @@ object HeroCreator {
             if (!confirmou) HeroLook.aplicar(Herois.perfil(classe))
         }
         refresh()
+        abrirAba(0)
         dlg.show()
     }
 
