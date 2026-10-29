@@ -1879,7 +1879,7 @@ object Archer3D {
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.7f * lmv
+            var a = sin(pp) * 0.7f * lmv * (1f - 0.35f * aimW)
             var kn = max(0f, -cos(pp)) * 1.1f * lmv + 0.08f + crouch * 0.9f
             var ft = max(0f, cos(pp)) * 0.4f * lmv + airW * (0.55f * max(0f, vzN) - 0.25f * max(0f, -vzN))
             a -= sd * 0.12f * aimW

@@ -737,7 +737,12 @@ class Player(
         x += vx * dt
         y += vy * dt
         val sp = hypot(vx, vy)
-        if (sp > 1f) walkPhase += sp * dt * 0.05f
+        if (sp > 1f) {
+            // arqueiro com o arco puxado: andar de costas faz a passada ao contrário (não desliza)
+            var dirSign = 1f
+            if (classe == Classe.ARQUEIRO && bowHold && vx * facingX + vy * facingY < -0.2f * sp) dirSign = -1f
+            walkPhase += dirSign * sp * dt * 0.05f
+        }
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
             attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) attackRate else 2.8f)).coerceAtLeast(0f)
