@@ -89,6 +89,17 @@ class Player(
         const val PIKA_VOLT_SPD = 560f     // velocidade do avanço da Investida Trovão
         val PIKA_COST = floatArrayOf(0f, 20f, 15f, 25f, 40f)           // mana: Trovoada, Cauda de Ferro, Investida, Trovão
         val PIKA_CD = longArrayOf(0L, 4500L, 6000L, 9000L, 16000L)     // recarga (ms)
+        const val ICHI_RATE_1 = 2.6f       // velocidade dos 2 primeiros golpes do combo do Ichigo
+        const val ICHI_RATE_3 = 2.1f       // velocidade do 3º golpe
+        const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
+        const val ICHI_DASH_T = 0.22f      // duração do Shunpo / Sonído
+        const val ICHI_DASH_SPD = 1200f    // velocidade inicial do Shunpo / Sonído
+        // Bankai: Getsuga, Shunpo, Redemoinho, Vasto Lorde
+        val ICHI_COST_N = floatArrayOf(0f, 20f, 14f, 26f, 40f)
+        val ICHI_CD_N = longArrayOf(0L, 3500L, 4500L, 8000L, 24000L)
+        // Vasto Lorde: Cero, Sonído, Grito Hollow, Mugetsu
+        val ICHI_COST_H = floatArrayOf(0f, 26f, 14f, 28f, 35f)
+        val ICHI_CD_H = longArrayOf(0L, 4500L, 3500L, 9000L, 12000L)
     }
 
     // herói escolhido na criação de personagem (raça + atributos)
@@ -201,11 +212,25 @@ class Player(
     var voltDY = 0f
     private val pikaReadyAt = LongArray(5)
 
+    // ichigo: forma Vasto Lorde, avanço do Shunpo/Sonído e recarga das skills de cada forma
+    var hollow = false
+    var hollowT = 0f
+    var endHollow = false
+    var ichiSkH = false
+    var ichiT = 0f
+    var ichiDX = 0f
+    var ichiDY = 0f
+    private val ichiReadyN = LongArray(5)
+    private val ichiReadyH = LongArray(5)
+
+    fun ichiCost(k: Int): Float = (if (hollow) ICHI_COST_H else ICHI_COST_N)[k.coerceIn(1, 4)]
+
     fun canAttack(now: Long): Boolean {
-        if (rolling || skillK != 0 || voltT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
+        if (rolling || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
+        else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -243,12 +268,19 @@ class Player(
             swing = comboStep
             attackRate = if (swing == 2) NINJA_RATE_3 else NINJA_RATE_1
         }
+        if (classe == Classe.ICHIGO) {
+            // combo de 3: corte direito, corte esquerdo e golpe cruzado (na forma Vasto Lorde, garras)
+            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = if (swing == 2) ICHI_RATE_3 else ICHI_RATE_1
+        }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
         if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
         if (classe == Classe.PIKACHU) attackRate = PIKA_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else if (classe == Classe.ICHIGO) 0.7f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -283,6 +315,9 @@ class Player(
     /** Segundos até a lâmina do ninja acertar (sincronizado com Ninja3D.impactAt). */
     fun ninjaDelay(): Float = Ninja3D.impactAt(swing) / attackRate
 
+    /** Segundos até a lâmina (ou garra) do Ichigo acertar (sincronizado com Ichigo3D.impactAt). */
+    fun ichiDelay(): Float = Ichigo3D.impactAt(swing) / attackRate
+
     /** Segundos até o raio sair das mãos do Pikachu (sincronizado com Pikachu3D.T_SHOT). */
     fun pikaDelay(): Float = Pikachu3D.T_SHOT / PIKA_RATE
 
@@ -316,6 +351,10 @@ class Player(
     }
 
     fun skillReady(k: Int, now: Long): Boolean {
+        if (classe == Classe.ICHIGO) {
+            val rd = if (hollow) ichiReadyH else ichiReadyN
+            return k in 1..4 && alive && skillK == 0 && ichiT <= 0f && !rolling && grounded && now >= rd[k] && mp >= ichiCost(k)
+        }
         if (classe == Classe.PIKACHU) {
             return k in 1..4 && alive && skillK == 0 && voltT <= 0f && !rolling && grounded && now >= pikaReadyAt[k] && mp >= PIKA_COST[k]
         }
@@ -328,6 +367,10 @@ class Player(
 
     /** Segundos de recarga que faltam (0 = pronta). */
     fun skillCd(k: Int, now: Long): Float {
+        if (classe == Classe.ICHIGO) {
+            val rd = if (hollow) ichiReadyH else ichiReadyN
+            return if (k in 1..4) ((rd[k] - now) / 1000f).coerceAtLeast(0f) else 0f
+        }
         if (classe == Classe.PIKACHU) return if (k in 1..4) ((pikaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         return (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
@@ -336,7 +379,12 @@ class Player(
     fun startSkill(k: Int, now: Long): Boolean {
         if (!skillReady(k, now)) return false
         skillK = k
-        if (classe == Classe.PIKACHU) {
+        if (classe == Classe.ICHIGO) {
+            ichiSkH = hollow
+            skillDur = Ichigo3D.dur(hollow, k)
+            mp -= ichiCost(k)
+            if (hollow) ichiReadyH[k] = now + ICHI_CD_H[k] else ichiReadyN[k] = now + ICHI_CD_N[k]
+        } else if (classe == Classe.PIKACHU) {
             skillDur = Pikachu3D.DUR[k]
             mp -= PIKA_COST[k]
             pikaReadyAt[k] = now + PIKA_CD[k]
@@ -371,6 +419,7 @@ class Player(
 
     /** Segundos desde o começo da skill até ela sair (flecha, shuriken, sombra, corte ou salto). */
     fun skillReleaseAt(k: Int): Float {
+        if (classe == Classe.ICHIGO) return Ichigo3D.dur(ichiSkH, k) * Ichigo3D.rel(ichiSkH, k)
         if (classe == Classe.PIKACHU) return Pikachu3D.DUR[k] * Pikachu3D.REL[k]
         if (classe == Classe.NINJA) {
             return when (k) {
@@ -566,6 +615,14 @@ class Player(
         if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
         if (dashT > 0f) dashT = max(0f, dashT - dt)
         if (voltT > 0f) voltT = max(0f, voltT - dt)
+        if (ichiT > 0f) ichiT = max(0f, ichiT - dt)
+        if (classe == Classe.ICHIGO) {
+            if (hollow) {
+                hollowT -= dt
+                if (hollowT <= 0f) { hollow = false; hollowT = 0f }
+            }
+            if (endHollow && skillK == 0) { endHollow = false; hollow = false; hollowT = 0f }
+        }
         if (leaping) {
             leapClock += dt
             if (leapClock > 2.5f) leaping = false
@@ -584,6 +641,12 @@ class Player(
             val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else if (classe == Classe.PIKACHU) 640f * (1.35f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
+        } else if (ichiT > 0f) {
+            // Shunpo / Sonído: avanço veloz que freia no fim
+            val q = 1f - ichiT / ICHI_DASH_T
+            val spd = ICHI_DASH_SPD * (1.1f - 0.6f * q)
+            vx = ichiDX * spd
+            vy = ichiDY * spd
         } else if (voltT > 0f) {
             // Investida Trovão: avança em linha reta
             vx = voltDX * PIKA_VOLT_SPD
@@ -599,7 +662,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
             vx = inX * velH * 60f * slow
             vy = inY * velH * 60f * slow
         }
@@ -609,7 +672,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         // arco puxado: congela a animação logo antes do disparo até o botão ser solto
         if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
@@ -721,6 +784,16 @@ class Player(
         Pikachu3D.skillK = if (classe == Classe.PIKACHU) skillK else 0
         Pikachu3D.skillP = if (classe == Classe.PIKACHU && skillK != 0) 1f - skillT / skillDur else -1f
         Pikachu3D.alphaV = 1f
+        Ichigo3D.rollP = if (classe == Classe.ICHIGO && rollT > 0f) 1f - rollT / rollDur else -1f
+        Ichigo3D.inAir = up > 1f
+        Ichigo3D.airH = up
+        Ichigo3D.airVz = vz
+        Ichigo3D.swing = swing
+        Ichigo3D.skillK = if (classe == Classe.ICHIGO) skillK else 0
+        Ichigo3D.skillP = if (classe == Classe.ICHIGO && skillK != 0) 1f - skillT / skillDur else -1f
+        Ichigo3D.skillHol = ichiSkH
+        Ichigo3D.hollowOn = classe == Classe.ICHIGO && hollow
+        Ichigo3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -736,11 +809,11 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA && classe != Classe.ICHIGO) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }

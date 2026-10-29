@@ -1,3 +1,13 @@
+#id 2026-10-29-b
+#titulo Ichigo (luta contra o Aizen) e forma Vasto Lorde
+- Nova classe Ichigo, em 3D de prismas facetados (muito mais polígonos que os outros heróis): Tensa Zangetsu negra, manto rasgado do Shinigami Substituto, cabelo laranja espetado e olhar fechado; ele não passa pela criação de personagem
+- Combo de 3 golpes: corte direito, corte esquerdo e golpe cruzado, que solta um Getsuga pequeno
+- Getsuga Tenshou (20 de mana): meia-lua negra de contorno vermelho que atravessa todos à frente
+- Shunpo (14 de mana): avanço veloz e invulnerável que corta quem estiver no caminho, deixando imagens residuais
+- Redemoinho de Getsuga (26 de mana): giro com a lâmina e quatro luas negras saindo em diagonal
+- Vasto Lorde (40 de mana): transformação com máscara hollow, chifre, pilar de luz e onda que atordoa; cura 20% da vida, dura 32 segundos e deixa o Ichigo 30% mais forte e mais rápido; os botões trocam de skills
+- Na forma Vasto Lorde: Cero (feixe vermelho que atravessa tudo), Sonído (avanço de garras), Grito Hollow (atordoa em volta) e Mugetsu (explosão negra enorme que encerra a forma)
+
 #id 2026-10-29-a
 #titulo Pikachu jogável, com o moveset completo
 - Nova classe Pikachu, em 3D de blocos no mesmo estilo do Mago e do Guerreiro: orelhas de ponta preta, bochechas vermelhas que brilham ao carregar, listras nas costas e cauda em raio; ele não passa pela criação de personagem, é sempre ele mesmo

@@ -84,6 +84,14 @@ class GameView @JvmOverloads constructor(
     // pikachu: raio pendente, ataque segurado, quem já levou Investida / Ataque Rápido
     private var pendingPikaT = -1f
     private var pikaHeld = false
+    // ichigo: golpe pendente, ondas de Getsuga, efeitos curtos e quem já levou o Shunpo / Sonído
+    private var pendingIchiT = -1f
+    private var pendingIchiSwing = 0
+    private val getsugas = ArrayList<GetsugaWave>()
+    private val ichiFxs = ArrayList<IchiFx>()
+    private val ichiHit = HashSet<Enemy>()
+    private var ichiDashWas = false
+    private var ichiHolPrev = false
     private var voltWasOn = false
     private val voltHit = HashSet<Enemy>()
     private val quickHit = HashSet<Enemy>()
@@ -163,6 +171,7 @@ class GameView @JvmOverloads constructor(
     private fun swingSound(p: Player) {
         when (p.classe) {
             Classe.BARBARO -> snd("axe1", 1f, if (p.swing == 2) 0.78f else if (p.swing == 1) 0.92f else 1.02f)
+            Classe.ICHIGO -> if (p.hollow) snd("heavy_swing", 0.8f, (if (p.swing == 2) 0.85f else 1.05f) * vary()) else snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.9f, 0.95f * vary())
             Classe.NINJA -> snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.8f, 1.22f * vary())
             Classe.GUERREIRO -> if (p.weapon == 1) {
                 when (p.swing) {
@@ -234,6 +243,12 @@ class GameView @JvmOverloads constructor(
         pendingNinjaT = -1f
         pendingPikaT = -1f
         pikaHeld = false
+        pendingIchiT = -1f
+        getsugas.clear()
+        ichiFxs.clear()
+        ichiHit.clear()
+        ichiDashWas = false
+        ichiHolPrev = false
         voltWasOn = false
         voltHit.clear()
         quickHit.clear()
@@ -509,6 +524,10 @@ class GameView @JvmOverloads constructor(
             pikaSkill(p, k)
             return
         }
+        if (p.classe == Classe.ICHIGO) {
+            ichiSkill(p, k)
+            return
+        }
         if (p.classe != Classe.ARQUEIRO) return
         if (!p.startSkill(k, System.currentTimeMillis())) {
             snd("ui_error", 0.5f)
@@ -531,6 +550,10 @@ class GameView @JvmOverloads constructor(
         }
         if (p.classe == Classe.PIKACHU) {
             pikaRelease(p, k)
+            return
+        }
+        if (p.classe == Classe.ICHIGO) {
+            ichiRelease(p, k)
             return
         }
         var dx = skillDX
@@ -731,7 +754,7 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (!p.canAttack(now)) {
-            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA) && !p.rolling) queuedAt = now
+            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA || p.classe == Classe.ICHIGO) && !p.rolling) queuedAt = now
             return
         }
 
@@ -775,6 +798,12 @@ class GameView @JvmOverloads constructor(
         } else {
             p.doAttack(now)
             swingSound(p)
+            if (p.classe == Classe.ICHIGO) {
+                // a lâmina (ou a garra) só acerta no instante do impacto (sincronizado com Ichigo3D.impactAt)
+                pendingIchiT = p.ichiDelay()
+                pendingIchiSwing = p.swing
+                return
+            }
             if (p.classe == Classe.NINJA) {
                 // a lâmina só acerta no instante do impacto (sincronizado com Ninja3D.impactAt)
                 pendingNinjaT = p.ninjaDelay()
@@ -1090,6 +1119,300 @@ class GameView @JvmOverloads constructor(
         } else if (quickHit.isNotEmpty()) {
             quickHit.clear()
         }
+    }
+
+    // ───────────────────────── ICHIGO ─────────────────────────
+
+    private val ICHI_RED = 0xFFC8102E.toInt()
+    private val ICHI_BONE = 0xFFEDE6D6.toInt()
+
+    /** Golpe do combo; chamado no instante do impacto. O 3º golpe (cruzado) é mais largo, mais forte e solta um Getsuga pequeno. */
+    private fun ichiStrike(sw: Int) {
+        val p = player ?: return
+        val cross = sw == 2
+        val hol = p.hollow
+        val reach = p.classe.alcance * (if (cross) 1.35f else 1f) * (if (hol) 1.15f else 1f)
+        val dmg = p.danoH * (if (cross) 1.4f else 0.85f)
+        var hits = 0
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            if (e.alt - p.alt > 30f) return@forEach
+            val dist = hypot(e.x - p.x, e.y - p.y)
+            if (dist < reach + e.radius) {
+                val dx = e.x - p.x
+                val dy = e.y - p.y
+                val dot = dx * p.facingX + dy * p.facingY
+                val inArc = if (cross) (dot > -0.2f * dist || dist < 50f) else (dot > 0 || dist < 40f)
+                if (inArc) {
+                    damageEnemy(e, dmg, p.x, p.y, if (cross) 1.5f else 0.9f, if (hol) "hit_heavy" else null)
+                    hits++
+                }
+            }
+        }
+        val col = if (hol) ICHI_RED else 0xFFFF3B52.toInt()
+        val fy0 = p.y + p.facingY * 30f + p.radius * 0.55f - p.alt - 14f
+        ichiFxs.add(IchiFx(4, p.x + p.facingX * 30f, fy0, p.facingX, p.facingY, 0.22f, if (cross) 58f else 42f, col))
+        if (cross && !hol) {
+            getsugas.add(GetsugaWave(p.x + p.facingX * 26f, p.y + p.facingY * 26f, p.facingX, p.facingY, p.danoH * 1.0f, 18f + p.alt))
+        }
+        shake = max(shake, if (cross) 0.12f else 0.04f)
+        burst(p.x + p.facingX * 30f, fy0, if (hits > 0) 5 else 2, if (hits > 0) col else 0xFFE0E6EC.toInt())
+    }
+
+    /** Começa uma skill: Bankai 1 Getsuga, 2 Shunpo, 3 Redemoinho, 4 Vasto Lorde; Vasto Lorde 1 Cero, 2 Sonído, 3 Grito, 4 Mugetsu. */
+    private fun ichiSkill(p: Player, k: Int) {
+        if (!p.startSkill(k, System.currentTimeMillis())) {
+            snd("ui_error", 0.5f)
+            return
+        }
+        pendingShotT = -1f
+        pendingIchiT = -1f
+        queuedAt = 0L
+        skillDX = p.facingX
+        skillDY = p.facingY
+        pendingSkillK = k
+        pendingSkillT = p.skillReleaseAt(k)
+        if (p.ichiSkH) {
+            when (k) {
+                1 -> snd("spell_charge", 0.9f, 0.55f)
+                2 -> snd("dash", 0.8f, 0.7f)
+                3 -> snd("leap_charge", 0.9f, 0.6f)
+                else -> snd("thunder_cast", 1f, 0.5f)
+            }
+        } else {
+            when (k) {
+                1 -> snd("spell_charge", 0.8f, 0.8f)
+                2 -> snd("dash", 0.6f, 1.4f)
+                3 -> snd("leap_charge", 0.9f, 1.1f)
+                else -> snd("thunder_cast", 1f, 0.6f)
+            }
+        }
+    }
+
+    /** Instante do golpe da skill do Ichigo. */
+    private fun ichiRelease(p: Player, k: Int) {
+        var dx = skillDX
+        var dy = skillDY
+        val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l0
+        dy /= l0
+        val gy = p.y + p.radius * 0.55f - p.ground
+        val chest = p.y + p.radius * 0.55f - p.alt - 20f
+        if (!p.ichiSkH) {
+            when (k) {
+                1 -> {
+                    // Getsuga Tenshou: meia-lua negra de contorno rubro que atravessa todo mundo
+                    getsugas.add(GetsugaWave(p.x + dx * 26f, p.y + dy * 26f, dx, dy, p.danoH * 2.6f, 18f + p.alt))
+                    ichiFxs.add(IchiFx(4, p.x + dx * 30f, chest, dx, dy, 0.3f, 70f, ICHI_RED))
+                    burst(p.x + dx * 28f, chest, 8, ICHI_RED)
+                    shake = max(shake, 0.16f)
+                    snd("heavy_swing", 1f, 0.8f)
+                    snd("thunder_fire", 0.7f, 0.7f)
+                }
+                2 -> ichiDashStart(p, dx, dy, false)
+                3 -> {
+                    // Redemoinho de Getsuga: giro com a Tensa Zangetsu, onda em volta e quatro luas se afastando
+                    ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.5f, 130f, ICHI_RED))
+                    ichiFxs.add(IchiFx(4, p.x, chest, 1f, 0f, 0.32f, 80f, ICHI_RED))
+                    ichiFxs.add(IchiFx(4, p.x, chest, -1f, 0f, 0.32f, 80f, ICHI_RED))
+                    var hits = 0
+                    for (e in enemies) {
+                        if (!e.alive || e.alt - p.alt > 30f) continue
+                        if (hypot(e.x - p.x, e.y - p.y) < 125f + e.radius) {
+                            damageEnemy(e, p.danoH * 2.0f, p.x, p.y, 1.8f, "hit_heavy")
+                            hits++
+                        }
+                    }
+                    for (i in 0 until 4) {
+                        val a = (i * 90 + 45) * 0.0174533f
+                        getsugas.add(GetsugaWave(p.x + cos(a) * 24f, p.y + sin(a) * 24f, cos(a), sin(a), p.danoH * 0.9f, 18f + p.alt))
+                    }
+                    burst(p.x, gy, 10, ICHI_RED)
+                    shake = max(shake, 0.22f + 0.03f * (if (hits > 3) 3 else hits))
+                    snd("heavy_swing", 1f, 0.7f)
+                    snd("axe_slam", 0.8f, 1.1f)
+                }
+                else -> {
+                    // transformação em Vasto Lorde: onda escura que empurra e atordoa quem está perto
+                    p.hollow = true
+                    p.hollowT = Player.ICHI_HOLLOW_T
+                    p.hp = kotlin.math.min(p.maxHp, p.hp + p.maxHp * 0.2f)
+                    ichiFxs.add(IchiFx(3, p.x, gy, p.x, gy, 0.9f, 240f, ICHI_RED))
+                    ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.7f, 170f, ICHI_BONE))
+                    for (e in enemies) {
+                        if (!e.alive || e.alt - p.alt > 30f) continue
+                        if (hypot(e.x - p.x, e.y - p.y) < 170f + e.radius) {
+                            damageEnemy(e, p.danoH * 1.2f, p.x, p.y, 2.2f, "hit_heavy")
+                            e.stunT = max(e.stunT, 1.0f)
+                        }
+                    }
+                    burst(p.x, gy - 18f, 16, ICHI_RED)
+                    burst(p.x, gy - 18f, 10, ICHI_BONE)
+                    darkFlash = 1f
+                    shake = max(shake, 0.4f)
+                    snd("thunder_cast", 1f, 0.5f)
+                    snd("axe_slam", 1f, 0.7f)
+                }
+            }
+        } else {
+            when (k) {
+                1 -> {
+                    // Cero: feixe vermelho que atravessa tudo à frente
+                    var bestDot = 0.93f
+                    for (e in enemies) {
+                        if (!e.alive) continue
+                        val ex = e.x - p.x
+                        val ey = e.y - p.y
+                        val d = hypot(ex, ey)
+                        if (d < 30f || d > 420f) continue
+                        val dot = (ex * dx + ey * dy) / d
+                        if (dot > bestDot) {
+                            bestDot = dot
+                            dx = ex / d
+                            dy = ey / d
+                        }
+                    }
+                    val len = rayLen(p.x, p.y, dx, dy, 400f)
+                    val nx = -dy
+                    val ny = dx
+                    val hy = chest - 4f
+                    ichiFxs.add(IchiFx(0, p.x + dx * 22f, hy + dy * 22f, p.x + dx * len, hy + dy * len, 0.55f, 26f, ICHI_RED))
+                    var hits = 0
+                    for (e in enemies) {
+                        if (!e.alive) continue
+                        val rx = e.x - p.x
+                        val ry = e.y - p.y
+                        val along = rx * dx + ry * dy
+                        val side = abs(rx * nx + ry * ny)
+                        if (along > -10f && along < len + e.radius && side < 34f + e.radius * 0.6f) {
+                            damageEnemy(e, p.danoH * 3.2f, p.x, p.y, 1.6f, "hit_heavy")
+                            e.stunT = max(e.stunT, 0.5f)
+                            burst(e.x, e.y - 14f - e.alt, 8, ICHI_RED)
+                            hits++
+                        }
+                    }
+                    p.facingX = dx
+                    p.facingY = dy
+                    burst(p.x + dx * 24f, hy + dy * 24f, 10, ICHI_RED)
+                    shake = max(shake, 0.3f + 0.03f * (if (hits > 3) 3 else hits))
+                    snd("thunder_fire", 1f, 0.6f)
+                    snd("heavy_swing", 0.8f, 0.6f)
+                }
+                2 -> ichiDashStart(p, dx, dy, true)
+                3 -> {
+                    // Grito Hollow: berro que atordoa e empurra em volta
+                    ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.6f, 175f, ICHI_BONE))
+                    ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.8f, 120f, ICHI_RED))
+                    for (e in enemies) {
+                        if (!e.alive || e.alt - p.alt > 30f) continue
+                        if (hypot(e.x - p.x, e.y - p.y) < 160f + e.radius) {
+                            damageEnemy(e, p.danoH * 1.8f, p.x, p.y, 2.0f, "hit_heavy")
+                            e.stunT = max(e.stunT, 1.5f)
+                        }
+                    }
+                    burst(p.x, gy - 18f, 12, ICHI_BONE)
+                    shake = max(shake, 0.3f)
+                    snd("leap_land", 1f, 0.6f)
+                    snd("thunder_cast", 0.8f, 0.7f)
+                }
+                else -> {
+                    // Mugetsu: explosão negra enorme; depois dela a forma se desfaz
+                    ichiFxs.add(IchiFx(3, p.x, gy, p.x, gy, 1.1f, 330f, ICHI_RED))
+                    ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.9f, 260f, ICHI_BONE))
+                    ichiFxs.add(IchiFx(4, p.x, chest, 1f, 0f, 0.4f, 110f, ICHI_RED))
+                    ichiFxs.add(IchiFx(4, p.x, chest, -1f, 0f, 0.4f, 110f, ICHI_RED))
+                    for (e in enemies) {
+                        if (!e.alive || e.alt - p.alt > 40f) continue
+                        if (hypot(e.x - p.x, e.y - p.y) < 270f + e.radius) {
+                            damageEnemy(e, p.danoH * 6.0f, p.x, p.y, 2.6f, "hit_heavy")
+                            e.stunT = max(e.stunT, 1.0f)
+                            burst(e.x, e.y - 14f - e.alt, 10, ICHI_RED)
+                        }
+                    }
+                    p.endHollow = true
+                    burst(p.x, gy - 18f, 20, ICHI_RED)
+                    burst(p.x, gy - 18f, 10, 0xFF1A0610.toInt())
+                    darkFlash = 1f
+                    shake = max(shake, 0.55f)
+                    snd("thunder_fire", 1f, 0.45f)
+                    snd("axe_slam", 1f, 0.55f)
+                }
+            }
+        }
+    }
+
+    /** Shunpo (Bankai) e Sonído (Vasto Lorde): avanço veloz e invulnerável que corta quem estiver no caminho. */
+    private fun ichiDashStart(p: Player, dx: Float, dy: Float, hol: Boolean) {
+        val chest = p.y + p.radius * 0.55f - p.alt - 14f
+        val dist = Player.ICHI_DASH_SPD * Player.ICHI_DASH_T * 0.8f
+        p.ichiDX = dx
+        p.ichiDY = dy
+        p.ichiT = Player.ICHI_DASH_T
+        p.phaseT = max(p.phaseT, Player.ICHI_DASH_T + 0.1f)
+        p.facingX = dx
+        p.facingY = dy
+        ichiHit.clear()
+        ichiDashWas = true
+        ichiFxs.add(IchiFx(2, p.x, chest, p.x + dx * dist, chest + dy * dist, 0.4f, 22f, if (hol) ICHI_BONE else ICHI_RED))
+        burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, if (hol) ICHI_BONE else 0xFF2A2A34.toInt())
+        shake = max(shake, 0.06f)
+        snd("dash", 1f, if (hol) 0.75f else 1.45f)
+    }
+
+    /** Efeitos contínuos do Ichigo: Getsugas no ar, efeitos curtos, corte do Shunpo / Sonído e o fim da forma Vasto Lorde. */
+    private fun updateIchiFx(dt: Float, p: Player) {
+        if (p.classe != Classe.ICHIGO) return
+        for (w in getsugas) {
+            if (!w.alive) continue
+            w.update(dt)
+            if (map.isWall(w.x, w.y)) {
+                w.alive = false
+                burst(w.x, w.y - 14f, 5, ICHI_RED)
+                sndAt("spell_wall", w.x, w.y, 0.8f, 0.7f)
+                continue
+            }
+            for (e in enemies) {
+                if (e.alive && e !in w.hit && hypot(e.x - w.x, e.y - w.y) < e.radius + 30f) {
+                    w.hit.add(e)
+                    damageEnemy(e, w.dmg, w.x - w.dx * 20f, w.y - w.dy * 20f, 1.4f, "hit_heavy")
+                    burst(e.x, e.y - 14f - e.alt, 5, ICHI_RED)
+                }
+            }
+        }
+        getsugas.removeAll { !it.alive }
+        ichiFxs.forEach { it.update(dt) }
+        ichiFxs.removeAll { it.done }
+
+        if (p.ichiT > 0f) {
+            for (e in enemies) {
+                if (!e.alive || e in ichiHit) continue
+                if (abs(e.alt - p.alt) > 28f) continue
+                if (hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius + 16f) {
+                    ichiHit.add(e)
+                    val hol = p.hollow
+                    damageEnemy(e, p.danoH * (if (hol) 1.6f else 1.1f), p.x - p.ichiDX * 20f, p.y - p.ichiDY * 20f, 1.2f, if (hol) "hit_heavy" else null)
+                    if (hol) e.stunT = max(e.stunT, 0.4f)
+                    ichiFxs.add(IchiFx(4, e.x, e.y - 14f - e.alt, p.ichiDX, p.ichiDY, 0.22f, 40f, if (hol) ICHI_BONE else ICHI_RED))
+                    burst(e.x, e.y - 14f - e.alt, 5, if (hol) ICHI_BONE else ICHI_RED)
+                    shake = max(shake, 0.1f)
+                }
+            }
+        } else if (ichiDashWas) {
+            ichiDashWas = false
+            ichiHit.clear()
+        }
+
+        if (p.hollow && Random.nextInt(7) == 0) {
+            burst(p.x + (Random.nextFloat() - 0.5f) * 14f, p.y - 22f - p.alt, 1, if (Random.nextBoolean()) ICHI_RED else 0xFF1A0610.toInt())
+        }
+        if (ichiHolPrev && !p.hollow) {
+            // a máscara se desfaz
+            val gy = p.y + p.radius * 0.55f - p.ground
+            ichiFxs.add(IchiFx(1, p.x, gy, p.x, gy, 0.5f, 90f, ICHI_BONE))
+            burst(p.x, gy - 18f, 12, ICHI_BONE)
+            snd("teleport_out", 0.8f, 0.8f)
+        }
+        ichiHolPrev = p.hollow
     }
 
     // ───────────────────────── NINJA ─────────────────────────
@@ -1647,7 +1970,8 @@ class GameView @JvmOverloads constructor(
         val crit = pl != null && pl.critH > 0f && Math.random() < pl.critH.toDouble()
         // passiva do ninja (Desprezo pelos Fracos): bate mais forte em quem está com menos da metade da vida
         val weak = if (pl != null && pl.classe == Classe.NINJA && e.hp < e.maxHp * 0.5f) 1.12f else 1f
-        val dmg = (if (crit && pl != null) dmg0 * pl.critMulH else dmg0) * weak
+        val hollowMul = if (pl != null && pl.classe == Classe.ICHIGO && pl.hollow) 1.3f else 1f
+        val dmg = (if (crit && pl != null) dmg0 * pl.critMulH else dmg0) * weak * hollowMul
         if (e === markTarget) markDmg += dmg
         e.takeDamage(dmg)
         val big = dmg >= 28f || crit
@@ -1735,6 +2059,13 @@ class GameView @JvmOverloads constructor(
         }
         if (pikaHeld && p.classe == Classe.PIKACHU && p.alive) {
             if (p.canAttack(System.currentTimeMillis())) tryAttack()
+        }
+        if (pendingIchiT >= 0f) {
+            pendingIchiT -= dt
+            if (pendingIchiT <= 0f) {
+                pendingIchiT = -1f
+                if (p.alive && !p.rolling && !p.skilling && p.ichiT <= 0f) ichiStrike(pendingIchiSwing)
+            }
         }
         if (pendingNinjaT >= 0f) {
             pendingNinjaT -= dt
@@ -1978,6 +2309,7 @@ class GameView @JvmOverloads constructor(
         updateArcherFx(dt, p)
         updateNinjaFx(dt, p)
         updatePikaFx(dt, p)
+        updateIchiFx(dt, p)
 
         projectiles.forEach { pr ->
             if (!pr.alive) return@forEach
@@ -2100,6 +2432,8 @@ class GameView @JvmOverloads constructor(
         zaps.forEach { it.draw(canvas, paint, camX, camY) }
         swapFxs.forEach { it.draw(canvas, paint, camX, camY) }
         slashFx.forEach { it.draw(canvas, paint, camX, camY) }
+        ichiFxs.forEach { it.draw(canvas, paint, camX, camY) }
+        getsugas.forEach { it.draw(canvas, paint, camX, camY) }
         shurikens.forEach { it.draw(canvas, paint, camX, camY) }
         markTarget?.let { if (it.alive) DeathMarkFx.draw(canvas, paint, camX, camY, it, markT, markTotal, time) }
         thrown?.draw(canvas, paint, camX, camY, time)

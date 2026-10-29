@@ -47,5 +47,11 @@ enum class Classe(
         "Rápido e elétrico! Choque do Trovão, Trovoada, Cauda de Ferro, Investida Trovão, Trovão e Ataque Rápido.",
         0xFFF9C900.toInt(),
         120f, 100f, 3.9f, 20f, 60f, 300L, true
+    ),
+    ICHIGO(
+        "Ichigo",
+        "Shinigami Substituto da luta contra o Aizen. Getsuga Tenshou, Shunpo e Redemoinho; a transformação em Vasto Lorde troca tudo por Cero, Sonído, Grito Hollow e Mugetsu.",
+        0xFFE8541A.toInt(),
+        170f, 100f, 3.6f, 27f, 72f, 320L, false
     )
 }

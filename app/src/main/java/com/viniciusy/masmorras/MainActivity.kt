@@ -65,6 +65,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSkill4Cd: TextView
     private lateinit var hudLayer: View
     private val prevCd = FloatArray(4)
+    private var ichiHolShown = false
     private lateinit var shadowTimer: ShadowTimerView
     private lateinit var btnRoll: android.widget.ImageButton
     private lateinit var menuBg: MenuBgView
@@ -261,7 +262,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            if (classe == Classe.PIKACHU) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
+            if (classe == Classe.PIKACHU || classe == Classe.ICHIGO) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
         }
         findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)
@@ -389,6 +390,27 @@ class MainActivity : AppCompatActivity() {
                         tvMpNum.text = ""
                     }
                     tvInimigos.text = gameView.aliveEnemies().toString()
+                    if (p.classe == Classe.ICHIGO) {
+                        if (p.hollow != ichiHolShown) {
+                            ichiHolShown = p.hollow
+                            applyIchiForm(p.hollow)
+                        }
+                        val label = if (p.hollow) "Vasto Lorde " + Math.ceil(p.hollowT.toDouble()).toInt() + "s" else "Ichigo"
+                        if (tvClasseHud.text.toString() != label) tvClasseHud.text = label
+                        val nowMs = System.currentTimeMillis()
+                        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
+                        val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd)
+                        var ping = false
+                        for (i in 0..3) {
+                            val c = p.skillCd(i + 1, nowMs)
+                            if (prevCd[i] > 0f && c <= 0f) ping = true
+                            prevCd[i] = c
+                            val semMana = c <= 0f && p.mp < p.ichiCost(i + 1)
+                            tvs[i].text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
+                            btns[i].alpha = if (c > 0f || semMana) 0.45f else 1f
+                        }
+                        if (ping) Sfx.play("ui_ping", 0.6f)
+                    }
                     if (p.classe == Classe.PIKACHU) {
                         val nowMs = System.currentTimeMillis()
                         val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
@@ -557,13 +579,14 @@ class MainActivity : AppCompatActivity() {
                 Classe.BARBARO -> R.drawable.hd_ic_c_barbaro
                 Classe.NINJA -> R.drawable.hd_ic_c_ninja
                 Classe.PIKACHU -> R.drawable.hd_ic_c_pikachu
+                Classe.ICHIGO -> R.drawable.hd_ic_c_ichigo
             }
         )
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
-        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
-        val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
-        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
+        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
         if (classe == Classe.NINJA) {
             btnRoll.setImageResource(R.drawable.hd_ic_nin_w)
@@ -580,6 +603,9 @@ class MainActivity : AppCompatActivity() {
         if (classe == Classe.NINJA) {
             btnSkill1.setImageResource(R.drawable.hd_ic_nin_q)
             btnSkill1.contentDescription = "Shuriken Navalha"
+        } else if (classe == Classe.ICHIGO) {
+            ichiHolShown = false
+            applyIchiForm(false)
         } else if (classe == Classe.PIKACHU) {
             btnSkill1.setImageResource(R.drawable.hd_ic_pika_bolt)
             btnSkill2.setImageResource(R.drawable.hd_ic_pika_tail)
@@ -607,13 +633,38 @@ class MainActivity : AppCompatActivity() {
         btnSkill3.visibility = skill3Vis
         tvSkill3Cd.visibility = skill3Vis
         // ultimate (R) do ninja removida por enquanto; o Pikachu usa o 4º botão para o Trovão
-        val skill4Vis = if (classe == Classe.PIKACHU) View.VISIBLE else View.GONE
+        val skill4Vis = if (classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
         btnSkill4.visibility = skill4Vis
         tvSkill4Cd.visibility = skill4Vis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)
         gameView.startGame(classe, custom)
+    }
+
+    /** Ichigo: troca os ícones e nomes dos botões de skill conforme a forma (Bankai ou Vasto Lorde). */
+    private fun applyIchiForm(hollow: Boolean) {
+        if (hollow) {
+            btnSkill1.setImageResource(R.drawable.hd_ic_ichi_cero)
+            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_sonido)
+            btnSkill3.setImageResource(R.drawable.hd_ic_ichi_grito)
+            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_mugetsu)
+            btnSkill1.contentDescription = "Cero"
+            btnSkill2.contentDescription = "Sonído"
+            btnSkill3.contentDescription = "Grito Hollow"
+            btnSkill4.contentDescription = "Mugetsu"
+            tvClasseHud.setTextColor(0xFFFF4B5C.toInt())
+        } else {
+            btnSkill1.setImageResource(R.drawable.hd_ic_ichi_getsuga)
+            btnSkill2.setImageResource(R.drawable.hd_ic_ichi_shunpo)
+            btnSkill3.setImageResource(R.drawable.hd_ic_ichi_spin)
+            btnSkill4.setImageResource(R.drawable.hd_ic_ichi_hollow)
+            btnSkill1.contentDescription = "Getsuga Tenshou"
+            btnSkill2.contentDescription = "Shunpo"
+            btnSkill3.contentDescription = "Redemoinho de Getsuga"
+            btnSkill4.contentDescription = "Vasto Lorde"
+            tvClasseHud.setTextColor(0xFFF2B63D.toInt())
+        }
     }
 
     private fun leaveGame() {
