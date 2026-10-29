@@ -266,7 +266,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            if (classe == Classe.PIKACHU || classe == Classe.ICHIGO) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
+            if (classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
         }
         findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)
@@ -586,6 +586,7 @@ class MainActivity : AppCompatActivity() {
                 Classe.NINJA -> R.drawable.hd_ic_c_ninja
                 Classe.PIKACHU -> R.drawable.hd_ic_c_pikachu
                 Classe.ICHIGO -> R.drawable.hd_ic_c_ichigo
+                Classe.LUFFY -> R.drawable.hd_ic_c_luffy
             }
         )
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)

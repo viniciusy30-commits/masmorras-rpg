@@ -174,6 +174,7 @@ class GameView @JvmOverloads constructor(
         when (p.classe) {
             Classe.BARBARO -> snd("axe1", 1f, if (p.swing == 2) 0.78f else if (p.swing == 1) 0.92f else 1.02f)
             Classe.ICHIGO -> if (p.hollow) snd("heavy_swing", 0.8f, (if (p.swing == 2) 0.85f else 1.05f) * vary()) else snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.9f, 0.95f * vary())
+            Classe.LUFFY -> snd("heavy_swing", 0.6f, (if (p.swing == 2) 1.0f else 1.3f) * vary())
             Classe.NINJA -> snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.8f, 1.22f * vary())
             Classe.GUERREIRO -> if (p.weapon == 1) {
                 when (p.swing) {
@@ -781,7 +782,7 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (!p.canAttack(now)) {
-            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA || p.classe == Classe.ICHIGO) && !p.rolling) queuedAt = now
+            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA || p.classe == Classe.ICHIGO || p.classe == Classe.LUFFY) && !p.rolling) queuedAt = now
             return
         }
 
@@ -852,7 +853,7 @@ class GameView @JvmOverloads constructor(
             val spear = p.classe == Classe.GUERREIRO && p.weapon == 1
             val thrust = p.classe == Classe.GUERREIRO && (if (spear) p.swing != 1 else p.swing == 2)
             val reach = p.classe.alcance * (if (spear) (if (p.swing == 0) 1.55f else if (p.swing == 1) 1.2f else 1.95f) else if (thrust) 1.3f else 1f)
-            val dmg = p.danoH * (if (spear) (if (p.swing == 0) 0.95f else if (p.swing == 1) 0.85f else 1.45f) else if (thrust) 1.3f else 1f)
+            val dmg = p.danoH * (if (spear) (if (p.swing == 0) 0.95f else if (p.swing == 1) 0.85f else 1.45f) else if (thrust) 1.3f else 1f) * (if (p.classe == Classe.LUFFY && p.swing == 2) 1.5f else 1f)
             enemies.forEach { e ->
                 if (!e.alive) return@forEach
                 val dist = hypot(e.x - p.x, e.y - p.y)
@@ -2127,7 +2128,7 @@ class GameView @JvmOverloads constructor(
         val big = dmg >= 28f || crit
         if (hitSnd != "") {
             val nm = hitSnd ?: when (player?.classe) {
-                Classe.BARBARO -> "hit_heavy"
+                Classe.BARBARO, Classe.LUFFY -> "hit_heavy"
                 Classe.ARQUEIRO -> "hit_arrow"
                 Classe.MAGO, Classe.PIKACHU -> "hit_magic"
                 else -> "hit_blade"

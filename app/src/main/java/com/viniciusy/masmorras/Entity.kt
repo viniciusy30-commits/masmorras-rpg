@@ -91,6 +91,8 @@ class Player(
         val PIKA_CD = longArrayOf(0L, 4500L, 6000L, 9000L, 16000L)     // recarga (ms)
         const val ICHI_RATE_1 = 2.6f       // velocidade dos 2 primeiros golpes do combo do Ichigo
         const val ICHI_RATE_3 = 2.1f       // velocidade do 3º golpe
+        const val LUFFY_RATE_1 = 2.9f      // velocidade dos 2 primeiros socos do combo do Luffy
+        const val LUFFY_RATE_3 = 2.2f      // velocidade do soco duplo
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
         const val ICHI_DASH_T = 0.24f      // duração do Shunpo / Sonído (botão de rolar)
         const val ICHI_DASH_DIST = 250f    // distância do Shunpo / Sonído
@@ -240,6 +242,7 @@ class Player(
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
+        else if (classe == Classe.LUFFY) (if (comboStep == 2) 520L else 280L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -284,12 +287,19 @@ class Player(
             swing = comboStep
             attackRate = if (swing == 2) ICHI_RATE_3 else ICHI_RATE_1
         }
+        if (classe == Classe.LUFFY) {
+            // combo de 3: soco de direita, soco de esquerda e os dois punhos juntos
+            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = if (swing == 2) LUFFY_RATE_3 else LUFFY_RATE_1
+        }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
         if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
         if (classe == Classe.PIKACHU) attackRate = PIKA_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else if (classe == Classe.ICHIGO) 0.7f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else if (classe == Classe.ICHIGO) 0.7f else if (classe == Classe.LUFFY) 0.8f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -710,7 +720,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         // arco puxado: congela a animação logo antes do disparo até o botão ser solto
         if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
@@ -859,6 +869,12 @@ class Player(
         Ichigo3D.hollowOn = classe == Classe.ICHIGO && hollow
         Ichigo3D.sky = classe == Classe.ICHIGO && sky
         Ichigo3D.alphaV = 1f
+        Luffy3D.rollP = if (classe == Classe.LUFFY && rollT > 0f) 1f - rollT / rollDur else -1f
+        Luffy3D.inAir = up > 1f
+        Luffy3D.airH = up
+        Luffy3D.airVz = vz
+        Luffy3D.swing = swing
+        Luffy3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -874,11 +890,11 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA && classe != Classe.ICHIGO) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA && classe != Classe.ICHIGO && classe != Classe.LUFFY) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else if (classe == Classe.LUFFY) 66f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }

@@ -53,5 +53,11 @@ enum class Classe(
         "Shinigami Substituto da luta contra o Aizen. Getsuga Tenshou, Shunpo e Redemoinho; a transformação em Vasto Lorde troca tudo por Cero, Sonído, Grito Hollow e Mugetsu.",
         0xFFE8541A.toInt(),
         170f, 100f, 3.6f, 27f, 72f, 320L, false
+    ),
+    LUFFY(
+        "Luffy",
+        "Capitão dos Chapéus de Palha depois do salto de tempo. Combo de socos: direita, esquerda e os dois punhos juntos.",
+        0xFFD42A2E.toInt(),
+        190f, 0f, 3.5f, 26f, 62f, 300L, false
     )
 }

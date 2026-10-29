@@ -243,7 +243,7 @@ class HeroiPerfil(val classe: Classe) {
             Classe.ARQUEIRO -> intArrayOf(10, 15, 13, 10, 12, 13)
             Classe.BARBARO -> intArrayOf(15, 12, 15, 8, 10, 11)
             Classe.NINJA, Classe.PIKACHU -> intArrayOf(11, 15, 12, 10, 13, 12)
-            Classe.ICHIGO -> intArrayOf(15, 13, 13, 9, 12, 11)
+            Classe.ICHIGO, Classe.LUFFY -> intArrayOf(15, 13, 13, 9, 12, 11)
         }
 
         fun padrao(c: Classe): HeroiPerfil = padraoCache.getOrPut(c) { HeroiPerfil(c) }
