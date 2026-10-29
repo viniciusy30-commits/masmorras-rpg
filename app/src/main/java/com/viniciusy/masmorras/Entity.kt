@@ -83,6 +83,12 @@ class Player(
         const val NINJA_RATE_3 = 2.2f      // velocidade do 3º golpe
         val NINJA_COST = floatArrayOf(0f, 18f, 22f, 20f, 35f)          // mana de Q, W, E, R
         val NINJA_CD = longArrayOf(0L, 5000L, 9000L, 6500L, 20000L)    // recarga de Q, W, E, R (ms)
+        const val PIKA_RATE = 3.0f         // velocidade da animação do Choque do Trovão
+        const val PIKA_QUICK_T = 0.30f     // duração do Ataque Rápido (o "rolamento" do Pikachu)
+        const val PIKA_VOLT_T = 0.50f      // duração do avanço da Investida Trovão
+        const val PIKA_VOLT_SPD = 560f     // velocidade do avanço da Investida Trovão
+        val PIKA_COST = floatArrayOf(0f, 20f, 15f, 25f, 40f)           // mana: Trovoada, Cauda de Ferro, Investida, Trovão
+        val PIKA_CD = longArrayOf(0L, 4500L, 6000L, 9000L, 16000L)     // recarga (ms)
     }
 
     // herói escolhido na criação de personagem (raça + atributos)
@@ -189,8 +195,14 @@ class Player(
     var phaseT = 0f
     private val ninjaReadyAt = LongArray(5)
 
+    // pikachu: avanço da Investida Trovão e recarga das 4 skills
+    var voltT = 0f
+    var voltDX = 0f
+    var voltDY = 0f
+    private val pikaReadyAt = LongArray(5)
+
     fun canAttack(now: Long): Boolean {
-        if (rolling || skillK != 0 || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
+        if (rolling || skillK != 0 || voltT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
@@ -233,9 +245,10 @@ class Player(
         }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
         if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
+        if (classe == Classe.PIKACHU) attackRate = PIKA_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -270,6 +283,9 @@ class Player(
     /** Segundos até a lâmina do ninja acertar (sincronizado com Ninja3D.impactAt). */
     fun ninjaDelay(): Float = Ninja3D.impactAt(swing) / attackRate
 
+    /** Segundos até o raio sair das mãos do Pikachu (sincronizado com Pikachu3D.T_SHOT). */
+    fun pikaDelay(): Float = Pikachu3D.T_SHOT / PIKA_RATE
+
     /** Salto-dash do arqueiro: pulinho baixo com cambalhota na direção que está olhando. */
     fun startHop(now: Long): Boolean {
         if (classe != Classe.ARQUEIRO || !alive || rolling || skillK != 0 || !grounded || now - lastRoll < 700L) return false
@@ -300,6 +316,9 @@ class Player(
     }
 
     fun skillReady(k: Int, now: Long): Boolean {
+        if (classe == Classe.PIKACHU) {
+            return k in 1..4 && alive && skillK == 0 && voltT <= 0f && !rolling && grounded && now >= pikaReadyAt[k] && mp >= PIKA_COST[k]
+        }
         if (classe == Classe.NINJA) {
             return k in 1..3 && alive && skillK == 0 && !rolling && grounded && dashT <= 0f && now >= ninjaReadyAt[k] && mp >= NINJA_COST[k]
         }
@@ -309,6 +328,7 @@ class Player(
 
     /** Segundos de recarga que faltam (0 = pronta). */
     fun skillCd(k: Int, now: Long): Float {
+        if (classe == Classe.PIKACHU) return if (k in 1..4) ((pikaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         return (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
     }
@@ -316,7 +336,11 @@ class Player(
     fun startSkill(k: Int, now: Long): Boolean {
         if (!skillReady(k, now)) return false
         skillK = k
-        if (classe == Classe.NINJA) {
+        if (classe == Classe.PIKACHU) {
+            skillDur = Pikachu3D.DUR[k]
+            mp -= PIKA_COST[k]
+            pikaReadyAt[k] = now + PIKA_CD[k]
+        } else if (classe == Classe.NINJA) {
             skillDur = when (k) {
                 1 -> Ninja3D.Q_DUR
                 2 -> Ninja3D.W_DUR
@@ -347,6 +371,7 @@ class Player(
 
     /** Segundos desde o começo da skill até ela sair (flecha, shuriken, sombra, corte ou salto). */
     fun skillReleaseAt(k: Int): Float {
+        if (classe == Classe.PIKACHU) return Pikachu3D.DUR[k] * Pikachu3D.REL[k]
         if (classe == Classe.NINJA) {
             return when (k) {
                 1 -> Ninja3D.Q_DUR * Ninja3D.Q_REL
@@ -421,7 +446,7 @@ class Player(
     }
 
     fun startRoll(now: Long): Boolean {
-        if (!alive || rolling || skillK != 0 || !grounded || now - lastRoll < 700L) return false
+        if (!alive || rolling || skillK != 0 || voltT > 0f || !grounded || now - lastRoll < (if (classe == Classe.PIKACHU) 900L else 700L)) return false
         var dx = inX
         var dy = inY
         if (hypot(dx, dy) < 0.1f) {
@@ -433,8 +458,8 @@ class Player(
         rollDY = dy / l
         facingX = rollDX
         facingY = rollDY
-        rollT = ROLL_TIME
-        rollDur = ROLL_TIME
+        rollT = if (classe == Classe.PIKACHU) PIKA_QUICK_T else ROLL_TIME
+        rollDur = rollT
         dashing = false
         lastRoll = now
         attackAnim = 0f
@@ -540,6 +565,7 @@ class Player(
         if (flipT > 0f) flipT = max(0f, flipT - dt)
         if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
         if (dashT > 0f) dashT = max(0f, dashT - dt)
+        if (voltT > 0f) voltT = max(0f, voltT - dt)
         if (leaping) {
             leapClock += dt
             if (leapClock > 2.5f) leaping = false
@@ -555,9 +581,13 @@ class Player(
                 trapRelY = y
                 trapRelUp = (alt - ground).coerceAtLeast(0f)
             }
-            val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
+            val spd = if (hopping) 440f * (1.25f - 0.9f * q) else if (dashing) 640f * (1.3f - 0.95f * q) else if (classe == Classe.PIKACHU) 640f * (1.35f - 0.95f * q) else 300f * (1.4f - 0.75f * q)
             vx = rollDX * spd
             vy = rollDY * spd
+        } else if (voltT > 0f) {
+            // Investida Trovão: avança em linha reta
+            vx = voltDX * PIKA_VOLT_SPD
+            vy = voltDY * PIKA_VOLT_SPD
         } else if (dashT > 0f && !dashUp) {
             // pulo-dash: acelera e freia suave (meio seno), deslizando pelo ar
             val q = 1f - dashT / dashDur
@@ -569,7 +599,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f)
             vx = inX * velH * 60f * slow
             vy = inY * velH * 60f * slow
         }
@@ -579,7 +609,7 @@ class Player(
         if (sp > 1f) walkPhase += sp * dt * 0.05f
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         // arco puxado: congela a animação logo antes do disparo até o botão ser solto
         if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
@@ -684,6 +714,13 @@ class Player(
         Ninja3D.skillK = if (classe == Classe.NINJA) skillK else 0
         Ninja3D.skillP = if (classe == Classe.NINJA && skillK != 0) 1f - skillT / skillDur else -1f
         Ninja3D.alphaV = 1f
+        Pikachu3D.rollP = if (classe == Classe.PIKACHU && rollT > 0f) 1f - rollT / rollDur else -1f
+        Pikachu3D.inAir = up > 1f
+        Pikachu3D.airH = up
+        Pikachu3D.airVz = vz
+        Pikachu3D.skillK = if (classe == Classe.PIKACHU) skillK else 0
+        Pikachu3D.skillP = if (classe == Classe.PIKACHU && skillK != 0) 1f - skillT / skillDur else -1f
+        Pikachu3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -703,7 +740,7 @@ class Player(
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }

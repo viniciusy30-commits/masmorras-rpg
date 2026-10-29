@@ -49,6 +49,7 @@ object Sprites {
             Classe.ARQUEIRO -> Archer3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.BARBARO -> Barbarian3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
             Classe.NINJA -> Ninja3D.draw(c, p, fx, fy, s, phase, moving, faceX, faceY, attack)
+            Classe.PIKACHU -> Pikachu3D.draw(c, p, fx, fy, s0, phase, moving, faceX, faceY, attack)
         }
     }
 

@@ -261,7 +261,7 @@ class MainActivity : AppCompatActivity() {
         rv.layoutManager = GridLayoutManager(this, 4)
         rv.adapter = ClasseAdapter(Classe.values().toList()) { classe ->
             selectedClasse = classe
-            HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
+            if (classe == Classe.PIKACHU) onClassPicked(classe) else HeroCreator.mostrar(this, classe) { onClassPicked(classe) }
         }
         findViewById<View>(R.id.btnVoltarClasse).setOnClickListener {
             openMapList(false)
@@ -389,6 +389,21 @@ class MainActivity : AppCompatActivity() {
                         tvMpNum.text = ""
                     }
                     tvInimigos.text = gameView.aliveEnemies().toString()
+                    if (p.classe == Classe.PIKACHU) {
+                        val nowMs = System.currentTimeMillis()
+                        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
+                        val tvs = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd)
+                        var ping = false
+                        for (i in 0..3) {
+                            val c = p.skillCd(i + 1, nowMs)
+                            if (prevCd[i] > 0f && c <= 0f) ping = true
+                            prevCd[i] = c
+                            val semMana = c <= 0f && p.mp < Player.PIKA_COST[i + 1]
+                            tvs[i].text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
+                            btns[i].alpha = if (c > 0f || semMana) 0.45f else 1f
+                        }
+                        if (ping) Sfx.play("ui_ping", 0.6f)
+                    }
                     if (p.classe == Classe.ARQUEIRO || p.classe == Classe.NINJA) {
                         val nowMs = System.currentTimeMillis()
                         val ninja = p.classe == Classe.NINJA
@@ -541,17 +556,21 @@ class MainActivity : AppCompatActivity() {
                 Classe.ARQUEIRO -> R.drawable.hd_ic_c_arqueiro
                 Classe.BARBARO -> R.drawable.hd_ic_c_barbaro
                 Classe.NINJA -> R.drawable.hd_ic_c_ninja
+                Classe.PIKACHU -> R.drawable.hd_ic_c_pikachu
             }
         )
-        btnAttack.setImageResource(R.drawable.hd_ic_sword)
+        btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
-        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA) View.VISIBLE else View.GONE
-        val skill2Vis = if (classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
-        val skill3Vis = if (classe == Classe.NINJA) View.VISIBLE else View.GONE
+        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
+        val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
+        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
         if (classe == Classe.NINJA) {
             btnRoll.setImageResource(R.drawable.hd_ic_nin_w)
             btnRoll.contentDescription = "Sombra Viva"
+        } else if (classe == Classe.PIKACHU) {
+            btnRoll.setImageResource(R.drawable.hd_ic_pika_quick)
+            btnRoll.contentDescription = "Ataque Rápido"
         } else {
             btnRoll.setImageResource(R.drawable.hd_ic_roll)
             btnRoll.contentDescription = "Rolar"
@@ -561,6 +580,15 @@ class MainActivity : AppCompatActivity() {
         if (classe == Classe.NINJA) {
             btnSkill1.setImageResource(R.drawable.hd_ic_nin_q)
             btnSkill1.contentDescription = "Shuriken Navalha"
+        } else if (classe == Classe.PIKACHU) {
+            btnSkill1.setImageResource(R.drawable.hd_ic_pika_bolt)
+            btnSkill2.setImageResource(R.drawable.hd_ic_pika_tail)
+            btnSkill3.setImageResource(R.drawable.hd_ic_pika_volt)
+            btnSkill4.setImageResource(R.drawable.hd_ic_pika_thunder)
+            btnSkill1.contentDescription = "Trovoada"
+            btnSkill2.contentDescription = "Cauda de Ferro"
+            btnSkill3.contentDescription = "Investida Trovão"
+            btnSkill4.contentDescription = "Trovão"
         } else {
             btnSkill1.setImageResource(R.drawable.hd_ic_rain)
             btnSkill2.setImageResource(R.drawable.hd_ic_thunder)
@@ -578,9 +606,10 @@ class MainActivity : AppCompatActivity() {
         tvSkill2Cd.visibility = skill2Vis
         btnSkill3.visibility = skill3Vis
         tvSkill3Cd.visibility = skill3Vis
-        // ultimate (R) removida por enquanto
-        btnSkill4.visibility = View.GONE
-        tvSkill4Cd.visibility = View.GONE
+        // ultimate (R) do ninja removida por enquanto; o Pikachu usa o 4º botão para o Trovão
+        val skill4Vis = if (classe == Classe.PIKACHU) View.VISIBLE else View.GONE
+        btnSkill4.visibility = skill4Vis
+        tvSkill4Cd.visibility = skill4Vis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)

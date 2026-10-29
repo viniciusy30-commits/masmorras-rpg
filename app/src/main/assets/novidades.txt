@@ -1,3 +1,13 @@
+#id 2026-10-29-a
+#titulo Pikachu jogável, com o moveset completo
+- Nova classe Pikachu, em 3D de blocos no mesmo estilo do Mago e do Guerreiro: orelhas de ponta preta, bochechas vermelhas que brilham ao carregar, listras nas costas e cauda em raio; ele não passa pela criação de personagem, é sempre ele mesmo
+- Ataque (segurar para atirar sem parar): Choque do Trovão, bola elétrica que sai das mãos, sem gastar mana
+- Botão de rolar vira Ataque Rápido: arrancada veloz e invulnerável, com rastros de velocidade, que também acerta quem estiver no caminho
+- Trovoada (20 de mana): descarga em linha que atravessa e atordoa todos à frente
+- Cauda de Ferro (15 de mana): cambalhota e martelada em arco com a cauda de aço, empurrando e atordoando
+- Investida Trovão (25 de mana): carrega agachado e dispara envolto numa esfera elétrica, acertando tudo no caminho (o recuo machuca um pouco, mas nunca mata)
+- Trovão (40 de mana): raios caem do céu sobre até 5 inimigos próximos, com atordoamento
+
 #id 2026-10-28-m
 #titulo Tela de criação em abas e penteados separados por sexo
 - Tela de criação refeita: abas Raça, Atributos, Corpo, Cabelo, Rosto e Roupas, com fichas em grade (nada de rolar para o lado) e cores em amostras grandes

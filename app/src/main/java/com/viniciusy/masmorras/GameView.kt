@@ -81,6 +81,12 @@ class GameView @JvmOverloads constructor(
     private val slashFx = ArrayList<SlashFx>()
     private var pendingNinjaT = -1f
     private var pendingNinjaSwing = 0
+    // pikachu: raio pendente, ataque segurado, quem já levou Investida / Ataque Rápido
+    private var pendingPikaT = -1f
+    private var pikaHeld = false
+    private var voltWasOn = false
+    private val voltHit = HashSet<Enemy>()
+    private val quickHit = HashSet<Enemy>()
     private var markTarget: Enemy? = null
     private var markT = 0f
     private var markDmg = 0f
@@ -226,6 +232,11 @@ class GameView @JvmOverloads constructor(
         swapFxs.clear()
         darkFlash = 0f
         pendingNinjaT = -1f
+        pendingPikaT = -1f
+        pikaHeld = false
+        voltWasOn = false
+        voltHit.clear()
+        quickHit.clear()
         markTarget = null
         markT = 0f
         markDmg = 0f
@@ -451,6 +462,16 @@ class GameView @JvmOverloads constructor(
             }
             return
         }
+        if (p.classe == Classe.PIKACHU) {
+            // Ataque Rápido: arrancada veloz e invulnerável, que também acerta quem estiver no caminho
+            if (p.startRoll(System.currentTimeMillis())) {
+                quickHit.clear()
+                pendingPikaT = -1f
+                snd("dash", 0.85f, 1.5f * vary())
+                burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFFFE23A.toInt())
+            }
+            return
+        }
         if (p.classe == Classe.BARBARO) {
             val ax = if (aimOn) aimX else p.facingX
             val ay = if (aimOn) aimY else p.facingY
@@ -484,6 +505,10 @@ class GameView @JvmOverloads constructor(
             ninjaSkill(p, k)
             return
         }
+        if (p.classe == Classe.PIKACHU) {
+            pikaSkill(p, k)
+            return
+        }
         if (p.classe != Classe.ARQUEIRO) return
         if (!p.startSkill(k, System.currentTimeMillis())) {
             snd("ui_error", 0.5f)
@@ -502,6 +527,10 @@ class GameView @JvmOverloads constructor(
     private fun releaseSkill(p: Player, k: Int) {
         if (p.classe == Classe.NINJA) {
             ninjaRelease(p, k)
+            return
+        }
+        if (p.classe == Classe.PIKACHU) {
+            pikaRelease(p, k)
             return
         }
         var dx = skillDX
@@ -726,6 +755,12 @@ class GameView @JvmOverloads constructor(
                 snd("bow_draw", 0.55f, 1.6f)
                 return
             }
+            if (p.classe == Classe.PIKACHU) {
+                // o Choque do Trovão só sai das mãos no instante do gesto (sincronizado com Pikachu3D.T_SHOT)
+                pendingPikaT = p.pikaDelay()
+                snd("spell_charge", 0.6f, 1.7f)
+                return
+            }
             val speed = 280f
             val vx = p.facingX * speed
             val vy = p.facingY * speed
@@ -843,6 +878,218 @@ class GameView @JvmOverloads constructor(
         shake = max(shake, if (slam) 0.16f else 0.07f)
         if (slam) snd("axe_slam", 1f, vary())
         if (slam) burst(p.x + p.facingX * 26f, p.y + p.facingY * 26f + p.radius * 0.55f - p.ground, 7, 0xFFB8B0A8.toInt())
+    }
+
+    // ───────────────────────── PIKACHU ─────────────────────────
+
+    /** Choque do Trovão: bola elétrica que sai das mãos (leve ímã para quem está bem à frente). */
+    private fun pikaShock(p: Player) {
+        var dx = p.facingX
+        var dy = p.facingY
+        val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l0
+        dy /= l0
+        var bestDot = 0.93f
+        for (e in enemies) {
+            if (!e.alive) continue
+            val ex = e.x - p.x
+            val ey = e.y - p.y
+            val d = hypot(ex, ey)
+            if (d < 30f || d > 420f) continue
+            val dot = (ex * dx + ey * dy) / d
+            if (dot > bestDot) {
+                bestDot = dot
+                dx = ex / d
+                dy = ey / d
+            }
+        }
+        snd("thunder_fire", 0.55f, 1.5f * vary())
+        projectiles.add(
+            Projectile(
+                p.x + dx * 20f, p.y + dy * 20f, dx * 400f, dy * 400f,
+                p.danoH, 0xFFFFE23A.toInt(), true, 0
+            )
+        )
+        burst(p.x + dx * 20f, p.y + dy * 20f - 14f - p.alt, 4, 0xFFFFF27A.toInt())
+    }
+
+    /** Começa uma skill do Pikachu: 1 Trovoada, 2 Cauda de Ferro, 3 Investida Trovão, 4 Trovão. */
+    private fun pikaSkill(p: Player, k: Int) {
+        if (!p.startSkill(k, System.currentTimeMillis())) {
+            snd("ui_error", 0.5f)
+            return
+        }
+        pendingShotT = -1f
+        pendingPikaT = -1f
+        queuedAt = 0L
+        skillDX = p.facingX
+        skillDY = p.facingY
+        pendingSkillK = k
+        pendingSkillT = p.skillReleaseAt(k)
+        snd(if (k == 4) "thunder_cast" else if (k == 2) "spell_charge" else if (k == 3) "leap_charge" else "thunder_cast", 0.9f, if (k == 3) 1.4f else 1f)
+    }
+
+    /** Instante do golpe da skill do Pikachu. */
+    private fun pikaRelease(p: Player, k: Int) {
+        var dx = skillDX
+        var dy = skillDY
+        val l0 = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l0
+        dy /= l0
+        val gy = p.y + p.radius * 0.55f - p.ground
+        when (k) {
+            1 -> {
+                // Trovoada: descarga em linha que atravessa todo mundo à frente
+                var bestDot = 0.92f
+                for (e in enemies) {
+                    if (!e.alive) continue
+                    val ex = e.x - p.x
+                    val ey = e.y - p.y
+                    val d = hypot(ex, ey)
+                    if (d < 30f || d > 420f) continue
+                    val dot = (ex * dx + ey * dy) / d
+                    if (dot > bestDot) {
+                        bestDot = dot
+                        dx = ex / d
+                        dy = ey / d
+                    }
+                }
+                val len = rayLen(p.x, p.y, dx, dy, 340f)
+                val sx = p.x + dx * 18f
+                val sy = p.y + dy * 18f
+                val ex0 = p.x + dx * len
+                val ey0 = p.y + dy * len
+                val nx = -dy
+                val ny = dx
+                for (i in -1..1) {
+                    zaps.add(ZapFx(sx + nx * i * 9f, sy + ny * i * 9f - 18f - p.alt, ex0 + nx * i * 9f, ey0 + ny * i * 9f - 18f - p.alt))
+                }
+                var hits = 0
+                for (e in enemies) {
+                    if (!e.alive) continue
+                    val rx = e.x - p.x
+                    val ry = e.y - p.y
+                    val along = rx * dx + ry * dy
+                    val side = abs(rx * nx + ry * ny)
+                    if (along > -10f && along < len + e.radius && side < 30f + e.radius * 0.6f) {
+                        damageEnemy(e, p.danoH * 2.2f, p.x, p.y, 1.3f, "")
+                        sndAt("thunder_hit", e.x, e.y, 0.95f, vary())
+                        e.stunT = max(e.stunT, 0.6f)
+                        burst(e.x, e.y - 14f - e.alt, 8, 0xFFFFF27A.toInt())
+                        hits++
+                    }
+                }
+                burst(sx, sy - 14f - p.alt, 8, 0xFFFFF27A.toInt())
+                shake = max(shake, 0.2f + 0.04f * (if (hits > 3) 3 else hits))
+                snd("thunder_fire", 1f)
+            }
+            2 -> {
+                // Cauda de Ferro: martelada em arco com a cauda de aço
+                val reach = 100f
+                var hits = 0
+                for (e in enemies) {
+                    if (!e.alive) continue
+                    if (e.alt - p.alt > 24f) continue
+                    val ex = e.x - p.x
+                    val ey = e.y - p.y
+                    val dist = hypot(ex, ey)
+                    if (dist < reach + e.radius) {
+                        val dot = ex * dx + ey * dy
+                        if (dot > -0.25f * dist || dist < 45f) {
+                            damageEnemy(e, p.danoH * 2.6f, p.x, p.y, 2.2f, "hit_heavy")
+                            e.stunT = max(e.stunT, 0.5f)
+                            hits++
+                        }
+                    }
+                }
+                burst(p.x + dx * 40f, p.y + dy * 40f + p.radius * 0.55f - p.ground, 8, 0xFFB8C4CE.toInt())
+                burst(p.x + dx * 40f, p.y + dy * 40f + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+                shake = max(shake, 0.22f + 0.03f * (if (hits > 3) 3 else hits))
+                snd("axe_slam", 1f, 1.25f)
+            }
+            3 -> {
+                // Investida Trovão: avança coberto de eletricidade (o dano é aplicado a cada quadro em updatePikaFx)
+                p.voltDX = dx
+                p.voltDY = dy
+                p.facingX = dx
+                p.facingY = dy
+                p.voltT = Player.PIKA_VOLT_T
+                voltHit.clear()
+                voltWasOn = true
+                burst(p.x, gy, 8, 0xFFFFE23A.toInt())
+                shake = max(shake, 0.12f)
+                snd("dash", 1f, 0.8f)
+                snd("thunder_fire", 0.8f, 0.9f)
+            }
+            else -> {
+                // Trovão: raios caem do céu sobre os inimigos mais próximos
+                val cand = ArrayList<Enemy>()
+                for (e in enemies) {
+                    if (e.alive && hypot(e.x - p.x, e.y - p.y) < 380f) cand.add(e)
+                }
+                cand.sortBy { hypot(it.x - p.x, it.y - p.y) }
+                var n = 0
+                for (e in cand) {
+                    if (n >= 5) break
+                    n++
+                    zaps.add(ZapFx(e.x - 6f, e.y - 300f, e.x, e.y - 12f - e.alt))
+                    zaps.add(ZapFx(e.x + 6f, e.y - 300f, e.x, e.y - 12f - e.alt))
+                    damageEnemy(e, p.danoH * 2.0f, p.x, p.y, 0.8f, "")
+                    sndAt("thunder_hit", e.x, e.y, 1f, vary())
+                    e.stunT = max(e.stunT, 0.8f)
+                    burst(e.x, e.y - 14f - e.alt, 10, 0xFFFFF27A.toInt())
+                }
+                if (n == 0) {
+                    // ninguém por perto: o raio cai à frente mesmo assim
+                    val tx = p.x + dx * 110f
+                    val ty = p.y + dy * 110f
+                    zaps.add(ZapFx(tx, ty - 300f, tx, ty - 6f))
+                    burst(tx, ty - 6f, 8, 0xFFFFF27A.toInt())
+                }
+                shake = max(shake, 0.3f)
+                snd("thunder_fire", 1f, 0.85f)
+            }
+        }
+    }
+
+    /** Efeitos contínuos do Pikachu: Investida Trovão (acerta tudo no caminho) e Ataque Rápido. */
+    private fun updatePikaFx(dt: Float, p: Player) {
+        if (p.classe != Classe.PIKACHU) return
+        if (p.voltT > 0f) {
+            voltWasOn = true
+            if (Random.nextInt(2) == 0) burst(p.x, p.y - 12f - p.alt, 2, 0xFFFFE23A.toInt())
+            for (e in enemies) {
+                if (!e.alive || e in voltHit) continue
+                if (abs(e.alt - p.alt) > 28f) continue
+                if (hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius + 12f) {
+                    voltHit.add(e)
+                    damageEnemy(e, p.danoH * 2.4f, p.x - p.voltDX * 20f, p.y - p.voltDY * 20f, 1.6f, "hit_heavy")
+                    sndAt("thunder_hit", e.x, e.y, 0.95f, vary())
+                    e.stunT = max(e.stunT, 0.4f)
+                    burst(e.x, e.y - 14f - e.alt, 8, 0xFFFFF27A.toInt())
+                    // o recuo da investida machuca um pouco (nunca mata)
+                    p.hp = max(1f, p.hp - 3f)
+                    shake = max(shake, 0.18f)
+                }
+            }
+        } else if (voltWasOn) {
+            voltWasOn = false
+            voltHit.clear()
+        }
+        if (p.rolling) {
+            for (e in enemies) {
+                if (!e.alive || e in quickHit) continue
+                if (abs(e.alt - p.alt) > 28f) continue
+                if (hypot(e.x - p.x, e.y - p.y) < e.radius + p.radius + 8f) {
+                    quickHit.add(e)
+                    damageEnemy(e, p.danoH * 0.8f, p.x, p.y, 1f, "hit_magic")
+                    e.stunT = max(e.stunT, 0.2f)
+                    burst(e.x, e.y - 14f - e.alt, 4, 0xFFFFF27A.toInt())
+                }
+            }
+        } else if (quickHit.isNotEmpty()) {
+            quickHit.clear()
+        }
     }
 
     // ───────────────────────── NINJA ─────────────────────────
@@ -1095,6 +1342,7 @@ class GameView @JvmOverloads constructor(
             attackHeld = true
             heldT = 0f
         } else {
+            if (p.classe == Classe.PIKACHU) pikaHeld = true
             tryAttack()
         }
     }
@@ -1128,6 +1376,7 @@ class GameView @JvmOverloads constructor(
 
     fun attackUp() {
         val p = player ?: return
+        pikaHeld = false
         if (p.classe == Classe.ARQUEIRO) {
             if (bowHeld) bowRelease(p)
             return
@@ -1406,7 +1655,7 @@ class GameView @JvmOverloads constructor(
             val nm = hitSnd ?: when (player?.classe) {
                 Classe.BARBARO -> "hit_heavy"
                 Classe.ARQUEIRO -> "hit_arrow"
-                Classe.MAGO -> "hit_magic"
+                Classe.MAGO, Classe.PIKACHU -> "hit_magic"
                 else -> "hit_blade"
             }
             sndAt(nm, e.x, e.y, 0.95f, vary())
@@ -1476,6 +1725,16 @@ class GameView @JvmOverloads constructor(
                 pendingBarbT = -1f
                 if (p.alive && !p.rolling) barbStrike(pendingBarbSwing)
             }
+        }
+        if (pendingPikaT >= 0f) {
+            pendingPikaT -= dt
+            if (pendingPikaT <= 0f) {
+                pendingPikaT = -1f
+                if (p.alive && !p.rolling && !p.skilling && p.voltT <= 0f) pikaShock(p)
+            }
+        }
+        if (pikaHeld && p.classe == Classe.PIKACHU && p.alive) {
+            if (p.canAttack(System.currentTimeMillis())) tryAttack()
         }
         if (pendingNinjaT >= 0f) {
             pendingNinjaT -= dt
@@ -1626,6 +1885,7 @@ class GameView @JvmOverloads constructor(
             if (!playerBlocked(p, tx2, oldY)) p.x = tx2
             if (!playerBlocked(p, p.x, ty2)) p.y = ty2
             if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
+            if (p.voltT > 0f) p.voltT = (p.voltT - dt * 2f).coerceAtLeast(0f)
             if (p.dashT > 0f && !p.dashUp) p.dashT = (p.dashT - dt * 2f).coerceAtLeast(0f)
         }
         p.updateVertical(dt, map.heightAt(p.x, p.y))
@@ -1717,6 +1977,7 @@ class GameView @JvmOverloads constructor(
 
         updateArcherFx(dt, p)
         updateNinjaFx(dt, p)
+        updatePikaFx(dt, p)
 
         projectiles.forEach { pr ->
             if (!pr.alive) return@forEach

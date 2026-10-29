@@ -41,5 +41,11 @@ enum class Classe(
         "Assassino das sombras. Corta rápido, deixa uma Sombra Viva e marca alvos para a morte.",
         0xFFB71C1C.toInt(),
         120f, 100f, 3.5f, 24f, 64f, 330L, false
+    ),
+    PIKACHU(
+        "Pikachu",
+        "Rápido e elétrico! Choque do Trovão, Trovoada, Cauda de Ferro, Investida Trovão, Trovão e Ataque Rápido.",
+        0xFFF9C900.toInt(),
+        120f, 100f, 3.9f, 20f, 60f, 300L, true
     )
 }
