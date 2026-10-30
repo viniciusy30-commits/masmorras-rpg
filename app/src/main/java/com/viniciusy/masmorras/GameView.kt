@@ -116,6 +116,35 @@ class GameView @JvmOverloads constructor(
     private var hintCd = 0f
     private var heldT = 0f
     private var queuedAt = 0L
+
+    // ── Arqueiro Elfo: combate por alvo, escolas elementais e skills ──
+    private val elfo = ElfoEngine(object : ElfoHost {
+        override val jogador: Player? get() = player
+        override val inimigos: List<Enemy> get() = enemies
+        override fun dano(e: Enemy, d: Float, fx: Float, fy: Float, kb: Float, silencioso: Boolean) {
+            damageEnemy(e, d, fx, fy, kb, if (silencioso) "" else null)
+        }
+        override fun particulas(x: Float, y: Float, n: Int, cor: Int) {
+            burst(x, y, n, cor)
+        }
+        override fun som(nome: String, vol: Float) {
+            snd(nome, vol)
+        }
+        override fun texto(x: Float, y: Float, t: String, cor: Int) {
+            texts.add(DmgText(x, y, t, 0.9f, cor))
+        }
+        override fun livre(x: Float, y: Float): Boolean = !map.isWall(x, y)
+        override fun tremor(v: Float) {
+            shake = max(shake, v)
+        }
+    })
+
+    fun elfoEngine(): ElfoEngine = elfo
+
+    private var tapX = 0f
+    private var tapY = 0f
+    private var tapT = 0L
+    private var tapOk = false
     private var pinching = false
     private val scaleDetector = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
         override fun onScaleBegin(d: ScaleGestureDetector): Boolean {
@@ -135,7 +164,34 @@ class GameView @JvmOverloads constructor(
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
         scaleDetector.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                tapX = event.x
+                tapY = event.y
+                tapT = System.currentTimeMillis()
+                tapOk = true
+            }
+            MotionEvent.ACTION_POINTER_DOWN -> tapOk = false
+            MotionEvent.ACTION_MOVE -> if (tapOk && hypot(event.x - tapX, event.y - tapY) > 30f) tapOk = false
+            MotionEvent.ACTION_UP -> {
+                if (tapOk && !pinching && System.currentTimeMillis() - tapT < 400L) tocarMundo(event.x, event.y)
+                tapOk = false
+            }
+            MotionEvent.ACTION_CANCEL -> tapOk = false
+        }
         return true
+    }
+
+    /** Toque na tela do jogo: o Arqueiro Elfo marca o alvo (ou mira a área da skill). */
+    private fun tocarMundo(sx: Float, sy: Float) {
+        val p = player ?: return
+        if (p.classe != Classe.ARQUEIRO || !p.alive || gameOver) return
+        val w = width.toFloat()
+        val h = height.toFloat()
+        val z = if (camZoom == 0f) 1f else camZoom
+        val wx = (sx - w * 0.5f) / z + w * 0.5f + camX
+        val wy = (sy - h * 0.5f) / z + h * 0.5f + camY
+        elfo.tocar(wx, wy)
     }
     private var time = 0f
     private var shake = 0f
@@ -228,6 +284,7 @@ class GameView @JvmOverloads constructor(
         map.prewarm(sx, sy)
         player = Player(sx, sy, classe)
         player?.let { it.ground = map.heightAt(sx, sy); it.alt = it.ground }
+        if (classe == Classe.ARQUEIRO) player?.let { elfo.novaPartida(context, it) }
         enemies.clear()
         projectiles.clear()
         thrown = null
@@ -480,6 +537,10 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (p.classe == Classe.ARQUEIRO) {
+            if (elfo.superaquecido) {
+                snd("ui_error", 0.5f) // Brasa Viva: Superaquecido não pode saltar
+                return
+            }
             val ox = p.x
             val oy = p.y
             val gz = p.ground
@@ -561,6 +622,13 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (p.classe != Classe.ARQUEIRO) return
+        // Arqueiro Elfo: as 5 skills da escola escolhida (alvo, área mirada, direção ou self)
+        val erro = elfo.usar(k)
+        if (erro != null) {
+            snd("ui_error", 0.5f)
+            if (erro.isNotEmpty()) texts.add(DmgText(p.x, p.y - 70f - p.alt, erro, 0.8f, 0xFFFFAB91.toInt()))
+        }
+        if (true) return
         if (!p.startSkill(k, System.currentTimeMillis())) {
             snd("ui_error", 0.5f)
             return
@@ -2154,11 +2222,13 @@ class GameView @JvmOverloads constructor(
     private fun damageEnemy(e: Enemy, dmg0: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
         val pl = player
         val crit = pl != null && pl.critH > 0f && Math.random() < pl.critH.toDouble()
+        if (crit && pl != null && pl.classe == Classe.ARQUEIRO) elfo.aoCritar()
         // passiva do ninja (Desprezo pelos Fracos): bate mais forte em quem está com menos da metade da vida
         val weak = if (pl != null && pl.classe == Classe.NINJA && e.hp < e.maxHp * 0.5f) 1.12f else 1f
         val hollowMul = if (pl != null && pl.classe == Classe.ICHIGO && pl.hollow) 1.3f else 1f
         val dmg = (if (crit && pl != null) dmg0 * pl.critMulH else dmg0) * weak * hollowMul
         if (e === markTarget) markDmg += dmg
+        val estavaVivo = e.alive
         e.takeDamage(dmg)
         val big = dmg >= 28f || crit
         if (hitSnd != "") {
@@ -2172,6 +2242,7 @@ class GameView @JvmOverloads constructor(
             if (big && nm != "hit_heavy" || (big && player?.classe == Classe.BARBARO && dmg >= 48f)) sndAt("hit_crit", e.x, e.y, 0.7f, vary())
         }
         if (!e.alive) sndAt("enemy_die", e.x, e.y, 0.95f, vary())
+        if (estavaVivo && !e.alive && pl != null && pl.classe == Classe.ARQUEIRO) elfo.onKill(e)
         texts.add(
             DmgText(
                 e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
@@ -2195,7 +2266,10 @@ class GameView @JvmOverloads constructor(
         }
     }
 
+    var paused = false
+
     private fun update(dt: Float) {
+        if (paused) return
         time += dt
         VoxelArt.time = time
         player?.let { map.update(it.x, it.y, dt) }
@@ -2222,6 +2296,7 @@ class GameView @JvmOverloads constructor(
         }
 
         if (hintCd > 0f) hintCd -= dt
+        if (p.classe == Classe.ARQUEIRO) elfo.update(dt, p)
         if (pendingHitT >= 0f) {
             pendingHitT -= dt
             if (pendingHitT <= 0f) {
@@ -2291,14 +2366,19 @@ class GameView @JvmOverloads constructor(
                 pendingShotT = -1f
                 if (p.alive && !p.rolling && !p.skilling) {
                     val pw = pendingShotPow
-                    val arrow = Projectile(
-                        p.x + p.facingX * 20f, p.y + p.facingY * 20f,
-                        p.facingX * 380f * (1f + 0.35f * pw), p.facingY * 380f * (1f + 0.35f * pw),
-                        p.danoH * (1f + 0.5f * pw), 0xFF8D6E63.toInt(), true, 1
-                    )
-                    arrow.life = 1.4f * (1f + 0.25f * pw)
-                    projectiles.add(arrow)
-                    if (pw > 0.55f) snd("bow_shot_strong", 0.95f, vary()) else snd("bow_shot", 0.9f, vary() + 0.12f * pw)
+                    if (elfo.tiroBasico(pw)) {
+                        // combate por alvo: a flecha vai direto no alvo marcado (ou no mais perto)
+                        if (pw > 0.55f) snd("bow_shot_strong", 0.95f, vary()) else snd("bow_shot", 0.9f, vary() + 0.12f * pw)
+                    } else {
+                        val arrow = Projectile(
+                            p.x + p.facingX * 20f, p.y + p.facingY * 20f,
+                            p.facingX * 380f * (1f + 0.35f * pw), p.facingY * 380f * (1f + 0.35f * pw),
+                            p.danoH * (1f + 0.5f * pw), 0xFF8D6E63.toInt(), true, 1
+                        )
+                        arrow.life = 1.4f * (1f + 0.25f * pw)
+                        projectiles.add(arrow)
+                        if (pw > 0.55f) snd("bow_shot_strong", 0.95f, vary()) else snd("bow_shot", 0.9f, vary() + 0.12f * pw)
+                    }
                 }
             }
         }
@@ -2484,6 +2564,7 @@ class GameView @JvmOverloads constructor(
             val dist = hypot(e.x - p.x, e.y - p.y)
             if (e.stunT <= 0f && !p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage * (1f - p.defesaH))
+                if (p.classe == Classe.ARQUEIRO) elfo.aoLevarDano(e)
                 snd("player_hurt", 1f, vary())
                 e.lastHit = now
                 shake = 0.3f
@@ -2603,6 +2684,7 @@ class GameView @JvmOverloads constructor(
         map.drawFloor(canvas, paint, camX, camY, w, h)
         traps.forEach { it.draw(canvas, paint, camX, camY, time) }
         rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
+        if (player?.classe == Classe.ARQUEIRO) elfo.drawGround(canvas, paint, camX, camY, time)
 
         drawList.clear()
         for (e in enemies) {
@@ -2637,6 +2719,7 @@ class GameView @JvmOverloads constructor(
         }
 
         projectiles.forEach { it.draw(canvas, paint, camX, camY) }
+        if (player?.classe == Classe.ARQUEIRO) elfo.drawAir(canvas, paint, camX, camY, time)
         rains.forEach { it.drawArrows(canvas, paint, camX, camY) }
         bolts.forEach { it.draw(canvas, paint, camX, camY) }
         zaps.forEach { it.draw(canvas, paint, camX, camY) }
@@ -2668,6 +2751,10 @@ class GameView @JvmOverloads constructor(
         }
 
         paint.typeface = pixelFace
+        if (player?.classe == Classe.ARQUEIRO) {
+            elfo.drawHud(canvas, paint, w, h)
+            elfo.drawMarcas(canvas, paint, camX, camY, w, h, camZoom)
+        }
         paint.textAlign = Paint.Align.CENTER
         paint.textSize = 30f
         texts.forEach { t ->

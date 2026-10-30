@@ -26,12 +26,25 @@ abstract class Entity(
     var walkPhase = 0f
     var alt = 0f     // altitude absoluta (px)
     var ground = 0f  // altura do chão sob os pés (px)
+    var shield = 0f  // escudo: absorve o dano antes da vida (Arqueiro Elfo)
+    var reviveHook: (() -> Boolean)? = null // devolve true se reviveu (Renascer da Fênix)
 
-    fun takeDamage(dmg: Float) {
+    fun takeDamage(dmg0: Float) {
         if (!alive) return
+        var dmg = dmg0
+        if (shield > 0f) {
+            val abs = min(shield, dmg)
+            shield -= abs
+            dmg -= abs
+            if (dmg <= 0f) {
+                hitFlash = 1f
+                return
+            }
+        }
         hp -= dmg
         hitFlash = 1f
         if (hp <= 0f) {
+            if (reviveHook?.invoke() == true) return
             hp = 0f
             alive = false
         }
@@ -202,6 +215,7 @@ class Player(
     var trapRelX = 0f
     var trapRelY = 0f
     var trapRelUp = 0f
+    var spdMul = 1f // multiplicador de velocidade de movimento (buffs do Arqueiro Elfo)
     var skillK = 0
     var skillT = 0f
     var skillDur = 1f
@@ -731,8 +745,8 @@ class Player(
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
             val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
-            vx = inX * velH * 60f * slow
-            vy = inY * velH * 60f * slow
+            vx = inX * velH * 60f * slow * spdMul
+            vy = inY * velH * 60f * slow * spdMul
         }
         x += vx * dt
         y += vy * dt

@@ -342,12 +342,17 @@ class MainActivity : AppCompatActivity() {
             }
             true
         }
-        btnWeapon.setOnClickListener { gameView.switchWeapon() }
+        btnWeapon.setOnClickListener {
+            if (gameView.getPlayer()?.classe == Classe.ARQUEIRO) gameView.skill(6) else gameView.switchWeapon()
+        }
         btnSkill1.setOnClickListener { gameView.skill(1) }
         btnSkill2.setOnClickListener { gameView.skill(2) }
         btnSkill3.setOnClickListener { gameView.skill(3) }
         btnSkill4.setOnClickListener { gameView.skill(4) }
         btnSkill5.setOnClickListener { gameView.skill(5) }
+        ivClasseBadge.setOnClickListener {
+            if (gameView.getPlayer()?.classe == Classe.ARQUEIRO) showHabilidadesDialog()
+        }
         gameView.onWeapon = { w ->
             runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
@@ -432,7 +437,26 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (ping) Sfx.play("ui_ping", 0.6f)
                     }
-                    if (p.classe == Classe.ARQUEIRO || p.classe == Classe.NINJA) {
+                    if (p.classe == Classe.ARQUEIRO) {
+                        val eng = gameView.elfoEngine()
+                        val btnsE = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4, btnSkill5)
+                        val tvsE = arrayOf(tvSkill1Cd, tvSkill2Cd, tvSkill3Cd, tvSkill4Cd, tvSkill5Cd)
+                        val defsE = eng.defs()
+                        var pingE = false
+                        for (i in 0..4) {
+                            val c = eng.cd(i + 1)
+                            if (prevCd[i] > 0f && c <= 0f) pingE = true
+                            prevCd[i] = c
+                            val d = defsE?.getOrNull(i)
+                            val bloq = d == null || eng.st.rank(d) == 0
+                            tvsE[i].text = if (d != null && bloq) "Nv" + d.nivelMin else if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
+                            btnsE[i].alpha = if (c > 0f || bloq) 0.45f else 1f
+                        }
+                        if (pingE) Sfx.play("ui_ping", 0.6f)
+                        btnWeapon.alpha = if (eng.cd(6) > 0f) 0.45f else 1f
+                        if (eng.st.nivel != elfoNivelShown) applyElfoSkills()
+                    }
+                    if (p.classe == Classe.NINJA) {
                         val nowMs = System.currentTimeMillis()
                         val ninja = p.classe == Classe.NINJA
                         val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
@@ -590,10 +614,11 @@ class MainActivity : AppCompatActivity() {
             }
         )
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)
-        btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
+        btnWeapon.visibility = if (classe == Classe.GUERREIRO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
+        if (classe == Classe.GUERREIRO) btnWeapon.setImageResource(R.drawable.hd_ic_swap)
         val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
         val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
-        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
         if (classe == Classe.NINJA) {
             btnRoll.setImageResource(R.drawable.hd_ic_nin_w)
@@ -644,16 +669,121 @@ class MainActivity : AppCompatActivity() {
         btnSkill3.visibility = skill3Vis
         tvSkill3Cd.visibility = skill3Vis
         // ultimate (R) do ninja removida por enquanto; o Pikachu usa o 4º botão para o Trovão
-        val skill4Vis = if (classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill4Vis = if (classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
         btnSkill4.visibility = skill4Vis
         tvSkill4Cd.visibility = skill4Vis
-        val skill5Vis = if (classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill5Vis = if (classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
         btnSkill5.visibility = skill5Vis
         tvSkill5Cd.visibility = skill5Vis
         ivManaSlot.alpha = if (classe.maxMp > 0f) 1f else 0.4f
         overlayFim.visibility = View.GONE
         show(gameContainer)
         gameView.startGame(classe, custom)
+        if (classe == Classe.ARQUEIRO) {
+            elfoNivelShown = -1
+            applyElfoSkills()
+            if (gameView.elfoEngine().st.escola == null) showEscolaDialog()
+        }
+    }
+
+    // ───────────────────────── Arqueiro Elfo: escolas e habilidades ─────────────────────────
+
+    private var elfoNivelShown = -1
+
+    /** Troca os ícones/nomes dos 5 botões de skill conforme a escola e o nível do Elfo. */
+    private fun applyElfoSkills() {
+        val eng = gameView.elfoEngine()
+        val defs = eng.defs()
+        val esc = eng.st.escola
+        val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4, btnSkill5)
+        for (i in 0..4) {
+            val d = defs?.getOrNull(i)
+            if (d == null || esc == null) {
+                btns[i].setImageDrawable(SkillIcon(0xFF888888.toInt(), "?", true))
+                btns[i].contentDescription = "Escolha a escola"
+            } else {
+                btns[i].setImageDrawable(SkillIcon(esc.cor, d.glifo, eng.st.rank(d) == 0, esc.ordinal))
+                btns[i].contentDescription = d.nome
+            }
+        }
+        btnWeapon.setImageDrawable(SkillIcon(0xFFB9F6CA.toInt(), "PV", false, 4))
+        btnWeapon.contentDescription = "Passo do Vento"
+        tvClasseHud.text = if (esc != null) "Elfo • " + esc.nome else "Elfo"
+        if (esc != null) tvClasseHud.setTextColor(esc.cor)
+        elfoNivelShown = eng.st.nivel
+    }
+
+    private fun showEscolaDialog() {
+        val eng = gameView.elfoEngine()
+        val escolas = Escola.values()
+        val itens = Array(escolas.size) { i -> escolas[i].nome + " — " + escolas[i].papel }
+        AlertDialog.Builder(this)
+            .setTitle("Escolha sua Escola Elemental")
+            .setItems(itens) { _, which -> showDetalheEscola(escolas[which]) }
+            .setCancelable(eng.st.escola != null)
+            .setOnDismissListener { gameView.paused = false }
+            .show()
+        gameView.paused = true
+    }
+
+    private fun showDetalheEscola(e: Escola) {
+        val sb = StringBuilder()
+        sb.append(e.papel).append("\n\n").append(e.recurso).append(": ").append(e.mecanica).append("\n\nHabilidades:\n")
+        for (d in ElfoCatalog.skills(e)) {
+            sb.append("• ").append(d.nome).append(" (Nv ").append(d.nivelMin).append(", ").append(d.tipoTxt()).append(")\n   ")
+                .append(d.desc).append("\n")
+        }
+        for ((n, t) in ElfoCatalog.passivas(e)) sb.append("\nPassiva — ").append(n).append(": ").append(t)
+        AlertDialog.Builder(this)
+            .setTitle(e.nome)
+            .setMessage(sb.toString())
+            .setPositiveButton("Escolher") { _, _ ->
+                gameView.elfoEngine().escolher(e)
+                applyElfoSkills()
+            }
+            .setNegativeButton("Voltar") { _, _ -> showEscolaDialog() }
+            .setOnDismissListener { gameView.paused = false }
+            .show()
+        gameView.paused = true
+    }
+
+    /** Toque no emblema da classe: evoluir habilidades com os pontos e trocar de escola. */
+    private fun showHabilidadesDialog() {
+        val eng = gameView.elfoEngine()
+        val esc = eng.st.escola
+        if (esc == null) {
+            showEscolaDialog()
+            return
+        }
+        val defs = ElfoCatalog.skills(esc)
+        val itens = ArrayList<String>()
+        for (d in defs) {
+            val rk = eng.st.rank(d)
+            if (rk == 0) itens.add("🔒 " + d.nome + " (Nv " + d.nivelMin + ")")
+            else itens.add(d.nome + "  " + "★".repeat(rk) + "☆".repeat(ElfoCatalog.RANK_MAX - rk) + (if (eng.st.podeEvoluir(d)) "   [+]" else ""))
+        }
+        for ((n, t) in ElfoCatalog.passivas(esc) + ElfoCatalog.comuns) itens.add("Passiva: " + n + " — " + t)
+        itens.add("Trocar de escola")
+        AlertDialog.Builder(this)
+            .setTitle(esc.nome + " • Nv " + eng.st.nivel + " • " + eng.st.pontos + " ponto(s)")
+            .setItems(itens.toTypedArray()) { _, which ->
+                if (which == itens.size - 1) {
+                    showEscolaDialog()
+                } else if (which < defs.size) {
+                    val d = defs[which]
+                    if (eng.st.evoluir(d)) {
+                        eng.salvar()
+                        applyElfoSkills()
+                    } else {
+                        Toast.makeText(this, d.nome + " (" + d.tipoTxt() + "): " + d.desc, Toast.LENGTH_LONG).show()
+                    }
+                    showHabilidadesDialog()
+                }
+            }
+            .setNegativeButton("Fechar", null)
+            .setOnDismissListener { gameView.paused = false }
+            .show()
+        gameView.paused = true
     }
 
     /** Ichigo: troca os ícones e nomes dos botões de skill conforme a forma (Bankai ou Vasto Lorde). */
