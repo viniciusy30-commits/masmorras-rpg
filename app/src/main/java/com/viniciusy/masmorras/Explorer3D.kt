@@ -782,6 +782,14 @@ object Explorer3D {
     var swing = 0          // 0 estalo lateral, 1 corte em diagonal, 2 chicotada por cima
     var alphaV = 1f
 
+    // pendurado no chicote (balanço): preenchido pelo Player. hangDX/hangDY = ponto de ancoragem em pixels de tela, a partir dos pés
+    var hangOn = false
+    var hangGrow = 0f
+    var hangDX = 0f
+    var hangDY = 0f
+    var hangVF = 0f        // velocidade do balanço para a frente do herói (-1..1)
+    var hangVS = 0f        // velocidade do balanço para o lado (-1..1)
+
     /** Instante (0..1 da animação) em que a corda chega ao alcance máximo e estala (golpes 0 e 1). */
     const val T_HIT = 0.30f
 
@@ -899,6 +907,8 @@ object Explorer3D {
     private var wasAir = false
     private var eyeOpen = 1f
     private var released = false
+    private var hgW = 0f
+    private var rollLand = false
     private var rollPuff = false
     private var crackT = 0f
     private var crackX = 0f
@@ -1044,6 +1054,35 @@ object Explorer3D {
         m[11] = (az + bz) * 0.5f
         cube(0f, 0f, 0f, hw, hw, len * 0.5f + hw * 0.4f, col)
         pop()
+    }
+
+    /** Quanto o corpo está encolhido na cambalhota (0..1): fecha rápido, segura e abre no fim. */
+    private fun rollTuck(q: Float): Float = ease((q - 0.03f) / 0.17f) * (1f - ease((q - 0.80f) / 0.18f))
+
+    /** Fração do giro completo: começa devagar (impulso), acelera no meio e desacelera ao levantar. */
+    private fun rollSpin(q: Float): Float {
+        val u = cl((q - 0.10f) / 0.70f, 0f, 1f)
+        return 0.35f * u + 0.65f * ease(u)
+    }
+
+    /** Corda esticada da mão até o ponto de ancoragem no céu (sobe em 0.16s com uma onda), com leve folga no meio. */
+    private fun hangRope() {
+        val hx = mkWX[4]
+        val hy = mkWY[4]
+        val hz = mkWZ[4]
+        val ax = hangDX / rs
+        val ay = (hz * SINP - hangDY / rs) / COSP
+        val g = ease(hangGrow)
+        val tx = hx + (ax - hx) * g
+        val ty = hy + (ay - hy) * g
+        for (i in 0..RN) {
+            val u = i.toFloat() / RN.toFloat()
+            val bell = sin(u * PIF)
+            val wob = (1f - g) * 3.5f * sin(u * 9f - clock * 34f) * bell
+            rX[i] = hx + (tx - hx) * u + wob
+            rY[i] = hy + (ty - hy) * u - 0.35f * bell * (0.4f + 0.6f * (1f - g))
+            rZ[i] = hz
+        }
     }
 
     /** Altura (em unidades do modelo) da perna esticada: usada para a pelve acompanhar o chão em qualquer postura. */
@@ -1217,7 +1256,9 @@ object Explorer3D {
         val airCand = inAir && !rolling && (airH > 8f || airVz > 60f)
         airTimer = if (airCand) airTimer + dt else 0f
         val airT = if (airTimer > 0.04f) 1f else 0f
-        val rollTgt = if (rolling) cl(min(rollP / 0.12f, (1f - rollP) / 0.2f), 0f, 1f) else 0f
+        val rollTgt = if (rolling) rollTuck(rollP) else 0f
+        val hanging = hangOn && !rolling
+        hgW = if (first) (if (hanging) 1f else 0f) else hgW + ((if (hanging) 1f else 0f) - hgW) * min(1f, dt * 12f)
         if (first) {
             airW = airT
             rollW = rollTgt
@@ -1266,16 +1307,42 @@ object Explorer3D {
 
         // cambalhota para a frente, encolhido e protegendo a cabeça
         if (rolling) {
-            lean = lerp(lean, 0.5f, rollW)
-            crouch = lerp(crouch, 0.7f, rollW)
-            rsh = lerp(rsh, -1.1f, rollW)
-            lsh = lerp(lsh, -1.1f, rollW)
-            rshZ = lerp(rshZ, 0.25f, rollW)
-            lshZ = lerp(lshZ, 0.25f, rollW)
-            rel = lerp(rel, -2.0f, rollW)
-            lel = lerp(lel, -2.0f, rollW)
-            tilt = lerp(tilt, 0.5f, rollW)
+            lean = lerp(lean, 0.62f, rollW)
+            crouch = lerp(crouch, 0.8f, rollW)
+            rsh = lerp(rsh, -1.35f, rollW)
+            lsh = lerp(lsh, -1.35f, rollW)
+            rshZ = lerp(rshZ, 0.3f, rollW)
+            lshZ = lerp(lshZ, 0.3f, rollW)
+            rel = lerp(rel, -2.25f, rollW)
+            lel = lerp(lel, -2.25f, rollW)
+            tilt = lerp(tilt, 0.75f, rollW)
             smirk = max(smirk, 0.8f * rollW)
+            // levantando: o corpo ainda agachado, braços abrem para equilibrar e a cabeça volta
+            if (rollP > 0.78f) {
+                val rf = sin(PIF * cl((rollP - 0.78f) / 0.22f, 0f, 1f))
+                crouch = max(crouch, 0.6f * (1f - ease((rollP - 0.78f) / 0.22f)))
+                rshZ = lerp(rshZ, 0.75f, rf)
+                lshZ = lerp(lshZ, 0.75f, rf)
+                rsh = lerp(rsh, -0.5f, rf)
+                lsh = lerp(lsh, -0.4f, rf)
+                rel = lerp(rel, -0.5f, rf)
+                lel = lerp(lel, -0.5f, rf)
+                lean = lerp(lean, 0.3f, rf)
+            }
+        }
+
+        // pendurado no chicote: braço direito esticado para a corda, o outro aberto, pernas soltas, corpo inclinado pelo balanço
+        if (hgW > 0.001f) {
+            rsh = lerp(rsh, -3.05f, hgW)
+            rshZ = lerp(rshZ, 0.1f, hgW)
+            rel = lerp(rel, -0.1f, hgW)
+            lsh = lerp(lsh, -0.45f - 0.6f * hangVF, hgW)
+            lshZ = lerp(lshZ, 0.85f + 0.3f * abs(hangVS), hgW)
+            lel = lerp(lel, -0.6f, hgW)
+            lean = lerp(lean, -0.1f - 0.3f * hangVF, hgW)
+            tilt = lerp(tilt, -0.12f, hgW)
+            chestTw = lerp(chestTw, 0f, hgW)
+            smirk = max(smirk, hgW)
         }
 
         pt[P_LEAN] = lean
@@ -1303,7 +1370,7 @@ object Explorer3D {
 
         // ── combo de chicote: keyframes de antecipação, golpe, sustentação e relaxe sobre a pose base ──
         var wS = 0f
-        if (attacking && rollW < 0.5f) {
+        if (attacking && rollW < 0.5f && hgW < 0.5f) {
             wS = min(ease(t / 0.09f), 1f - ease((t - 0.62f) / 0.38f))
             seek(SW_T, SW_MD, sw * NKEY, t)
             val kb = (sw * NKEY + kSeg) * NPAR
@@ -1334,6 +1401,9 @@ object Explorer3D {
             // cambalhota: joelhos junto ao peito
             a = lerp(a, -1.6f, rollW)
             kn = lerp(kn, 2.2f, rollW)
+            // pendurado: pernas soltas, arrastadas para trás do balanço
+            a = lerp(a, 0.3f + 0.5f * hangVF + sd * 0.12f, hgW)
+            kn = lerp(kn, 0.55f + 0.35f * abs(hangVF), hgW)
             // base do golpe: perna da frente adiantada, a de trás esticada
             a -= sd * 0.6f * lb
             kn += 0.5f * max(0f, sd * lb) + 0.2f * max(0f, -sd * lb)
@@ -1351,7 +1421,7 @@ object Explorer3D {
         val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
         val hipGround = 1.35f + max(legExt(aL, kL), legExt(aR, kR)) + bob - hitKick * 0.4f
         val hipAir = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f
-        val hip = lerp(hipGround, hipAir, max(rollW, airW))
+        val hip = lerp(lerp(hipGround, hipAir, airW), 8.8f, rollW)
 
         val spk = spN * (if (rolling) 0.4f else 1f)
         val vF = 0.05f + spk * (0.16f + 0.08f * abs(sin(phase * 2f))) + hitKick * 0.2f
@@ -1373,9 +1443,10 @@ object Explorer3D {
         translate(0f, fp[P_RISE], fp[P_LUNGE] - hitKick * 1.2f)
         if (rolling) {
             // cambalhota completa para a frente em torno do centro do corpo
-            translate(0f, 10f + sin(rollP * PIF) * 3f, 0f)
-            rotX(2f * PIF * ease(rollP))
-            translate(0f, -10f, 0f)
+            // (o corpo encolhido gira em volta do próprio centro e faz um pequeno arco, sem afundar no chão)
+            translate(0f, 12f + rollW * (2.5f + sin(PIF * cl((rollP - 0.05f) / 0.8f, 0f, 1f)) * 3.5f), 0f)
+            rotX(2f * PIF * rollSpin(rollP))
+            translate(0f, -12f, 0f)
         }
         skeleton(
             hip, fp[P_HIPTW], fp[P_LEAN] - hitKick * 0.3f, fp[P_CHEST], breath,
@@ -1390,14 +1461,19 @@ object Explorer3D {
         identity()
         val reach = if (sw == 2) Player.EXPL_REACH_3 else Player.EXPL_REACH
         val reachU = max(24f, reach / rs - 8f)
-        ropeUpdate(dt, if (attacking && rollW < 0.5f) t else -1f, sw, reachU)
+        if (hangOn && hgW > 0.02f) {
+            hangRope()
+            ropeInit = false
+        } else {
+            ropeUpdate(dt, if (attacking && rollW < 0.5f && hgW < 0.5f) t else -1f, sw, reachU)
+        }
         val tx0 = rX[RN]
         val ty0 = rY[RN]
         val tz0 = rZ[RN]
 
         // estalo na ponta
         val hit = IMPACT[sw]
-        if (attacking && rollW < 0.5f) {
+        if (attacking && rollW < 0.5f && hgW < 0.5f) {
             if (t >= hit && !released) {
                 released = true
                 crackT = 0.16f
@@ -1436,6 +1512,19 @@ object Explorer3D {
             if (heat > 0f) col = V.mix(col, WHIP_HOT, heat * (0.25f + 0.75f * u))
             segCube(rX[i - 1], rY[i - 1], rZ[i - 1], rX[i], rY[i], rZ[i], 0.52f - 0.24f * u, col)
         }
+        // garra do chicote presa no céu: anel de couro e brilho dourado pulsando
+        if (hangOn && hgW > 0.02f && hangGrow > 0.9f) {
+            val gl = 0.5f + 0.5f * sin(clock * 6f)
+            val kx = rX[RN]
+            val ky = rY[RN]
+            val kz = rZ[RN]
+            cube(kx, ky, kz, 1.2f, 0.5f, 1.2f, BELT)
+            cube(kx, ky, kz, 1.3f, 0.15f, 1.3f, GOLD)
+            val sz2 = 1.6f + 1.2f * gl
+            cube(kx, ky + 0.9f, kz, sz2, 0.22f, 0.22f, WHIP_HOT, true)
+            cube(kx, ky + 0.9f, kz, 0.22f, sz2, 0.22f, WHIP_HOT, true)
+            cube(kx, ky + 0.9f, kz, 0.22f, 0.22f, sz2, WHIP_HOT, true)
+        }
         // clarão em estrela (cubos emissivos, com oclusão correta)
         if (heat > 0f) {
             val q = 1f - heat
@@ -1457,8 +1546,17 @@ object Explorer3D {
                     emitSpark(fx, fy - 2f * rs, cos(ang) * sp0, sin(ang) * sp0 * 0.5f - 6f * rs, 0.36f, rs * 30f, 0xFFE9D9B0.toInt(), 1.2f)
                 }
             }
+            if (rollP > 0.84f && !rollLand) {
+                rollLand = true
+                for (i in 0..8) {
+                    val ang = rndf() * 2f * PIF
+                    val sp0 = (14f + rndf() * 30f) * rs
+                    emitSpark(fx, fy - 2f * rs, cos(ang) * sp0, sin(ang) * sp0 * 0.5f - 6f * rs, 0.42f, rs * 30f, 0xFFE9D9B0.toInt(), 1.4f)
+                }
+            }
         } else {
             rollPuff = false
+            rollLand = false
         }
 
         // ── partículas ──

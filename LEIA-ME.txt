@@ -1,12 +1,17 @@
-v78 - Explorador refeito (modelo, chicote 3D e animacoes)
-Arquivo alterado: app/src/main/java/com/viniciusy/masmorras/Explorer3D.kt (nenhum outro arquivo muda)
+v79 - Explorador: balanco pendurado no chicote + rolamento novo
+(inclui tudo da v78: modelo em camadas e chicote 3D)
 
-- Chicote agora e 3D de verdade: corda de 22 segmentos de couro trancado dentro do mesmo z-buffer do corpo,
-  entao nao aparece mais por cima do modelo em nenhum angulo. Pendurada, balanca com inercia; no golpe forma onda e estala.
-- Roupas em camadas encostadas (calca, cinto, camisa, jaqueta como casca): sem uma atravessar a outra.
-- Alca da bolsa colada na jaqueta; ombros afastados do tronco; ombreira em pecas com buraco do pescoco.
-- 3 golpes novos com antecipacao, golpe, sustentacao e relaxe (giro de quadril/peito, base de pernas, agachamento):
-  estalo lateral, corte em diagonal e chicotada por cima. Estalo com clarao em estrela, faiscas e anel de poeira.
-- Alcance e tempo de dano continuam iguais (EXPL_REACH / T_HIT), entao Entity.kt e GameView.kt nao mudam.
+Arquivos alterados (mesmos caminhos): Explorer3D.kt, Entity.kt, GameView.kt
 
-NAO FOI COMPILADO (sem Kotlin no ambiente). Se o build do GitHub falhar, mande o log.
+COMO USAR O BALANCO
+- Pule (toque) e, no ar, aperte o botao de pular de novo e SEGURE: o chicote prende no ceu e voce fica pendurado.
+- Enquanto segura, o balanco vai para o lado em que voce anda com o joystick (empurra como um pendulo de verdade).
+- Soltar o botao de pular (ou apertar rolar) larga a corda e voce sai voando com o embalo.
+- Tambem funciona segurando o pulo desde o chao (prende assim que sair do chao).
+- Pendurado nao ataca. Se o chao subir ate os pes, a corda solta sozinha.
+
+ROLAMENTO NOVO
+- Fecha o corpo rapido, gira devagar-rapido-devagar com um pequeno arco, levanta agachado com bracos abertos
+  e solta poeira na saida e no pouso.
+
+NAO FOI COMPILADO (sem Kotlin no ambiente). Se o build falhar, mande o log.

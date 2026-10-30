@@ -459,13 +459,41 @@ class GameView @JvmOverloads constructor(
         }
         if (p.classe == Classe.MAGO && p.flying) return
         if (p.classe == Classe.ICHIGO && p.sky) return
+        if (p.classe == Classe.EXPLORADOR) {
+            // no ar, apertar e segurar lança o chicote para o céu e começa o balanço
+            if (!p.grounded) explorerSwingStart(p)
+            else jump()
+            return
+        }
         jump()
+    }
+
+    /** Explorador: chicote preso no céu. Segurar o botão mantém o balanço; soltar larga a corda. */
+    private fun explorerSwingStart(p: Player) {
+        if (!p.startSwing()) return
+        pendingExplT = -1f
+        val ay = p.swAY + p.radius * 0.55f - p.swAAlt
+        burst(p.swAX, ay, 7, 0xFFFFE08A.toInt())
+        burst(p.x, p.y + p.radius * 0.55f - p.alt, 4, 0xFFE9D9B0.toInt())
+        snd("dash", 0.8f, 1.5f * vary())
+        shake = max(shake, 0.03f)
+    }
+
+    private fun explorerSwingEnd(p: Player) {
+        if (!p.swinging) return
+        p.endSwing()
+        burst(p.x, p.y + p.radius * 0.55f - p.alt, 5, 0xFFE9D9B0.toInt())
+        snd("jump_air", 0.7f, 0.9f * vary())
     }
 
     fun jumpUp() {
         jumpHeld = false
         jumpHoldT = 0f
         val p = player ?: return
+        if (p.swinging) {
+            explorerSwingEnd(p)
+            return
+        }
         if (p.leapCharging) {
             if (p.releaseLeap()) {
                 snd("leap_launch", 0.95f)
@@ -534,6 +562,11 @@ class GameView @JvmOverloads constructor(
     fun roll() {
         val p = player ?: return
         if (gameOver) return
+        if (p.swinging) {
+            // rolar enquanto balança = soltar a corda
+            explorerSwingEnd(p)
+            return
+        }
         if (p.classe == Classe.MAGO) {
             teleport(p)
             return
@@ -852,6 +885,7 @@ class GameView @JvmOverloads constructor(
     fun tryAttack() {
         val p = player ?: return
         if (!p.alive || gameOver) return
+        if (p.swinging) return
         val now = System.currentTimeMillis()
         if (p.classe == Classe.GUERREIRO && p.weapon == 1 && p.spearOut) {
             spearHint(p)
@@ -2507,6 +2541,11 @@ class GameView @JvmOverloads constructor(
                 ichiSkyWas = p.sky
                 if (p.sky) snd("fly_start", 0.7f, 0.8f) else snd("fly_end", 0.6f, 0.8f)
             }
+        }
+        if (p.classe == Classe.EXPLORADOR && p.alive && jumpHeld) {
+            // segurou o pulo desde o chão: assim que está no ar, o chicote prende no céu
+            jumpHoldT += dt
+            if (!p.swinging && jumpHoldT > 0.16f && !p.grounded && !p.rolling && p.skillK == 0 && p.flipT <= 0f) explorerSwingStart(p)
         }
         if (p.classe == Classe.MAGO && jumpHeld) {
             jumpHoldT += dt

@@ -112,6 +112,10 @@ class Player(
         const val EXPL_RATE_3 = 2.0f       // velocidade da chicotada por cima
         const val EXPL_REACH = 165f        // alcance do estalo do chicote
         const val EXPL_REACH_3 = 195f      // alcance da chicotada por cima
+        const val SWING_LEN = 120f         // comprimento da corda do balanço do Explorador
+        const val SWING_G = 1500f          // gravidade do balanço
+        const val SWING_PUMP = 900f        // empurrão do balanço para o lado em que o jogador anda
+        const val SWING_MAXV = 620f        // velocidade máxima do balanço
         const val LUFFY_DASH_T = 0.50f     // duração do dash estilingue (preparação + lançamento)
         const val LUFFY_DASH_V = 1500f     // velocidade inicial do lançamento
         // distância percorrida no lançamento (a velocidade cai com (1-v)^1.2, cuja integral vale 1/2.2)
@@ -255,13 +259,135 @@ class Player(
     var ichiKind = 0               // 1 = dash (botão de rolar), 2 = avanço de skill
     var lastIchiDash = 0L
     var sky = false                // andando no céu (segurar pular)
+
+    // explorador: pendurado no chicote (apertar pular no ar e segurar). O ponto de ancoragem fica no céu; o corpo é um pêndulo
+    var swinging = false
+    var swGrow = 0f                // 0..1: a corda sobe até o ponto de ancoragem
+    var swAX = 0f
+    var swAY = 0f
+    var swAAlt = 0f                // altitude absoluta da ancoragem
+    var swOX = 0f                  // posição do corpo em relação à ancoragem
+    var swOY = 0f
+    var swOZ = 0f
+    var swVX = 0f
+    var swVY = 0f
+    var swVZ = 0f
+    var momX = 0f                  // embalo ao soltar a corda
+    var momY = 0f
+
+    /** Lança o chicote para o céu e começa a balançar para o lado em que está andando (ou olhando). */
+    fun startSwing(): Boolean {
+        if (classe != Classe.EXPLORADOR || !alive || swinging || rolling || skillK != 0 || grounded) return false
+        val up = (alt - ground).coerceAtLeast(0f)
+        var dx = inX
+        var dy = inY
+        if (hypot(dx, dy) < 0.1f) {
+            dx = facingX
+            dy = facingY
+        }
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        dx /= l
+        dy /= l
+        val len = SWING_LEN
+        val top = max(len + 28f, up + len * 0.85f)
+        val cosT = ((top - up) / len).coerceIn(0.2f, 1f)
+        val sinT = sqrt(1f - cosT * cosT)
+        // a ancoragem fica à frente e no alto; o corpo começa onde está, atrás do ponto mais baixo, e já vai para a frente
+        swOX = -dx * len * sinT
+        swOY = -dy * len * sinT
+        swOZ = -len * cosT
+        swAX = x - swOX
+        swAY = y - swOY
+        swAAlt = alt - swOZ
+        swVX = dx * 200f
+        swVY = dy * 200f
+        swVZ = max(0f, vz) * 0.4f
+        swGrow = 0f
+        swinging = true
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        flipT = 0f
+        return true
+    }
+
+    /** Solta a corda: o corpo sai voando com o embalo do balanço. */
+    fun endSwing() {
+        if (!swinging) return
+        swinging = false
+        vz = swVZ.coerceIn(-300f, 560f)
+        momX = swVX * 0.85f
+        momY = swVY * 0.85f
+        airJumped = false
+    }
+
+    private fun swingStep(dt: Float) {
+        swGrow = min(1f, swGrow + dt / 0.16f)
+        // se o mundo barrou o movimento, perde o embalo para dentro da parede
+        val cx = x - swAX
+        val cy = y - swAY
+        if (hypot(cx - swOX, cy - swOY) > 0.8f) {
+            swVX *= 0.25f
+            swVY *= 0.25f
+        }
+        swOX = cx
+        swOY = cy
+        val h = hypot(inX, inY)
+        val moving = h > 0.1f
+        val pump = if (moving) SWING_PUMP / h else 0f
+        swVX += inX * pump * dt
+        swVY += inY * pump * dt
+        swVZ -= SWING_G * dt
+        val damp = max(0f, 1f - (if (moving) 0.25f else 0.9f) * dt)
+        swVX *= damp
+        swVY *= damp
+        val hv = hypot(swVX, swVY)
+        if (hv > SWING_MAXV) {
+            swVX *= SWING_MAXV / hv
+            swVY *= SWING_MAXV / hv
+        }
+        swOX += swVX * dt
+        swOY += swVY * dt
+        swOZ += swVZ * dt
+        // a corda é inextensível: projeta o corpo de volta na esfera e tira só a velocidade que puxa para fora
+        val r = sqrt(swOX * swOX + swOY * swOY + swOZ * swOZ)
+        if (r > SWING_LEN) {
+            val nx = swOX / r
+            val ny = swOY / r
+            val nz = swOZ / r
+            swOX = nx * SWING_LEN
+            swOY = ny * SWING_LEN
+            swOZ = nz * SWING_LEN
+            val vn = swVX * nx + swVY * ny + swVZ * nz
+            if (vn > 0f) {
+                swVX -= nx * vn
+                swVY -= ny * vn
+                swVZ -= nz * vn
+            }
+        }
+        alt = swAAlt + swOZ
+        if (alt < ground + 2f) {
+            alt = ground + 2f
+            swOZ = alt - swAAlt
+            if (swVZ < 0f) swVZ = 0f
+        }
+        vz = swVZ
+        if (facingX * swVX + facingY * swVY < 0f && !moving) {
+            // sem comando, o corpo olha para onde está indo
+            val l = hypot(swVX, swVY)
+            if (l > 40f) {
+                facingX = swVX / l
+                facingY = swVY / l
+            }
+        }
+    }
     private val ichiReadyN = LongArray(6)
     private val ichiReadyH = LongArray(6)
 
     fun ichiCost(k: Int): Float = (if (hollow) ICHI_COST_H else ICHI_COST_N)[k.coerceIn(1, 5)]
 
     fun canAttack(now: Long): Boolean {
-        if (rolling || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
+        if (rolling || swinging || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
@@ -573,7 +699,7 @@ class Player(
     }
 
     fun startRoll(now: Long): Boolean {
-        if (!alive || rolling || skillK != 0 || voltT > 0f || !grounded || now - lastRoll < (if (classe == Classe.PIKACHU) 900L else 700L)) return false
+        if (!alive || rolling || swinging || skillK != 0 || voltT > 0f || !grounded || now - lastRoll < (if (classe == Classe.PIKACHU) 900L else 700L)) return false
         var dx = inX
         var dy = inY
         if (hypot(dx, dy) < 0.1f) {
@@ -656,6 +782,11 @@ class Player(
     /** Gravidade e acompanhamento do relevo. */
     fun updateVertical(dt: Float, groundPx: Float) {
         ground = groundPx
+        if (swinging) {
+            // pendurado: a altura vem do pêndulo (swingStep); aqui só termina o balanço se o chão subir até os pés
+            if (alt <= groundPx + 2.5f && swVZ <= 0f) endSwing()
+            return
+        }
         if (sky) {
             // andando no céu: sobe suave até a plataforma de reiatsu e fica flutuando
             flyClock += dt
@@ -697,6 +828,8 @@ class Player(
     }
 
     override fun update(dt: Float) {
+        if (!alive) swinging = false
+        if (swinging) swingStep(dt)
         if (flipT > 0f) flipT = max(0f, flipT - dt)
         if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
         if (dashT > 0f) dashT = max(0f, dashT - dt)
@@ -738,6 +871,11 @@ class Player(
             vx = rollDX * spd
             vy = rollDY * spd
             }
+        } else if (swinging) {
+            // balanço: o corpo vai até a posição calculada pelo pêndulo (o jogo ainda pode barrar na parede)
+            val inv = 1f / max(dt, 0.0001f)
+            vx = (swAX + swOX - x) * inv
+            vy = (swAY + swOY - y) * inv
         } else if (ichiT > 0f) {
             // Shunpo / Sonído: avanço veloz que freia no fim
             val q = 1f - ichiT / ichiDurNow
@@ -760,8 +898,11 @@ class Player(
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
             val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
-            vx = inX * velH * 60f * slow * spdMul
-            vy = inY * velH * 60f * slow * spdMul
+            vx = inX * velH * 60f * slow * spdMul + momX
+            vy = inY * velH * 60f * slow * spdMul + momY
+            val md = max(0f, 1f - dt * 2.0f)
+            momX *= md
+            momY *= md
         }
         x += vx * dt
         y += vy * dt
@@ -935,6 +1076,12 @@ class Player(
         Explorer3D.airVz = vz
         Explorer3D.swing = swing
         Explorer3D.alphaV = 1f
+        Explorer3D.hangOn = classe == Classe.EXPLORADOR && swinging
+        Explorer3D.hangGrow = swGrow
+        Explorer3D.hangDX = swAX - x
+        Explorer3D.hangDY = (swAY - y) + (alt - swAAlt)
+        Explorer3D.hangVF = ((swVX * facingX + swVY * facingY) / 500f).coerceIn(-1f, 1f)
+        Explorer3D.hangVS = ((swVX * facingY - swVY * facingX) / 500f).coerceIn(-1f, 1f)
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
