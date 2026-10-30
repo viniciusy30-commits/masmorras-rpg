@@ -89,6 +89,8 @@ class GameView @JvmOverloads constructor(
     private var pendingIchiSwing = 0
     private var pendingLuffyT = -1f
     private var pendingLuffySwing = 0
+    private var pendingExplT = -1f
+    private var pendingExplSwing = 0
     private val getsugas = ArrayList<GetsugaWave>()
     private val crossWaves = ArrayList<CrossWave>()
     private var ichiSkyWas = false
@@ -236,6 +238,7 @@ class GameView @JvmOverloads constructor(
             Classe.BARBARO -> snd("axe1", 1f, if (p.swing == 2) 0.78f else if (p.swing == 1) 0.92f else 1.02f)
             Classe.ICHIGO -> if (p.hollow) snd("heavy_swing", 0.8f, (if (p.swing == 2) 0.85f else 1.05f) * vary()) else snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.9f, 0.95f * vary())
             Classe.LUFFY -> snd("heavy_swing", 0.6f, (if (p.swing == 2) 1.0f else 1.3f) * vary())
+            Classe.EXPLORADOR -> snd("spear_sweep", 0.7f, (if (p.swing == 2) 1.1f else 1.5f) * vary())
             Classe.NINJA -> snd(if (p.swing == 2) "sword3" else if (p.swing == 1) "sword2" else "sword1", 0.8f, 1.22f * vary())
             Classe.GUERREIRO -> if (p.weapon == 1) {
                 when (p.swing) {
@@ -310,6 +313,7 @@ class GameView @JvmOverloads constructor(
         pikaHeld = false
         pendingIchiT = -1f
         pendingLuffyT = -1f
+        pendingExplT = -1f
         getsugas.clear()
         crossWaves.clear()
         ichiSkyWas = false
@@ -589,6 +593,7 @@ class GameView @JvmOverloads constructor(
         }
         if (p.startRoll(System.currentTimeMillis())) {
             pendingLuffyT = -1f
+            pendingExplT = -1f
             snd("roll", 0.9f, vary())
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 6, 0xFFB8B0A8.toInt())
         }
@@ -853,7 +858,7 @@ class GameView @JvmOverloads constructor(
             return
         }
         if (!p.canAttack(now)) {
-            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA || p.classe == Classe.ICHIGO || p.classe == Classe.LUFFY) && !p.rolling) queuedAt = now
+            if ((p.classe == Classe.GUERREIRO || p.classe == Classe.BARBARO || p.classe == Classe.NINJA || p.classe == Classe.ICHIGO || p.classe == Classe.LUFFY || p.classe == Classe.EXPLORADOR) && !p.rolling) queuedAt = now
             return
         }
 
@@ -897,6 +902,12 @@ class GameView @JvmOverloads constructor(
         } else {
             p.doAttack(now)
             swingSound(p)
+            if (p.classe == Classe.EXPLORADOR) {
+                // a corda só estala no alcance máximo (sincronizado com Explorer3D.T_HIT)
+                pendingExplT = p.explorerDelay()
+                pendingExplSwing = p.swing
+                return
+            }
             if (p.classe == Classe.LUFFY) {
                 // o punho esticado só acerta quando o braço chega ao alvo (sincronizado com Luffy3D.T_HIT)
                 pendingLuffyT = p.luffyDelay()
@@ -1256,6 +1267,32 @@ class GameView @JvmOverloads constructor(
         shake = max(shake, if (dbl) 0.12f else if (hits > 0) 0.05f else 0.02f)
     }
 
+    /** Chicote: a corda estala numa faixa reta à frente; a chicotada por cima (3º golpe) vai mais longe, abre mais e bate mais forte. */
+    private fun explorerStrike(sw: Int) {
+        val p = player ?: return
+        val big = sw == 2
+        val reach = if (big) Player.EXPL_REACH_3 else Player.EXPL_REACH
+        val half = if (big) 40f else 22f
+        val dmg = p.danoH * (if (big) 1.45f else 1f)
+        var hits = 0
+        enemies.forEach { e ->
+            if (!e.alive) return@forEach
+            if (e.alt - p.alt > 30f) return@forEach
+            val dx = e.x - p.x
+            val dy = e.y - p.y
+            val along = dx * p.facingX + dy * p.facingY
+            val side = abs(dx * p.facingY - dy * p.facingX)
+            if (along > -10f && along < reach + e.radius && side < half + e.radius) {
+                damageEnemy(e, dmg, p.x, p.y, if (big) 1.6f else 1.0f)
+                burst(e.x, e.y + e.radius * 0.55f - e.alt - 14f, 4, 0xFFFFE08A.toInt())
+                hits++
+            }
+        }
+        snd("spear_thrust", 0.8f, 1.9f * vary())
+        if (big) burst(p.x + p.facingX * reach * 0.9f, p.y + p.facingY * reach * 0.9f + p.radius * 0.55f - p.ground, 4, 0xFFE9D9B0.toInt())
+        shake = max(shake, if (big) 0.1f else if (hits > 0) 0.04f else 0.015f)
+    }
+
     private fun ichiStrike(sw: Int) {
         val p = player ?: return
         val cross = sw == 2
@@ -1298,6 +1335,7 @@ class GameView @JvmOverloads constructor(
         pendingShotT = -1f
         pendingIchiT = -1f
         pendingLuffyT = -1f
+        pendingExplT = -1f
         queuedAt = 0L
         skillDX = p.facingX
         skillDY = p.facingY
@@ -2317,6 +2355,13 @@ class GameView @JvmOverloads constructor(
         }
         if (pikaHeld && p.classe == Classe.PIKACHU && p.alive) {
             if (p.canAttack(System.currentTimeMillis())) tryAttack()
+        }
+        if (pendingExplT >= 0f) {
+            pendingExplT -= dt
+            if (pendingExplT <= 0f) {
+                pendingExplT = -1f
+                if (p.alive && !p.rolling && !p.skilling) explorerStrike(pendingExplSwing)
+            }
         }
         if (pendingLuffyT >= 0f) {
             pendingLuffyT -= dt

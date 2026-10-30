@@ -108,6 +108,10 @@ class Player(
         const val LUFFY_RATE_3 = 2.2f      // velocidade do soco duplo
         const val LUFFY_REACH = 150f       // alcance do soco esticado (Gomu Gomu no Pistol)
         const val LUFFY_REACH_2 = 180f     // alcance do soco duplo (Bazooka)
+        const val EXPL_RATE_1 = 2.7f       // velocidade dos 2 primeiros estalos do chicote do Explorador
+        const val EXPL_RATE_3 = 2.0f       // velocidade da chicotada por cima
+        const val EXPL_REACH = 165f        // alcance do estalo do chicote
+        const val EXPL_REACH_3 = 195f      // alcance da chicotada por cima
         const val LUFFY_DASH_T = 0.50f     // duração do dash estilingue (preparação + lançamento)
         const val LUFFY_DASH_V = 1500f     // velocidade inicial do lançamento
         // distância percorrida no lançamento (a velocidade cai com (1-v)^1.2, cuja integral vale 1/2.2)
@@ -263,6 +267,7 @@ class Player(
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
         else if (classe == Classe.LUFFY) (if (comboStep == 2) 520L else 280L)
+        else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 540L else 300L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -314,12 +319,19 @@ class Player(
             swing = comboStep
             attackRate = if (swing == 2) LUFFY_RATE_3 else LUFFY_RATE_1
         }
+        if (classe == Classe.EXPLORADOR) {
+            // combo de 3: estalo de direita, estalo de revés e chicotada por cima
+            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            swing = comboStep
+            attackRate = if (swing == 2) EXPL_RATE_3 else EXPL_RATE_1
+        }
         if (classe == Classe.MAGO) attackRate = MAGE_RATE
         if (classe == Classe.ARQUEIRO) attackRate = ARCHER_RATE
         if (classe == Classe.PIKACHU) attackRate = PIKA_RATE
         lastAttack = now
         attackAnim = 1f
-        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else if (classe == Classe.ICHIGO) 0.7f else if (classe == Classe.LUFFY) 0.8f else 1f
+        attackPunch = if (classe == Classe.MAGO) 0.5f else if (classe == Classe.ARQUEIRO) 0.35f else if (classe == Classe.NINJA) 0.6f else if (classe == Classe.PIKACHU) 0.4f else if (classe == Classe.ICHIGO) 0.7f else if (classe == Classe.LUFFY) 0.8f else if (classe == Classe.EXPLORADOR) 0.8f else 1f
     }
 
     /** Golpe forte (solta o botão depois de segurar). */
@@ -359,6 +371,9 @@ class Player(
 
     /** Segundos até o punho esticado do Luffy chegar ao alvo (sincronizado com Luffy3D.T_HIT). */
     fun luffyDelay(): Float = Luffy3D.impactAt(swing) / attackRate
+
+    /** Segundos até a corda do chicote estalar no alcance máximo (sincronizado com Explorer3D.T_HIT). */
+    fun explorerDelay(): Float = Explorer3D.impactAt(swing) / attackRate
 
     /** Segundos até o raio sair das mãos do Pikachu (sincronizado com Pikachu3D.T_SHOT). */
     fun pikaDelay(): Float = Pikachu3D.T_SHOT / PIKA_RATE
@@ -759,7 +774,7 @@ class Player(
         }
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) {
-            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) attackRate else 2.8f)).coerceAtLeast(0f)
+            attackAnim = (attackAnim - dt * (if (classe == Classe.GUERREIRO || classe == Classe.MAGO || classe == Classe.BARBARO || classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY || classe == Classe.EXPLORADOR) attackRate else 2.8f)).coerceAtLeast(0f)
         }
         // arco puxado: congela a animação logo antes do disparo até o botão ser solto
         if (bowHold && classe == Classe.ARQUEIRO && attackAnim < 1f - BOW_HOLD_AT) attackAnim = 1f - BOW_HOLD_AT
@@ -914,6 +929,12 @@ class Player(
         Luffy3D.airVz = vz
         Luffy3D.swing = swing
         Luffy3D.alphaV = 1f
+        Explorer3D.rollP = if (classe == Classe.EXPLORADOR && rollT > 0f) 1f - rollT / rollDur else -1f
+        Explorer3D.inAir = up > 1f
+        Explorer3D.airH = up
+        Explorer3D.airVz = vz
+        Explorer3D.swing = swing
+        Explorer3D.alphaV = 1f
         Mage3D.rollP = if (rollT > 0f) 1f - rollT / ROLL_TIME else -1f
         Mage3D.inAir = up > 1f
         Mage3D.airH = up
@@ -929,11 +950,11 @@ class Player(
         canvas.restore()
         VoxelArt.flash = 0f
 
-        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA && classe != Classe.ICHIGO && classe != Classe.LUFFY) {
+        if (!classe.isRanged && classe != Classe.GUERREIRO && classe != Classe.BARBARO && classe != Classe.NINJA && classe != Classe.ICHIGO && classe != Classe.LUFFY && classe != Classe.EXPLORADOR) {
             Sprites.drawSlash(canvas, paint, sx, feet - 16f * s, facingX, facingY, attackAnim, classe.alcance, classe.cor)
         }
 
-        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else if (classe == Classe.LUFFY) 72f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
+        drawBar(canvas, paint, sx, feet - (if (classe == Classe.MAGO) 80f else if (classe == Classe.BARBARO) 78f else if (classe == Classe.PIKACHU) 56f else if (classe == Classe.ICHIGO) (if (hollow) 76f else 70f) else if (classe == Classe.LUFFY) 72f else if (classe == Classe.EXPLORADOR) 74f else 68f) * s, radius * 2.2f, hp / maxHp, 0xFF4CAF50.toInt())
         if (classe == Classe.MAGO && (flying || fuel < FLY_MAX - 0.02f)) {
             drawBar(canvas, paint, sx, feet - 80f * s + 8f, radius * 2.2f, fuel / FLY_MAX, 0xFF5FD4FF.toInt())
         }

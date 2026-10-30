@@ -487,6 +487,7 @@ object HeroCreator {
         secao(pRoupa, "Cabeça")
         val nomeElmo = when (classe) {
             Classe.MAGO -> "Chapéu"
+            Classe.EXPLORADOR -> "Chapéu"
             Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> "Máscara"
             else -> "Capacete"
         }

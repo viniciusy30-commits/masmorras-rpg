@@ -135,7 +135,7 @@ object Roupas {
         Classe.BARBARO -> BARBARO
         Classe.MAGO -> MAGO
         Classe.ARQUEIRO -> ARQUEIRO
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> NINJA
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> NINJA
     }
 
     fun capas(c: Classe): List<Capa> = when (c) {
@@ -143,7 +143,7 @@ object Roupas {
         Classe.BARBARO -> CAPAS_B
         Classe.MAGO -> CAPAS_M
         Classe.ARQUEIRO -> CAPAS_A
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> CAPAS_N
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> CAPAS_N
     }
 
     fun nomesPeito(c: Classe): List<String> = listOf("Original") + trajes(c).map { it.nome }
@@ -153,7 +153,7 @@ object Roupas {
         Classe.BARBARO -> OMB_B
         Classe.MAGO -> OMB_M
         Classe.ARQUEIRO -> OMB_A
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> OMB_N
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> OMB_N
     }
 
     /** 0 = original da classe, 1 = sem ombreiras, 2..6 = os 5 estilos da classe. */
@@ -189,7 +189,7 @@ object Roupas {
         Classe.BARBARO -> D(9.8f, 7.4f, 5.0f, 4.2f, 5.1f, 3.8f, 5.9f, 2.2f, 3.7f, 3.9f)
         Classe.MAGO -> D(9.8f, 5.7f, 4.8f, 3.5f, 4.1f, 3.8f, 5.0f, 2.2f, 3.3f, 3.6f)
         Classe.ARQUEIRO -> D(9.8f, 5.5f, 4.8f, 3.4f, 4.05f, 3.8f, 0f, 0f, 0f, 0f)
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> D(9.6f, 5.4f, 4.8f, 3.4f, 4.05f, 3.8f, 4.8f, 2.2f, 3.2f, 3.45f)
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> D(9.6f, 5.4f, 4.8f, 3.4f, 4.05f, 3.8f, 4.8f, 2.2f, 3.2f, 3.45f)
     }
 
     /** Medidas das pernas: coxa e canela (hx, hz, z da frente, centro y, meia altura). */
@@ -203,7 +203,7 @@ object Roupas {
         Classe.BARBARO -> L(2.95f, 2.95f, 3.1f, 2.7f, 2.75f, 2.95f, -2.7f, 2.8f)
         Classe.MAGO -> L(2.2f, 2.3f, 2.4f, 2.05f, 2.1f, 2.5f, -2.7f, 2.8f)
         Classe.ARQUEIRO -> L(2.25f, 2.3f, 2.5f, 2.45f, 2.15f, 2.3f, -3.1f, 2.7f)
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> L(2.35f, 2.4f, 2.5f, 2.15f, 2.15f, 2.3f, -2.7f, 2.8f)
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> L(2.35f, 2.4f, 2.5f, 2.15f, 2.15f, 2.3f, -2.7f, 2.8f)
     }
 
     // ───────────── barriga / cintura ─────────────
@@ -231,7 +231,7 @@ object Roupas {
         Classe.BARBARO -> HeroLook.skin(0xFFD99A5E.toInt())
         Classe.MAGO -> HeroLook.tecido(0xFF2E5CB8.toInt())
         Classe.ARQUEIRO -> HeroLook.tecido(0xFF66795A.toInt())
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> HeroLook.tecido(0xFF1B1A24.toInt())
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> HeroLook.tecido(0xFF1B1A24.toInt())
     }
 
     /** Chamado dentro do peito (já com giro e respiração), no começo da parte de cima do torso. */
@@ -282,7 +282,7 @@ object Roupas {
         Classe.BARBARO -> HeroLook.tecido(0xFF5A4630.toInt())
         Classe.MAGO -> HeroLook.tecido(0xFF2E3F7A.toInt())
         Classe.ARQUEIRO -> HeroLook.tecido(0xFF4A5A3A.toInt())
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> HeroLook.tecido(0xFF1B1A24.toInt())
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> HeroLook.tecido(0xFF1B1A24.toInt())
     }
 
     /** Quadril feminino: curva de cubos que alarga logo abaixo da cintura (espaço do quadril, depois do cintura()). */
@@ -632,7 +632,7 @@ object Roupas {
                     q(-w * 0.5f, top - 2.0f, z + 0.36f, 0.2f, 0.4f, 0.06f, 0xFFFFFFFF.toInt(), true)
                 }
             }
-            Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> when (k) {
+            Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> when (k) {
                 1 -> { // Shinobi noturno: faixas cruzadas, bandoleira de kunai e emblema tomoe
                     for (s in sds) {
                         push(g, 0f, cy + 0.2f, z + 0.06f, s * 0.7f) {
@@ -747,7 +747,7 @@ object Roupas {
                 else -> { q(0f, y + 1.2f, z + 0.08f, w, 0.28f, 0.1f, 0xFF6B4A2A.toInt()); for (i in -3..3) q(i * 1.4f, y + 0.2f - kotlin.math.abs(i) * 0.12f, z + 0.12f, 0.45f, 0.7f, 0.07f, if (i % 2 == 0) B else L) }
             }
             Classe.ARQUEIRO -> {}
-            Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> when (k) {
+            Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> when (k) {
                 1 -> { q(0f, y + 1.2f, z + 0.08f, w, 0.55f, 0.1f, O); q(w * 0.5f, y + 1.2f, z + 0.2f, 0.6f, 0.6f, 0.1f, O); q(w * 0.55f, y - 0.2f, z + 0.16f, 0.25f, 1.4f, 0.06f, O) }
                 2 -> { q(0f, y + 0.9f, z + 0.08f, w, 0.9f, 0.12f, 0xFF15151C.toInt()); q(0f, y + 0.9f, z + 0.2f, 0.8f, 0.7f, 0.08f, O) }
                 3 -> { q(0f, y + 0.9f, z + 0.08f, w, 0.8f, 0.12f, E); q(-w * 0.4f, y + 0.9f, z + 0.2f, 0.6f, 0.6f, 0.08f, 0xFFBFEFFF.toInt(), true); q(-w * 0.4f, y - 0.5f, z + 0.16f, 0.2f, 1.0f, 0.06f, E) }
@@ -798,7 +798,7 @@ object Roupas {
                     4 -> { for (i in 0..2) q(0f, y0 + 1.8f - i * 1.5f, z + 0.08f, a * (0.9f - i * 0.1f), 0.6f, 0.1f, if (i % 2 == 0) L else B); q(0f, y0 - 2.4f, z + 0.12f, a, 0.22f, 0.08f, O) }
                     else -> { q(0f, y0 - 2.4f, z + 0.1f, a + 0.1f, 0.5f, 0.2f, L); q(0f, y0 + 2.2f, z + 0.06f, a, 0.25f, 0.1f, E); for (i in 0..1) q(0f, y0 + 0.6f - i * 1.3f, z + 0.06f, 0.3f, 0.18f, 0.06f, 0xFFE8DCC0.toInt()) }
                 }
-                Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> when (k) {
+                Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> when (k) {
                     1 -> { for (i in 0..3) q(0f, y0 + 2.2f - i * 1.1f, z + 0.05f, a, 0.1f, 0.05f, L); q(a * 0.6f, y0 + 1.0f, z + 0.14f, 0.5f, 0.9f, 0.14f, E) }
                     2 -> { q(0f, y0 - 2.4f, z + 0.06f, a, 0.4f, 0.08f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 2.0f, 0.05f, O) }
                     3 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.06f, a, 0.5f, 0.08f, if (i % 2 == 0) B else L); q(0f, y0 - 2.4f, z + 0.1f, a + 0.05f, 0.3f, 0.1f, 0xFFBFEFFF.toInt()) }
@@ -836,7 +836,7 @@ object Roupas {
                     4 -> { q(0f, y0 + 1.6f, z + 0.12f, a, 1.0f, 0.14f, L); q(0f, y0 + 1.6f, z + 0.24f, 0.4f, 0.4f, 0.06f, 0xFF59E0A0.toInt(), true); q(0f, y0 - 1.4f, z + 0.1f, a, 0.9f, 0.12f, B) }
                     else -> { q(0f, y0 + 2.4f, z + 0.1f, a + 0.2f, 0.8f, 0.22f, L); q(0f, y0 - 2.4f, z + 0.1f, a + 0.15f, 0.6f, 0.2f, L) }
                 }
-                Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> when (k) {
+                Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> when (k) {
                     1 -> { for (i in 0..4) q(0f, y0 + 2.2f - i * 1.0f, z + 0.05f, a, 0.1f, 0.05f, L); q(0f, y0 - 0.4f, z + 0.1f, 0.6f, 1.2f, 0.08f, E) }
                     2 -> { q(0f, y0 - 2.5f, z + 0.08f, a, 0.4f, 0.1f, O); q(0f, y0 + 0.4f, z + 0.04f, 0.1f, 2.0f, 0.05f, O) }
                     3 -> { for (i in 0..3) q(0f, y0 + 2.0f - i * 1.3f, z + 0.06f, a, 0.5f, 0.08f, if (i % 2 == 0) B else L); q(0f, y0 - 2.5f, z + 0.1f, a + 0.05f, 0.3f, 0.1f, 0xFFBFEFFF.toInt()) }
@@ -990,7 +990,7 @@ object Roupas {
         Classe.BARBARO -> 1.12f
         Classe.MAGO -> 0.88f
         Classe.ARQUEIRO -> 0.82f
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> 0.88f
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> 0.88f
     }
 
     /**

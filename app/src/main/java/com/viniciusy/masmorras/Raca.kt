@@ -171,7 +171,7 @@ class HeroiPerfil(val classe: Classe) {
     private fun primario(): Atrib = when (classe) {
         Classe.MAGO -> Atrib.INT
         Classe.ARQUEIRO -> Atrib.DES
-        Classe.NINJA, Classe.PIKACHU -> Atrib.DES
+        Classe.NINJA, Classe.PIKACHU, Classe.EXPLORADOR -> Atrib.DES
         else -> Atrib.FOR
     }
 
@@ -244,6 +244,7 @@ class HeroiPerfil(val classe: Classe) {
             Classe.BARBARO -> intArrayOf(15, 12, 15, 8, 10, 11)
             Classe.NINJA, Classe.PIKACHU -> intArrayOf(11, 15, 12, 10, 13, 12)
             Classe.ICHIGO, Classe.LUFFY -> intArrayOf(15, 13, 13, 9, 12, 11)
+            Classe.EXPLORADOR -> intArrayOf(12, 15, 13, 12, 12, 12)
         }
 
         fun padrao(c: Classe): HeroiPerfil = padraoCache.getOrPut(c) { HeroiPerfil(c) }

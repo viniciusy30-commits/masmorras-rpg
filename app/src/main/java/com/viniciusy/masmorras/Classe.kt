@@ -59,5 +59,11 @@ enum class Classe(
         "Capitão dos Chapéus de Palha depois do salto de tempo. Combo de socos de borracha que esticam o braço (direita, esquerda e os dois punhos juntos) e dash estilingue.",
         0xFFD42A2E.toInt(),
         190f, 0f, 3.5f, 26f, 62f, 300L, false
+    ),
+    EXPLORADOR(
+        "Explorador",
+        "Aventureiro de chapéu e chicote, estilo Indiana Jones. Combo de chicote (estalo de direita, de revés e chicotada por cima) com alcance longo e cambalhota para fugir.",
+        0xFF8B5A2B.toInt(),
+        165f, 0f, 3.7f, 25f, 70f, 300L, false
     )
 }

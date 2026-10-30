@@ -605,6 +605,7 @@ class MainActivity : AppCompatActivity() {
                 Classe.PIKACHU -> R.drawable.hd_ic_c_pikachu
                 Classe.ICHIGO -> R.drawable.hd_ic_c_ichigo
                 Classe.LUFFY -> R.drawable.hd_ic_c_luffy
+                Classe.EXPLORADOR -> R.drawable.hd_ic_c_explorador
             }
         )
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)

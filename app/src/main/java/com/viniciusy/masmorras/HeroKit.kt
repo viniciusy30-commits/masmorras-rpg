@@ -32,7 +32,7 @@ object HeroKit {
         Classe.GUERREIRO -> Spec(0xFFF1C27D.toInt(), 6.2f, 5.2f, 0.3f, 3.4f, 12.3f, 0f, 0.2f, 3.8f, 11.8f, 0.4f, 0.5f, 3.3f, 5.0f, 1.7f, 5.4f, -1.0f, -4.4f)
         Classe.BARBARO -> Spec(0xFFD99A5E.toInt(), 5.3f, 4.0f, 0.2f, 3.4f, 12.6f, -0.3f, 0.2f, 4.0f, 11.4f, -0.2f, 0.55f, 3.4f, 4.9f, 2.3f, 5.45f, -1.0f, -4.6f)
         Classe.ARQUEIRO -> Spec(0xFFF6DCC0.toInt(), 4.5f, 4.4f, -0.7f, 3.0f, 10.8f, -0.2f, 0.15f, 3.6f, 10.6f, -0.2f, 0.45f, 4.3f, 4.35f, 2.3f, 4.55f, -1.0f, -4.4f)
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> Spec(0xFFF1C27D.toInt(), 4.6f, 4.8f, -0.4f, 3.4f, 10.2f, -0.2f, 0.3f, 3.8f, 9.6f, -0.2f, 0.7f, 3.8f, 4.5f, 2.4f, 4.8f, -1.0f, -4.6f)
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> Spec(0xFFF1C27D.toInt(), 4.6f, 4.8f, -0.4f, 3.4f, 10.2f, -0.2f, 0.3f, 3.8f, 9.6f, -0.2f, 0.7f, 3.8f, 4.5f, 2.4f, 4.8f, -1.0f, -4.6f)
     }
 
     private const val PINK = 0xFFE8A0A8.toInt()
@@ -86,7 +86,7 @@ object HeroKit {
         Classe.BARBARO -> Cranio(9.7f, 4.8f, 4.6f, 0xFFB8421C.toInt(), 0.9f)
         Classe.MAGO -> Cranio(9.5f, 4.4f, 4.2f, 0xFFEDEFF3.toInt(), 0.8f)
         Classe.ARQUEIRO -> Cranio(9.5f, 4.3f, 4.1f, 0xFFEAD79B.toInt(), 0.8f)
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> Cranio(9.5f, 4.5f, 4.3f, 0xFF1C1626.toInt(), 0.8f)
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> Cranio(9.5f, 4.5f, 4.3f, 0xFF1C1626.toInt(), 0.8f)
     }
 
     private fun cor3(i: Int, a: Int, b: Int, c: Int): Int {
@@ -681,7 +681,7 @@ object HeroKit {
         Classe.GUERREIRO -> Face(5.3f, 4.7f, 2f, 0f, 5f)
         Classe.BARBARO -> Face(5.15f, 4.8f, 2.2f, 0f, 4.8f)
         Classe.ARQUEIRO -> Face(4.7f, 5.6f, 2f, 0.15f, 4.7f)
-        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY -> Face(4.75f, 5.0f, 2f, 0f, 4.5f)
+        Classe.NINJA, Classe.PIKACHU, Classe.ICHIGO, Classe.LUFFY, Classe.EXPLORADOR -> Face(4.75f, 5.0f, 2f, 0f, 4.5f)
     }
 
     private const val CICATRIZ = 0xFFD98B80.toInt()

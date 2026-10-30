@@ -52,6 +52,7 @@ object Sprites {
             Classe.PIKACHU -> Pikachu3D.draw(c, p, fx, fy, s0, phase, moving, faceX, faceY, attack)
             Classe.ICHIGO -> Ichigo3D.draw(c, p, fx, fy, s0, phase, moving, faceX, faceY, attack)
             Classe.LUFFY -> Luffy3D.draw(c, p, fx, fy, s0, phase, moving, faceX, faceY, attack)
+            Classe.EXPLORADOR -> Explorer3D.draw(c, p, fx, fy, s0, phase, moving, faceX, faceY, attack)
         }
     }
 
