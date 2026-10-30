@@ -1,10 +1,9 @@
-#id 2026-10-30-b
-#titulo Novo herói: Explorador
-- Nova classe Explorador, estilo Indiana Jones: chapéu fedora, jaqueta de couro, camisa cáqui, cinto com coldre, bolsa a tiracolo e botas
-- Ataque com chicote em combo de 3: estalo de direita, estalo de revés e chicotada por cima (alcance longo, acerta numa faixa reta à frente)
-- A corda do chicote ondula, estica e estala com faíscas na ponta
-- Botão de rolar: cambalhota para a frente com poeira
-- Sorriso de canto, sobrancelha levantada e cicatriz no queixo
+#id 2026-10-30-ichigo-hd
+#titulo Ichigo refeito em alta definição
+- Modelo novo seguindo a referência: cabelo laranja espetado, quimono preto aberto com gola branca, faixa com nó, hakama larga, tabi e zori
+- Casaco e mangas rasgados com forro vermelho-escuro, espada com fio azul brilhante
+- Mais pixels no personagem para mostrar os detalhes
+- Efeitos das skills redesenhados com brilho, luz e fumaça no lugar do visual de PNG chapado
 
 #id 2026-10-30-a
 #titulo Personagem fofinho de verdade
