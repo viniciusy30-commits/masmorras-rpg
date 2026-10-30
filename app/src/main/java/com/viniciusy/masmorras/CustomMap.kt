@@ -337,17 +337,33 @@ class CustomMap(private val data: MapData) : GameMap {
             dst.set(x, top, x + ts + 1f, top + ts + 1f)
             canvas.drawBitmap(tile, src, dst, bmpPaint)
             paint.style = Paint.Style.FILL
-            if (data.levelAt(tx, ty - 1) < MT.level(e)) {
-                paint.color = 0x30FFFFFF
-                canvas.drawRect(x, top, x + ts, top + 2f, paint)
+            val lv = MT.level(e)
+            // quanto mais alto o nível, mais clara a superfície (luz vem de cima)
+            paint.color = (minOf(lv * 7, 34) shl 24) or 0xFFF4D8
+            canvas.drawRect(x, top, x + ts, top + ts, paint)
+            // luz vinda do noroeste: bordas norte e oeste brilham, a leste escurece
+            if (data.levelAt(tx, ty - 1) < lv) {
+                paint.color = 0x5CFFFFFF
+                canvas.drawRect(x, top, x + ts, top + 3f, paint)
+                paint.color = 0x24FFFFFF
+                canvas.drawRect(x, top + 3f, x + ts, top + 7f, paint)
             }
-            if (data.levelAt(tx - 1, ty) < MT.level(e) && data.elev[i] != 0) {
-                paint.color = 0x30000000
-                canvas.drawRect(x, top, x + 2f, top + ts, paint)
+            if (data.levelAt(tx - 1, ty) < lv) {
+                paint.color = 0x40FFFFFF
+                canvas.drawRect(x, top, x + 3f, top + ts, paint)
+                paint.color = 0x18FFFFFF
+                canvas.drawRect(x + 3f, top, x + 6f, top + ts, paint)
             }
-            if (data.levelAt(tx + 1, ty) < MT.level(e)) {
+            if (data.levelAt(tx + 1, ty) < lv) {
+                paint.color = 0x58000000
+                canvas.drawRect(x + ts - 3f, top, x + ts, top + ts, paint)
+                paint.color = 0x24000000
+                canvas.drawRect(x + ts - 7f, top, x + ts - 3f, top + ts, paint)
+            }
+            // sombra de oclusão onde a vizinha ao norte é mais alta (ela cobre parte do chão aqui)
+            if (data.levelAt(tx, ty - 1) > lv) {
                 paint.color = 0x30000000
-                canvas.drawRect(x + ts - 2f, top, x + ts, top + ts, paint)
+                canvas.drawRect(x, top, x + ts, top + 10f, paint)
             }
         } else if (rp == 1 || rp == 3) {
             // rampa para norte/sul: faixas horizontais, cada uma mais alta que a anterior
@@ -363,6 +379,13 @@ class CustomMap(private val data: MapData) : GameMap {
                 srcR.set(0, k * step, tsi, (k + 1) * step)
                 dst.set(x, ta, x + ts + 1f, maxOf(tb, ta + 1f))
                 canvas.drawBitmap(tile, srcR, dst, bmpPaint)
+                // a rampa escurece no pé e clareia no alto, para parecer inclinada
+                val fr = if (rp == 1) 1f - v0 else v0
+                paint.style = Paint.Style.FILL
+                paint.color = (((1f - fr) * 0x42).toInt() shl 24) or 0x101018
+                canvas.drawRect(x, ta, x + ts + 1f, maxOf(tb, ta + 1f), paint)
+                paint.color = (((fr) * 0x22).toInt() shl 24) or 0xFFF4D8
+                canvas.drawRect(x, ta, x + ts + 1f, maxOf(tb, ta + 1f), paint)
             }
 
         } else {
@@ -376,6 +399,12 @@ class CustomMap(private val data: MapData) : GameMap {
                 srcR.set(k * step, 0, (k + 1) * step, tsi)
                 dst.set(x + k * step, top, x + (k + 1) * step + 1f, top + ts + 1f)
                 canvas.drawBitmap(tile, srcR, dst, bmpPaint)
+                val fr = if (rp == 2) uc else 1f - uc
+                paint.style = Paint.Style.FILL
+                paint.color = (((1f - fr) * 0x42).toInt() shl 24) or 0x101018
+                canvas.drawRect(x + k * step, top, x + (k + 1) * step + 1f, top + ts + 1f, paint)
+                paint.color = (((fr) * 0x22).toInt() shl 24) or 0xFFF4D8
+                canvas.drawRect(x + k * step, top, x + (k + 1) * step + 1f, top + ts + 1f, paint)
             }
         }
         // face de penhasco na borda sul, onde o vizinho é mais baixo
@@ -406,12 +435,29 @@ class CustomMap(private val data: MapData) : GameMap {
                 canvas.drawBitmap(cliff, srcR, dst, bmpPaint)
                 yy += seg
             }
-            paint.color = 0x40000000
-            canvas.drawRect(cx, (bt - 4).toFloat(), cx + 9f, bt.toFloat(), paint)
-            paint.color = 0x30000000
-            canvas.drawRect(cx, bt.toFloat(), cx + 9f, bt + 9f, paint)
+            // parede: clara na borda de cima e cada vez mais escura até o pé
+            val hh = bt - tp
+            for (b in 1..3) {
+                val ya = tp + hh * b / 4
+                val yb = tp + hh * (b + 1) / 4
+                if (yb <= ya) continue
+                paint.color = (CLIFF_SHADE[b] shl 24) or 0x08080E
+                canvas.drawRect(cx, ya.toFloat(), cx + 9f, yb.toFloat(), paint)
+            }
+            // quina escura no pé da parede e sombra projetada no chão, mais longa quanto mais alta a parede
+            paint.color = 0x66000000
+            canvas.drawRect(cx, (bt - 3).toFloat(), cx + 9f, bt.toFloat(), paint)
+            val sl = minOf(hh * 0.55f, 26f)
+            paint.color = 0x52000000
+            canvas.drawRect(cx, bt.toFloat(), cx + 9f, bt + sl * 0.34f, paint)
+            paint.color = 0x34000000
+            canvas.drawRect(cx, bt + sl * 0.34f, cx + 9f, bt + sl * 0.68f, paint)
+            paint.color = 0x18000000
+            canvas.drawRect(cx, bt + sl * 0.68f, cx + 9f, bt + sl, paint)
         }
     }
+
+    private val CLIFF_SHADE = intArrayOf(0, 0x20, 0x3C, 0x5A)
 
     /** Fumaça subindo da chaminé. */
     private fun smoke(canvas: Canvas, paint: Paint, cx: Float, cy: Float, t: Float, seed: Int) {

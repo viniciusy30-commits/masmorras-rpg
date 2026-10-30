@@ -108,8 +108,8 @@ class Player(
         const val LUFFY_RATE_3 = 2.2f      // velocidade do soco duplo
         const val LUFFY_REACH = 150f       // alcance do soco esticado (Gomu Gomu no Pistol)
         const val LUFFY_REACH_2 = 180f     // alcance do soco duplo (Bazooka)
-        const val EXPL_RATE_1 = 2.7f       // velocidade dos 2 primeiros estalos do chicote do Explorador
-        const val EXPL_RATE_3 = 2.0f       // velocidade da chicotada por cima
+        const val EXPL_RATE_1 = 1.55f      // velocidade dos 2 primeiros estalos do chicote do Explorador
+        const val EXPL_RATE_3 = 1.2f       // velocidade da chicotada por cima
         const val EXPL_REACH = 165f        // alcance do estalo do chicote
         const val EXPL_REACH_3 = 195f      // alcance da chicotada por cima
         const val SWING_LEN = 120f         // comprimento da corda do balanço do Explorador
@@ -393,7 +393,7 @@ class Player(
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
         else if (classe == Classe.LUFFY) (if (comboStep == 2) 520L else 280L)
-        else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 540L else 300L)
+        else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 760L else 560L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
     }
@@ -447,7 +447,7 @@ class Player(
         }
         if (classe == Classe.EXPLORADOR) {
             // combo de 3: estalo de direita, estalo de revés e chicotada por cima
-            val inWindow = comboStep >= 0 && now - lastAttack < 900L
+            val inWindow = comboStep >= 0 && now - lastAttack < 1300L
             comboStep = if (inWindow) (comboStep + 1) % 3 else 0
             swing = comboStep
             attackRate = if (swing == 2) EXPL_RATE_3 else EXPL_RATE_1

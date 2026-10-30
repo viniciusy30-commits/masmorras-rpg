@@ -826,6 +826,13 @@ object MapTex {
             }
             a[j * TS + i] = c or (0xFF shl 24)
         }
+        // variação por coluna: fendas escuras e blocos mais claros dão volume à parede
+        for (i in 0 until TS) {
+            val col = h(i / 4, 0, 330) % 100
+            val dk = if (col < 20) 0.78f else if (col > 86) 1.12f else 1f
+            if (dk != 1f) for (j in CLIFF_TOP until CLIFF_H) a[j * TS + i] = sh(a[j * TS + i] and 0xFFFFFF, dk) or (0xFF shl 24)
+            if (col < 6) for (j in CLIFF_TOP until CLIFF_H) a[j * TS + i] = sh(a[j * TS + i] and 0xFFFFFF, 0.8f) or (0xFF shl 24)
+        }
         // borda de cima: crosta com a cor do piso, irregular, e sombra logo abaixo
         for (i in 0 until TS) {
             val lip = 2 + h(i / 2, 0, 324) % 3

@@ -1,17 +1,16 @@
-v79 - Explorador: balanco pendurado no chicote + rolamento novo
-(inclui tudo da v78: modelo em camadas e chicote 3D)
+v81 - Explorador pendurado parado + relevo com mais profundidade
+Inclui tudo da v80 (chicote enrolado, golpe lento, bracos grossos).
+Arquivos: Explorer3D.kt, Entity.kt (v80), CustomMap.kt, MapTiles.kt
 
-Arquivos alterados (mesmos caminhos): Explorer3D.kt, Entity.kt, GameView.kt
+PENDURADO NA CORDA
+- Pendurado agora conta como "no ar": nao usa mais a pose de caminhada (mesmo perto do chao ou com o joystick).
+- Parado fica pendurado reto, com as pernas soltas e um balancinho suave.
 
-COMO USAR O BALANCO
-- Pule (toque) e, no ar, aperte o botao de pular de novo e SEGURE: o chicote prende no ceu e voce fica pendurado.
-- Enquanto segura, o balanco vai para o lado em que voce anda com o joystick (empurra como um pendulo de verdade).
-- Soltar o botao de pular (ou apertar rolar) larga a corda e voce sai voando com o embalo.
-- Tambem funciona segurando o pulo desde o chao (prende assim que sair do chao).
-- Pendurado nao ataca. Se o chao subir ate os pes, a corda solta sozinha.
+RELEVO (CustomMap.kt, MapTiles.kt)
+- Parede do penhasco: clara na borda e cada vez mais escura ate o pe, com fendas e blocos claros/escuros.
+- Sombra projetada no chao embaixo da parede (mais longa quanto mais alta).
+- Topo: niveis mais altos ficam mais claros; bordas norte/oeste brilham, leste escurece.
+- Chao atras de um nivel mais alto recebe sombra de oclusao.
+- Rampas: escuras no pe e claras no alto, parecem inclinadas.
 
-ROLAMENTO NOVO
-- Fecha o corpo rapido, gira devagar-rapido-devagar com um pequeno arco, levanta agachado com bracos abertos
-  e solta poeira na saida e no pouso.
-
-NAO FOI COMPILADO (sem Kotlin no ambiente). Se o build falhar, mande o log.
+NAO FOI COMPILADO. Se o build falhar, mande o log.
