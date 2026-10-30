@@ -1,9 +1,8 @@
-#id 2026-10-30-ichigo-hd
-#titulo Ichigo refeito em alta definição
-- Modelo novo seguindo a referência: cabelo laranja espetado, quimono preto aberto com gola branca, faixa com nó, hakama larga, tabi e zori
-- Casaco e mangas rasgados com forro vermelho-escuro, espada com fio azul brilhante
-- Mais pixels no personagem para mostrar os detalhes
-- Efeitos das skills redesenhados com brilho, luz e fumaça no lugar do visual de PNG chapado
+#id 2026-10-30-ichigo-hd2
+#titulo Ichigo: cabelo e visual refeitos
+- Cabelo novo: franja pontuda sobre a testa, tufos laterais e mechas varridas para trás, sem o formato de capacete
+- Ombros e mangas mais finos, abrindo em sino perto do pulso como na referência
+- Roupa, gola branca, faixa, espada de fio azul e efeitos das skills em alta definição
 
 #id 2026-10-30-a
 #titulo Personagem fofinho de verdade

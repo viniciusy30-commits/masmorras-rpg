@@ -1133,21 +1133,21 @@ object Ichigo3D {
                 claws(markId)
             } else {
                 // ombro e manga larga do braço (parte de cima)
-                prism(0f, 0.4f, 0f, 2.6f, 0.9f, 2.6f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-                prism(side * 1.4f, -0.2f, 0f, 1.2f, 0.4f, 2.4f, 1.0f, 1.0f, 0f, 0f, BLK)
-                prism(0f, -2.6f, 0f, 1.75f, 2.7f, 1.8f, 1.30f, 1.28f, 0f, 0f, BLK)
-                prism(side * 1.4f, -2.6f, 0f, 0.28f, 2.6f, 1.75f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-                cube(0f, -5.2f, 0f, 2.1f, 0.26f, 2.1f, RED_D)
+                prism(0f, 0.4f, 0f, 2.0f, 0.9f, 2.0f, 0.95f, 0.95f, 0f, 0f, BLK_L)
+                prism(side * 1.1f, -0.2f, 0f, 0.9f, 0.4f, 1.9f, 1.0f, 1.0f, 0f, 0f, BLK)
+                prism(0f, -2.6f, 0f, 1.45f, 2.7f, 1.5f, 1.22f, 1.2f, 0f, 0f, BLK)
+                prism(side * 1.2f, -2.6f, 0f, 0.26f, 2.6f, 1.45f, 1.0f, 1.0f, 0f, 0f, BLK_L)
+                cube(0f, -5.2f, 0f, 1.75f, 0.26f, 1.75f, RED_D)
                 translate(0f, -5.4f, 0f)
                 rotX(el)
                 // manga que abre em sino até o pulso, com forro vermelho e pontas rasgadas
-                prism(0f, -2.9f, 0f, 2.75f, 2.9f, 2.7f, 0.66f, 0.68f, 0f, 0f, BLK)
-                prism(side * 2.0f, -2.9f, 0f, 0.24f, 2.85f, 2.5f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-                cube(0f, -5.85f, 0f, 2.75f, 0.14f, 2.72f, RED_D)
-                cube(0f, -2.9f, -2.7f, 1.3f, 2.8f, 0.08f, RED_D)
+                prism(0f, -2.9f, 0f, 2.25f, 2.9f, 2.2f, 0.66f, 0.68f, 0f, 0f, BLK)
+                prism(side * 1.6f, -2.9f, 0f, 0.22f, 2.85f, 2.0f, 1.0f, 1.0f, 0f, 0f, BLK_L)
+                cube(0f, -5.85f, 0f, 2.25f, 0.14f, 2.22f, RED_D)
+                cube(0f, -2.9f, -2.2f, 1.1f, 2.8f, 0.08f, RED_D)
                 for (i in -2..2) {
                     push()
-                        translate(i * 1.05f, -5.85f, 0f)
+                        translate(i * 0.85f, -5.85f, 0f)
                         rotX(0.10f * i + cw1 * 0.5f)
                         rotZ(i * 0.05f)
                         val tl = 1.5f + (2 - kotlin.math.abs(i)) * 0.45f
@@ -1228,76 +1228,41 @@ object Ichigo3D {
 
             cube(0f, 1.15f, 3.55f, 1.05f, 0.09f, 0.1f, LIP)
             cube(0f, 0.8f, 3.4f, 0.55f, 0.08f, 0.1f, SKIN_D)
-            // cabelo: capa e volume
-            prism(0f, 7.2f, -0.2f, 4.25f, 1.2f, 4.1f, 0.94f, 0.94f, 0f, 0f, HAIR)
-            cube(0f, 5.4f, -3.65f, 3.95f, 3.2f, 0.8f, HAIR_D)
-            cube(-3.95f, 6.3f, -0.5f, 0.5f, 1.9f, 3.2f, HAIR)
-            cube(3.95f, 6.3f, -0.5f, 0.5f, 1.9f, 3.2f, HAIR)
-            // franja: seis mechas grossas caindo sobre a testa, em ângulos diferentes
-            for (i in -3..3) {
-                push()
-                    translate(i * 1.1f, 8.2f, 3.35f)
-                    rotX(-0.55f - 0.05f * kotlin.math.abs(i) + h0 * 0.3f)
-                    rotZ(-i * 0.10f)
-                    val l = 2.7f + (3 - kotlin.math.abs(i)) * 0.45f
-                    prism(0f, -l * 0.5f, 0f, 0.10f, l * 0.5f, 0.24f, 8.0f, 2.0f, 0f, 0f, if (i % 2 == 0) HAIR else HAIR_L)
-                    prism(0f, -l * 0.42f, 0.14f, 0.07f, l * 0.40f, 0.14f, 6.0f, 1.6f, 0f, 0f, HAIR_L)
-                pop()
-            }
-            // mechas compridas que emolduram o rosto
+            // cabelo: base lisa que acompanha o crânio
+            prism(0f, 7.45f, -0.3f, 4.05f, 0.85f, 3.98f, 0.93f, 0.92f, 0f, 0f, HAIR)
+            cube(0f, 5.6f, -3.8f, 3.9f, 2.6f, 0.55f, HAIR_D)
+            prism(0f, 3.4f, -3.75f, 2.9f, 0.9f, 0.45f, 0.75f, 1.0f, 0f, 0f, HAIR_D)
             for (j in 0..1) {
                 val sd = if (j == 0) 1f else -1f
-                push()
-                    translate(sd * 3.9f, 7.0f, 2.6f)
-                    rotZ(sd * 0.10f)
-                    rotX(-0.15f + h0 * 0.2f)
-                    prism(0f, -2.6f, 0f, 0.10f, 2.6f, 0.34f, 7.0f, 2.2f, 0f, 0f, HAIR)
-                    prism(0f, -2.1f, 0.1f, 0.07f, 2.0f, 0.22f, 7.0f, 1.8f, 0f, 0f, HAIR_L)
-                pop()
-                push()
-                    translate(sd * 3.7f, 6.4f, 1.0f)
-                    rotZ(sd * 0.22f)
-                    prism(0f, -1.9f, 0f, 0.10f, 1.9f, 0.40f, 6.0f, 2.0f, 0f, 0f, HAIR_D)
-
-                pop()
+                cube(sd * 3.98f, 6.0f, -0.5f, 0.42f, 1.9f, 3.2f, HAIR)
+                prism(sd * 3.8f, 4.1f, 2.3f, 0.20f, 1.3f, 0.45f, 0.6f, 0.9f, 0f, 0f, HAIR_D)
+                // tufos laterais saindo para os lados
+                prism(sd * 3.9f, 6.9f, 0.9f, 0.5f, 0.9f, 1.0f, 0.1f, 0.1f, sd * 2.4f, -0.4f, HAIR)
+                prism(sd * 3.9f, 6.2f, -0.9f, 0.5f, 0.9f, 1.0f, 0.1f, 0.1f, sd * 2.0f, -0.4f, HAIR_D)
             }
-            // espetos do topo, em três fileiras, apontando para cima e para trás
-            for (i in -3..3) {
-                push()
-                    translate(i * 1.1f, 8.3f, -0.1f - 0.1f * kotlin.math.abs(i))
-                    rotZ(-i * 0.20f)
-                    rotX(-0.20f - hsw * 0.5f + 0.04f * i)
-                    val hgt = 2.2f + (3 - kotlin.math.abs(i)) * 0.6f
-                    prism(0f, hgt * 0.5f, 0f, 0.92f, hgt * 0.5f, 0.92f, 0.12f, 0.12f, 0f, 0f, if (i % 2 == 0) HAIR_L else HAIR)
-                pop()
+            // coroa: tufos curtos varridos para fora e para trás
+            for (k in 0..8) {
+                val th = k * 0.69813f + 0.35f
+                val x = sin(th) * 2.9f
+                val z = cos(th) * 2.6f - 0.6f
+                val ln = 2.2f + 0.8f * abs(sin(k * 2.3f))
+                val col = when (k % 3) { 0 -> HAIR_L; 1 -> HAIR; else -> HAIR_D }
+                prism(x, 8.0f + ln / 2f, z, 1.15f, ln / 2f, 1.0f, 0.08f, 0.08f, x * 0.75f, z * 0.55f - 0.8f - hsw * 0.8f, col)
             }
-            for (i in -2..2) {
-                push()
-                    translate(i * 1.35f, 8.7f, 0.9f)
-                    rotZ(-i * 0.30f)
-                    rotX(-0.55f + hsw * 0.6f)
-                    val hh = 3.4f + (2 - kotlin.math.abs(i)) * 0.9f
-                    prism(0f, hh * 0.5f, 0f, 0.74f, hh * 0.5f, 0.74f, 0.09f, 0.09f, 0f, 0f, if (i % 2 == 0) HAIR_L else HAIR)
-                pop()
+            // espetos do meio, mais altos, varridos para trás
+            val mx = floatArrayOf(-1.7f, 0f, 1.7f, -0.9f, 0.9f)
+            val mz = floatArrayOf(0.9f, 0.6f, 0.9f, -1.0f, -1.1f)
+            val mh = floatArrayOf(3.4f, 4.0f, 3.5f, 3.3f, 3.2f)
+            val mo = floatArrayOf(-1.8f, 0.2f, 1.9f, -0.9f, 1.0f)
+            for (i in 0..4) {
+                prism(mx[i], 8.0f + mh[i] / 2f, mz[i], 0.95f, mh[i] / 2f, 0.85f, 0.07f, 0.07f, mo[i], -1.0f - hsw * 0.8f, if (i == 0) HAIR_L else HAIR)
             }
-            for (i in -2..2) {
-                push()
-                    translate(i * 1.5f, 8.0f, -1.7f)
-                    rotZ(-i * 0.26f)
-                    rotX(0.35f + hsw * 0.7f)
-                    val hh = 3.0f + (2 - kotlin.math.abs(i)) * 0.8f
-                    prism(0f, hh * 0.5f, 0f, 0.8f, hh * 0.5f, 0.8f, 0.10f, 0.10f, 0f, 0f, if (i % 2 == 0) HAIR else HAIR_D)
-                pop()
-            }
-            // espetos de trás, longos, abertos em leque
-            for (i in -3..3) {
-
-                push()
-                    translate(i * 1.2f, 6.4f, -4.0f)
-                    rotZ(-i * 0.18f)
-                    rotX(0.85f + hsw * 0.6f + 0.05f * i)
-                    prism(0f, -2.1f, 0f, 0.13f, 2.1f, 0.30f, 6.5f, 2.6f, 0f, 0f, if (i % 2 == 0) HAIR_D else HAIR)
-                pop()
+            // franja: mechas pontudas de comprimentos e inclinações diferentes
+            val bx = floatArrayOf(-2.7f, -1.5f, -0.45f, 0.7f, 1.8f, 2.8f)
+            val bl = floatArrayOf(2.0f, 2.9f, 3.3f, 2.6f, 3.0f, 1.9f)
+            val bs = floatArrayOf(-0.7f, -0.35f, -0.1f, 0.2f, 0.4f, 0.7f)
+            for (i in 0..5) {
+                prism(bx[i] + bs[i] * 0.3f, 7.6f - bl[i] / 2f, 3.8f, 0.08f, bl[i] / 2f, 0.2f, 9f, 1.3f, bs[i], 0.15f + h0 * 0.1f, if (i % 2 == 0) HAIR_L else HAIR)
             }
             // brilho nos olhos quando a aura está forte
             if (auraS > 0.7f) cube(0f, 4.3f, 3.98f, 3.4f, 0.1f, 0.04f, RED_L, true)
