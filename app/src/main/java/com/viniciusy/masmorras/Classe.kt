@@ -25,10 +25,10 @@ enum class Classe(
         90f, 100f, 2.8f, 28f, 220f, 550L, true
     ),
     ARQUEIRO(
-        "Arqueiro",
-        "Dispara flechas rápidas. Bom equilíbrio entre dano e mobilidade.",
-        0xFF2E7D32.toInt(),
-        110f, 0f, 3.6f, 18f, 200f, 380L, true
+        "Sylvarion",
+        "O Arqueiro do Vendaval. Ágil, atira de longe e domina o vento: lâminas, tornados e dashes. Monte sua árvore de talentos para ter mais dano, mais agilidade ou controle.",
+        0xFF4DD0E1.toInt(),
+        105f, 0f, 3.8f, 19f, 210f, 380L, true
     ),
     BARBARO(
         "Bárbaro",

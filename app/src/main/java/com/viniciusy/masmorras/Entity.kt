@@ -26,8 +26,8 @@ abstract class Entity(
     var walkPhase = 0f
     var alt = 0f     // altitude absoluta (px)
     var ground = 0f  // altura do chão sob os pés (px)
-    var shield = 0f  // escudo: absorve o dano antes da vida (Arqueiro Elfo)
-    var reviveHook: (() -> Boolean)? = null // devolve true se reviveu (Renascer da Fênix)
+    var shield = 0f  // escudo: absorve o dano antes da vida (Sylvarion)
+    var reviveHook: (() -> Boolean)? = null // devolve true se reviveu (revive, se algum talento usar)
 
     fun takeDamage(dmg0: Float) {
         if (!alive) return
@@ -215,7 +215,7 @@ class Player(
     var trapRelX = 0f
     var trapRelY = 0f
     var trapRelUp = 0f
-    var spdMul = 1f // multiplicador de velocidade de movimento (buffs do Arqueiro Elfo)
+    var spdMul = 1f // multiplicador de velocidade de movimento (buffs do Sylvarion)
     var skillK = 0
     var skillT = 0f
     var skillDur = 1f
