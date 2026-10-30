@@ -18,9 +18,10 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Explorador estilo Indiana Jones (chapéu fedora, jaqueta de couro, camisa cáqui, cinto, coldre, bolsa a tiracolo,
+ * Explorador estilo Indiana Jones (fedora, jaqueta de couro em camadas, camisa cáqui, cinto, bolsa a tiracolo,
  * botas e chicote) em cubos 3D, no mesmo mini motor do Luffy/Mago/Guerreiro: z-buffer por pixel e contorno.
- * O ataque básico é um combo de chicote: estalo de direita, estalo de esquerda (revés) e chicotada por cima.
+ * A corda do chicote também é 3D (cubos trançados no mesmo z-buffer do corpo), então nunca aparece por cima do modelo.
+ * O ataque básico é um combo de chicote: estalo lateral, corte em diagonal e chicotada por cima.
  * O botão de rolar faz uma cambalhota para a frente.
  */
 object Explorer3D {
@@ -399,27 +400,6 @@ object Explorer3D {
         c.drawBitmap(b, srcR, dstR, bmpPaint)
     }
 
-    // ───────────── utilidades ─────────────
-
-    private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
-
-    private fun ease(t: Float): Float {
-        val x = t.coerceIn(0f, 1f)
-        return x * x * (3f - 2f * x)
-    }
-
-    /**
-     * Valor de um ajuste de pose numa skill: vai do repouso ao valor de preparação até o instante [rel],
-     * estala para o valor do golpe e depois relaxa de volta ao repouso.
-     */
-    private fun ph(u: Float, rel: Float, idle: Float, wind: Float, strike: Float): Float {
-        if (u < rel) return lerp(idle, wind, ease(u / rel))
-        val q = (u - rel) / (1f - rel)
-        return if (q < 0.15f) lerp(wind, strike, ease(q / 0.15f)) else lerp(strike, idle, ease((q - 0.15f) / 0.85f))
-    }
-
-    // ───────────── modelo do Luffy ─────────────
-
     // ═══ MODEL BEGIN
     private val SKIN = 0xFFE8B98A.toInt()
     private val SKIN_L = 0xFFF4CFA4.toInt()
@@ -436,6 +416,7 @@ object Explorer3D {
     private val JK_L = 0xFFA9743C.toInt()
     private val JK_D = 0xFF5F3C1B.toInt()
     private val JK_DD = 0xFF45290F.toInt()
+    private val STITCH = 0xFF3A210D.toInt()
     private val SHIRT = 0xFFD9C9A0.toInt()
     private val SHIRT_L = 0xFFEADCB6.toInt()
     private val SHIRT_D = 0xFFB5A57C.toInt()
@@ -456,10 +437,17 @@ object Explorer3D {
     private val MOUTH = 0xFF5E2A2A.toInt()
     private val FSCAR = 0xFFC98873.toInt()
 
-    // cores do chicote (desenhado em 2D por cima do modelo)
+    // cores do chicote (corda 3D de couro trançado)
     private val WHIP = 0xFF6B4423.toInt()
-    private val WHIP_L = 0xFFB98A52.toInt()
-    private val WHIP_O = 0xFF24150A.toInt()
+    private val WHIP_L = 0xFFA87A45.toInt()
+    private val WHIP_T = 0xFFD8BE86.toInt()
+    private val WHIP_HOT = 0xFFFFF4C8.toInt()
+
+    // medidas da jaqueta (meia-largura, meia-profundidade, bordas de baixo e de cima dos painéis)
+    private const val JW = 5.8f
+    private const val JD = 4.0f
+    private const val JB = 6.0f
+    private const val JT = 13.2f
 
     /** Disco aproximado por 4 retângulos girados de 45 graus (aba e copa do chapéu). */
     private fun disc(y: Float, r: Float, hy: Float, col: Int) {
@@ -555,129 +543,174 @@ object Explorer3D {
         pop()
     }
 
-    /** Quadril: calça, cinto com fivela, coldre, barriga com camisa e a bolsa a tiracolo balançando. */
-    private fun torsoLow(satSw: Float) {
-        cube(0f, 0.1f, 0f, 5.5f, 1.7f, 3.5f, PANTS)
-        cube(0f, 0.0f, 3.55f, 4.4f, 1.3f, 0.08f, PANTS_L)
-        cube(0f, 0.2f, -3.55f, 5.0f, 1.3f, 0.08f, PANTS_D)
-        // cinto de couro com fivela dourada
-        cube(0f, 2.6f, 0f, 5.75f, 0.85f, 3.75f, BELT)
-        cube(0f, 2.6f, 3.78f, 0.95f, 0.7f, 0.1f, GOLD)
-        cube(0f, 2.6f, 3.85f, 0.45f, 0.35f, 0.06f, BELT)
-        // camisa cáqui
-        cube(0f, 5.6f, 0f, 4.7f, 2.2f, 3.3f, SHIRT)
-        cube(0f, 5.6f, 3.32f, 4.4f, 2.0f, 0.06f, SHIRT_L)
-        cube(0f, 4.6f, 3.4f, 0.14f, 0.14f, 0.05f, SHIRT_D)
-        cube(0f, 5.8f, 3.4f, 0.14f, 0.14f, 0.05f, SHIRT_D)
-        cube(0f, 7.0f, 3.4f, 0.14f, 0.14f, 0.05f, SHIRT_D)
-        // coldre no quadril direito
-        cube(-5.5f, 1.0f, 1.0f, 0.75f, 1.9f, 1.5f, BELT)
-        cube(-5.5f, -1.1f, 1.0f, 0.6f, 1.0f, 1.2f, BELT)
-        cube(-5.0f, 3.4f, 0.8f, 0.5f, 0.9f, 0.5f, JK_DD)
-        // bolsa a tiracolo no quadril esquerdo
+    /** Faixa diagonal da alça (retângulo fino girado, colado na superfície da roupa na profundidade z). */
+    private fun strapSeg(x0: Float, y0: Float, x1: Float, y1: Float, z: Float, col: Int) {
+        val dx = x1 - x0
+        val dy = y1 - y0
+        val len = sqrt(dx * dx + dy * dy)
         push()
-        translate(5.7f, 3.0f, -0.6f)
-        rotZ(satSw)
-        cube(0.9f, -2.2f, 0f, 1.1f, 2.1f, 3.0f, SATCHEL)
-        cube(0.9f, -0.35f, 0f, 1.2f, 0.8f, 3.1f, SATCHEL_D)
-        cube(2.05f, -1.6f, 0f, 0.1f, 0.5f, 0.55f, GOLD)
-        cube(2.05f, -3.0f, 0f, 0.1f, 0.15f, 2.6f, SATCHEL_D)
+        translate((x0 + x1) * 0.5f, (y0 + y1) * 0.5f, z)
+        rotZ(atan2(-dx, dy))
+        cube(0f, 0f, 0f, 0.62f, len * 0.5f + 0.05f, 0.12f, col)
         pop()
     }
 
-    /** Peito com camisa, jaqueta de couro aberta, lapelas, bolsos, alça da bolsa cruzada e pescoço. */
-    private fun torsoUp(vF: Float, vB: Float) {
-        // camisa à mostra no meio do peito
-        cube(0f, 10.7f, 0f, 5.8f, 2.8f, 3.7f, SHIRT)
-        cube(0f, 11.2f, 3.74f, 2.9f, 2.0f, 0.06f, SHIRT_L)
-        cube(0f, 11.0f, 3.78f, 0.07f, 2.4f, 0.05f, SHIRT_D)
-        // jaqueta: costas, ombros e painéis da frente
-        cube(0f, 9.8f, -3.9f, 6.0f, 3.9f, 0.5f, JK)
-        cube(0f, 10.0f, -4.42f, 0.1f, 3.5f, 0.05f, JK_DD)
-        cube(-5.3f, 13.7f, 0f, 2.7f, 0.62f, 4.0f, JK)
-        cube(5.3f, 13.7f, 0f, 2.7f, 0.62f, 4.0f, JK)
-        cube(-5.3f, 14.3f, 0f, 2.5f, 0.06f, 3.8f, JK_L)
-        cube(5.3f, 14.3f, 0f, 2.5f, 0.06f, 3.8f, JK_L)
-        cube(-4.4f, 10.5f, 3.85f, 1.5f, 3.0f, 0.45f, JK)
-        cube(4.4f, 10.5f, 3.85f, 1.5f, 3.0f, 0.45f, JK)
-        cube(-2.95f, 10.5f, 3.9f, 0.12f, 3.0f, 0.5f, JK_D)
-        cube(2.95f, 10.5f, 3.9f, 0.12f, 3.0f, 0.5f, JK_D)
-        // lapelas e gola
-        cube(-3.0f, 12.9f, 3.95f, 1.0f, 1.3f, 0.4f, JK_L)
-        cube(3.0f, 12.9f, 3.95f, 1.0f, 1.3f, 0.4f, JK_L)
-        cube(0f, 14.0f, -2.2f, 3.0f, 0.6f, 1.4f, JK_D)
-        // bolsos
-        cube(-4.5f, 8.6f, 4.32f, 0.9f, 0.85f, 0.05f, JK_D)
-        cube(4.5f, 8.6f, 4.32f, 0.9f, 0.85f, 0.05f, JK_D)
-        // alça da bolsa cruzando o peito (ombro direito até o quadril esquerdo)
+    /**
+     * Quadril: calça, cinto com fivela, barriga de camisa e a bolsa pendurada nas costas.
+     * Cada camada encosta na vizinha sem atravessá-la: calça (até 1.8), cinto (1.8..3.2), camisa (3.2..7.0).
+     */
+    private fun torsoLow(satSw: Float) {
+        // calça
+        cube(0f, 0.2f, 0f, 5.4f, 1.6f, 3.4f, PANTS)
+        cube(0f, 0.2f, 3.43f, 4.2f, 1.3f, 0.05f, PANTS_L)
+        cube(0f, 0.2f, -3.43f, 4.8f, 1.3f, 0.05f, PANTS_D)
+        // cinto de couro com fivela dourada e bolsinho atrás
+        cube(0f, 2.5f, 0f, 5.55f, 0.7f, 3.55f, BELT)
+        cube(0f, 2.5f, 3.6f, 0.95f, 0.6f, 0.08f, GOLD)
+        cube(0f, 2.5f, 3.68f, 0.5f, 0.32f, 0.04f, BELT)
+        cube(-3.6f, 2.05f, -3.95f, 1.2f, 0.85f, 0.42f, SATCHEL_D)
+        cube(-3.6f, 2.7f, -4.0f, 1.25f, 0.2f, 0.45f, STRAP)
+        // barriga (camisa cáqui)
+        cube(0f, 5.1f, 0f, 4.7f, 1.9f, 3.3f, SHIRT)
+        cube(0f, 5.1f, 3.34f, 1.9f, 1.8f, 0.05f, SHIRT_L)
+        cube(0f, 5.1f, 3.4f, 0.07f, 1.8f, 0.03f, SHIRT_D)
+        cube(0f, 3.9f, 3.43f, 0.2f, 0.2f, 0.04f, GOLD)
+        cube(0f, 5.5f, 3.43f, 0.2f, 0.2f, 0.04f, GOLD)
+        // bolsa de lona nas costas, esquerda: presa por cima, balança só para fora do corpo
         push()
-        translate(0f, 9.4f, 0f)
-        rotZ(0.78f)
-        cube(0f, 0f, 0f, 0.55f, 6.0f, 4.5f, STRAP)
+        translate(2.7f, 6.3f, -4.1f)
+        rotX(satSw)
+        cube(0f, -3.0f, -1.6f, 3.1f, 3.0f, 1.6f, SATCHEL)
+        cube(0f, -1.4f, -3.3f, 3.2f, 1.5f, 0.12f, SATCHEL_D)
+        cube(0f, -0.12f, -1.6f, 3.2f, 0.12f, 1.75f, SATCHEL_D)
+        cube(0f, -2.9f, -3.45f, 0.5f, 0.55f, 0.06f, GOLD)
+        cube(-1.9f, -4.6f, -3.28f, 0.9f, 1.0f, 0.1f, SATCHEL_D)
+        cube(1.9f, -4.6f, -3.28f, 0.9f, 1.0f, 0.1f, SATCHEL_D)
+        cube(0f, -6.05f, -1.6f, 3.2f, 0.12f, 1.7f, STRAP)
         pop()
-        // pescoço
-        cube(0f, 14.4f, 0f, 2.2f, 0.9f, 2.2f, SKIN_D)
-        // abas da jaqueta balançando (frente e costas)
+    }
+
+    /**
+     * Peito: camisa por baixo e a jaqueta como casca (costas, laterais, frentes abertas e ombreira em cima),
+     * tudo encostado e nunca atravessado. A alça cruza o peito colada na superfície, em degraus por camada.
+     */
+    private fun torsoUp(vF: Float) {
+        // camisa do peito
+        cube(0f, 10.1f, 0f, 4.7f, 3.1f, 3.3f, SHIRT)
+        cube(0f, 10.1f, 3.34f, 1.9f, 3.0f, 0.05f, SHIRT_L)
+        cube(0f, 10.1f, 3.4f, 0.07f, 3.0f, 0.03f, SHIRT_D)
+        cube(0f, 8.2f, 3.43f, 0.2f, 0.2f, 0.04f, GOLD)
+        cube(0f, 11.6f, 3.43f, 0.2f, 0.2f, 0.04f, GOLD)
+        // costas da jaqueta
+        cube(0f, 8.1f, -JD + 0.4f, JW, 5.1f, 0.4f, JK)
+        cube(0f, 8.1f, -JD - 0.02f, 0.06f, 4.8f, 0.03f, STITCH)
+        cube(0f, 3.1f, -JD + 0.4f, JW, 0.1f, 0.43f, JK_D)
+        // laterais
+        cube(-JW + 0.4f, 9.6f, 0f, 0.4f, 3.6f, JD - 0.8f, JK)
+        cube(JW - 0.4f, 9.6f, 0f, 0.4f, 3.6f, JD - 0.8f, JK)
+        // frentes abertas
+        cube(-4.2f, 9.6f, JD - 0.4f, 1.6f, 3.6f, 0.4f, JK)
+        cube(4.2f, 9.6f, JD - 0.4f, 1.6f, 3.6f, 0.4f, JK)
+        cube(-2.75f, 9.6f, JD - 0.4f, 0.15f, 3.6f, 0.42f, JK_D)
+        cube(2.75f, 9.6f, JD - 0.4f, 0.15f, 3.6f, 0.42f, JK_D)
+        // bolsos do peito com aba e botão
+        cube(-4.3f, 10.5f, JD + 0.05f, 1.15f, 0.95f, 0.06f, JK_D)
+        cube(-4.3f, 11.25f, JD + 0.1f, 1.2f, 0.2f, 0.06f, JK_L)
+        cube(-4.3f, 10.7f, JD + 0.14f, 0.18f, 0.18f, 0.04f, GOLD)
+        cube(4.3f, 10.5f, JD + 0.05f, 1.15f, 0.95f, 0.06f, JK_D)
+        cube(4.3f, 11.25f, JD + 0.1f, 1.2f, 0.2f, 0.06f, JK_L)
+        cube(4.3f, 10.7f, JD + 0.14f, 0.18f, 0.18f, 0.04f, GOLD)
+        // ombreira: três peças deixando o buraco do pescoço
+        cube(-3.95f, 13.45f, 0f, 1.95f, 0.25f, JD, JK)
+        cube(3.95f, 13.45f, 0f, 1.95f, 0.25f, JD, JK)
+        cube(0f, 13.45f, -3.1f, 2.0f, 0.25f, 0.9f, JK)
+        cube(-3.95f, 13.72f, 0f, 1.7f, 0.04f, JD - 0.3f, JK_L)
+        cube(3.95f, 13.72f, 0f, 1.7f, 0.04f, JD - 0.3f, JK_L)
+        // gola alta atrás e dos lados, lapelas viradas na frente
+        cube(0f, 14.1f, -2.55f, 3.1f, 0.55f, 0.5f, JK_D)
+        cube(-2.65f, 13.95f, -0.5f, 0.5f, 0.45f, 2.0f, JK_D)
+        cube(2.65f, 13.95f, -0.5f, 0.5f, 0.45f, 2.0f, JK_D)
         push()
-        translate(-4.4f, 7.5f, 3.85f)
-        rotX(vF)
-        cube(0f, -1.8f, 0f, 1.5f, 1.9f, 0.4f, JK)
-        cube(0f, -3.6f, 0f, 1.5f, 0.14f, 0.44f, JK_D)
+        translate(-2.6f, 13.8f, 2.7f)
+        rotZ(0.35f)
+        cube(0f, 0f, 0f, 0.5f, 0.6f, 0.8f, JK_L)
         pop()
         push()
-        translate(4.4f, 7.5f, 3.85f)
-        rotX(vF)
-        cube(0f, -1.8f, 0f, 1.5f, 1.9f, 0.4f, JK)
-        cube(0f, -3.6f, 0f, 1.5f, 0.14f, 0.44f, JK_D)
+        translate(2.6f, 13.8f, 2.7f)
+        rotZ(-0.35f)
+        cube(0f, 0f, 0f, 0.5f, 0.6f, 0.8f, JK_L)
+        pop()
+        // gola da camisa e pescoço
+        cube(-1.1f, 13.6f, 2.5f, 0.9f, 0.4f, 0.4f, SHIRT_L)
+        cube(1.1f, 13.6f, 2.5f, 0.9f, 0.4f, 0.4f, SHIRT_L)
+        cube(0f, 14.1f, 0f, 1.9f, 1.0f, 1.9f, SKIN_D)
+        // alça da bolsa: ombro direito -> quadril esquerdo, em degraus colados na jaqueta
+        cube(-4.4f, 13.82f, 0f, 0.62f, 0.1f, JD + 0.12f, STRAP)
+        cube(-4.4f, 13.5f, JD + 0.1f, 0.62f, 0.4f, 0.12f, STRAP)
+        strapSeg(-4.4f, 13.2f, -2.6f, 12.0f, JD + 0.1f, STRAP)
+        strapSeg(-2.6f, 12.0f, 2.6f, 8.38f, 3.5f, STRAP)
+        strapSeg(2.6f, 8.38f, 5.8f, 6.15f, JD + 0.1f, STRAP)
+        strapSeg(-4.4f, 13.4f, 5.2f, 6.6f, -JD - 0.1f, STRAP)
+        cube(-4.4f, 13.5f, -JD - 0.1f, 0.62f, 0.4f, 0.12f, STRAP)
+        // abas da jaqueta na frente: só balançam para fora, nunca para dentro do cinto
+        push()
+        translate(-4.2f, JB, JD - 0.4f)
+        rotX(-vF)
+        cube(0f, -1.5f, 0f, 1.6f, 1.5f, 0.4f, JK)
+        cube(0f, -3.0f, 0f, 1.6f, 0.1f, 0.43f, JK_D)
         pop()
         push()
-        translate(0f, 6.3f, -3.9f)
-        rotX(vB)
-        cube(0f, -1.8f, -0.1f, 6.0f, 1.9f, 0.4f, JK)
-        cube(0f, -3.65f, -0.1f, 6.0f, 0.14f, 0.44f, JK_D)
+        translate(4.2f, JB, JD - 0.4f)
+        rotX(-vF)
+        cube(0f, -1.5f, 0f, 1.6f, 1.5f, 0.4f, JK)
+        cube(0f, -3.0f, 0f, 1.6f, 0.1f, 0.43f, JK_D)
         pop()
     }
 
     /**
      * Braço (side = +1 esquerdo / -1 direito). Ângulo negativo = para a frente.
-     * O direito segura o cabo do chicote; a marca [id] fica na ponta do cabo (de onde sai a corda).
+     * O ombro fica afastado da jaqueta: o giro do bloco do ombro nunca alcança o tronco.
+     * O direito segura o cabo do chicote ao longo do antebraço; as marcas 4 e 5 ficam na ponta do cabo.
      */
-    private fun arm(side: Float, sh: Float, shZ: Float, el: Float, tw: Float, id: Int) {
+    private fun arm(side: Float, sh: Float, shZ: Float, el: Float) {
         push()
-        translate(side * 7.1f, 12.3f, 0f)
-        projectTo(0f, 0f, 0f, id + 4)
+        translate(side * 7.9f, 12.0f, 0f)
         rotZ(side * shZ)
         rotX(sh)
-        rotY(tw)
-        // ombro e braço (mangas da jaqueta)
-        cube(0f, -0.4f, 0f, 2.35f, 2.2f, 2.3f, JK)
-        cube(side * 0.5f, 0.4f, 0.4f, 1.6f, 0.9f, 1.6f, JK_L)
-        cube(0f, -2.5f, 0f, 1.95f, 2.75f, 1.95f, JK)
-        cube(side * 0.2f, -1.7f, 1.2f, 1.45f, 1.5f, 0.75f, JK_L)
-        translate(0f, -5.3f, 0f)
+        // ombro (cap) e braço
+        cube(0f, 0f, 0f, 1.8f, 1.55f, 1.85f, JK)
+        cube(0f, 1.6f, 0f, 1.55f, 0.08f, 1.6f, JK_L)
+        cube(0f, -3.0f, 0f, 1.65f, 2.45f, 1.7f, JK)
+        cube(0f, -3.0f, 1.72f, 0.06f, 2.3f, 0.03f, STITCH)
+        cube(side * 1.62f, -3.0f, 0f, 0.05f, 2.2f, 0.06f, STITCH)
+        // cotovelo
+        cube(0f, -5.4f, 0f, 1.5f, 0.85f, 1.5f, JK)
+        translate(0f, -5.4f, 0f)
         rotX(el)
-        // antebraço com punho dobrado
-        cube(0f, -2.4f, 0f, 1.85f, 2.65f, 1.85f, JK)
-        cube(0f, -2.0f, 1.2f, 1.2f, 1.3f, 0.55f, JK_L)
-        cube(0f, -4.7f, 0f, 1.95f, 0.4f, 1.95f, JK_D)
+        // antebraço com punho de couro escuro
+        cube(0f, -2.3f, 0f, 1.55f, 2.35f, 1.6f, JK)
+        cube(0f, -2.3f, 1.62f, 1.1f, 1.3f, 0.05f, JK_L)
+        cube(0f, -4.75f, 0f, 1.68f, 0.3f, 1.72f, JK_D)
         translate(0f, -5.0f, 0f)
-        // mão
-        cube(0f, -1.2f, 0.1f, 1.6f, 1.3f, 1.7f, SKIN)
-        cube(0f, -0.9f, 1.7f, 1.35f, 0.95f, 0.1f, SKIN_L)
-        cube(0f, -2.5f, 0.1f, 1.5f, 0.12f, 1.5f, SKIN_D)
+        // mão fechada
+        cube(0f, -1.4f, 0.05f, 1.45f, 1.2f, 1.5f, SKIN)
+        cube(0f, -1.3f, 1.55f, 1.2f, 1.0f, 0.06f, SKIN_L)
+        cube(0f, -0.9f, 1.62f, 1.1f, 0.05f, 0.03f, SKIN_DD)
+        cube(0f, -1.5f, 1.62f, 1.1f, 0.05f, 0.03f, SKIN_DD)
+        cube(side * 1.5f, -1.0f, 0.5f, 0.3f, 0.7f, 0.7f, SKIN_D)
         if (side < 0f) {
-            // cabo de couro do chicote com anéis dourados
-            cube(0f, -1.3f, 2.2f, 0.55f, 0.55f, 2.2f, BELT)
-            cube(0f, -1.3f, 1.2f, 0.62f, 0.62f, 0.15f, GOLD)
-            cube(0f, -1.3f, 3.0f, 0.62f, 0.62f, 0.15f, GOLD)
-            projectTo(0f, -1.3f, 4.5f, id)
-        } else {
-            projectTo(0f, -1.4f, 0.4f, id)
+            // cabo de couro com anéis dourados, saindo da mão ao longo do antebraço
+            cube(0f, -3.55f, 0.05f, 0.5f, 1.95f, 0.5f, BELT)
+            cube(0f, -3.0f, 0.05f, 0.58f, 0.1f, 0.58f, GOLD)
+            cube(0f, -4.2f, 0.05f, 0.58f, 0.1f, 0.58f, GOLD)
+            cube(0f, -5.55f, 0.05f, 0.62f, 0.1f, 0.62f, GOLD)
+            mark(0f, -5.7f, 0.05f, 4)
+            mark(0f, -9.7f, 0.05f, 5)
         }
         pop()
     }
 
-    /** Perna: calça, joelho, canela e bota alta de couro. Ângulo positivo = para trás. */
+    /** Perna: calça, joelho, canela e bota alta de couro com fivelas. Ângulo positivo = para trás. */
     private fun leg(side: Float, a: Float, knee: Float, foot: Float, hipY: Float) {
         push()
         translate(side * 2.6f, hipY, 0f)
@@ -691,6 +724,9 @@ object Explorer3D {
         cube(0f, -4.2f, 0f, 2.25f, 1.9f, 2.35f, BOOT)
         cube(0f, -2.3f, 0f, 2.3f, 0.2f, 2.4f, BOOT_D)
         cube(0f, -3.9f, 2.4f, 1.3f, 1.2f, 0.05f, BOOT_L)
+        cube(0f, -3.4f, 2.42f, 1.6f, 0.14f, 0.06f, BOOT_D)
+        cube(0f, -4.6f, 2.42f, 1.6f, 0.14f, 0.06f, BOOT_D)
+        cube(0f, -4.0f, 2.45f, 0.3f, 0.3f, 0.05f, GOLD)
         translate(0f, -5.9f, 0f)
         rotX(foot)
         cube(0f, -0.2f, 1.0f, 2.0f, 0.65f, 2.6f, BOOT)
@@ -702,7 +738,7 @@ object Explorer3D {
     private fun skeleton(
         hip: Float, hipTw: Float, lean: Float, chestTw: Float, breath: Float,
         aR: Float, kR: Float, fR: Float, aL: Float, kL: Float, fL: Float,
-        vF: Float, vB: Float, satSw: Float, hatT: Float,
+        vF: Float, satSw: Float, hatT: Float,
         turn: Float, tilt: Float, smirk: Float,
         rsh: Float, rshZ: Float, rel: Float, lsh: Float, lshZ: Float, lel: Float
     ) {
@@ -714,69 +750,146 @@ object Explorer3D {
         rotX(lean)
         torsoLow(satSw)
         push()
+        translate(0f, 4f, 0f)
         rotY(chestTw)
-        translate(0f, breath, 0f)
-        torsoUp(vF, vB)
-        projectTo(0f, 10f, 0f, 3)
-        arm(-1f, rsh, rshZ, rel, 0f, 0)
-        arm(1f, lsh, lshZ, lel, 0f, 1)
-        projectTo(0f, 19.4f, 2f, 2)
+        translate(0f, breath - 4f, 0f)
+        torsoUp(vF)
+        arm(-1f, rsh, rshZ, rel)
+        arm(1f, lsh, lshZ, lel)
         head(turn, tilt, smirk, hatT)
         pop()
         pop()
     }
     // ═══ MODEL END
 
-    // ───────────── marcas de tela (modelo → 2D) ─────────────
+    // ───────────── marcas (pontos do modelo → mundo) ─────────────
 
     private fun mark(x: Float, y: Float, z: Float, id: Int) {
         val m = stack[top]
-        val wx = m[0] * x + m[1] * y + m[2] * z + m[9]
-        val wy = m[3] * x + m[4] * y + m[5] * z + m[10]
-        val wz = m[6] * x + m[7] * y + m[8] * z + m[11]
-        mkX[id] = ox + wx * rs
-        mkY[id] = oy + (wz * SINP - wy * COSP) * rs
+        mkWX[id] = m[0] * x + m[1] * y + m[2] * z + m[9]
+        mkWY[id] = m[3] * x + m[4] * y + m[5] * z + m[10]
+        mkWZ[id] = m[6] * x + m[7] * y + m[8] * z + m[11]
     }
 
-    private fun projectTo(x: Float, y: Float, z: Float, id: Int) = mark(x, y, z, id)
+    private var lastNs = 0L
 
+    // ═══ LOGIC BEGIN
     // ───────────── estado externo (preenchido pelo Player antes de desenhar) ─────────────
     var rollP = -1f        // 0..1 durante a cambalhota; <0 = fora dela
     var inAir = false
     var airVz = 0f
     var airH = 0f
-    var swing = 0          // 0 estalo de direita, 1 estalo de revés, 2 chicotada por cima
+    var swing = 0          // 0 estalo lateral, 1 corte em diagonal, 2 chicotada por cima
     var alphaV = 1f
 
-    /** Instante (0..1 da animação) em que a corda chega ao alcance máximo e estala. */
+    /** Instante (0..1 da animação) em que a corda chega ao alcance máximo e estala (golpes 0 e 1). */
     const val T_HIT = 0.30f
 
-    fun impactAt(@Suppress("UNUSED_PARAMETER") sw: Int): Float = T_HIT
+    private val IMPACT = floatArrayOf(0.30f, 0.30f, 0.36f)
+
+    fun impactAt(sw: Int): Float = IMPACT[if (sw in 0..2) sw else 0]
+
+    private const val PIF = 3.14159265f
+    private const val MS = 0.8f   // escala do modelo (altura parecida com a dos outros heróis)
+    private const val NPAR = 16
+    private const val NKEY = 6
+    private const val ZK = 1.116f // o chão do jogo é achatado em 0.8 na tela; o motor 3D achata em sin(pitch)
+
+    // parâmetros da pose: 0 lean, 1 hipTw, 2 chest, 3 rsh, 4 rshZ, 5 rel, 6 lsh, 7 lshZ, 8 lel,
+    // 9 tilt, 10 hturn, 11 smirk, 12 crouch, 13 legB, 14 lunge, 15 rise
+    private const val P_LEAN = 0
+    private const val P_HIPTW = 1
+    private const val P_CHEST = 2
+    private const val P_RSH = 3
+    private const val P_RSHZ = 4
+    private const val P_REL = 5
+    private const val P_LSH = 6
+    private const val P_LSHZ = 7
+    private const val P_LEL = 8
+    private const val P_TILT = 9
+    private const val P_HTURN = 10
+    private const val P_SMIRK = 11
+    private const val P_CROUCH = 12
+    private const val P_LEGB = 13
+    private const val P_LUNGE = 14
+    private const val P_RISE = 15
+
+    // tempos dos keyframes de cada golpe (repouso, preparação, golpe, sustentação, relaxe, repouso)
+    private val SW_T = floatArrayOf(
+        0.00f, 0.12f, 0.21f, 0.33f, 0.62f, 1.00f,
+        0.00f, 0.12f, 0.21f, 0.33f, 0.62f, 1.00f,
+        0.00f, 0.15f, 0.28f, 0.38f, 0.64f, 1.00f
+    )
+
+    // curva entre keyframes: 0 suave, 1 acelera (golpe), 2 desacelera (sustentação), 3 linear
+    private val SW_MD = intArrayOf(
+        0, 1, 2, 0, 2, 0,
+        0, 1, 2, 0, 2, 0,
+        0, 1, 2, 0, 2, 0
+    )
+
+    private val SW_POSE = floatArrayOf(
+        // ── golpe 0: estalo lateral (o braço vai atrás e a corda corta à frente) ──
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f,
+        -0.08f, -0.30f, -0.70f, 0.80f, 0.60f, -1.40f, -0.95f, 0.25f, -1.25f, 0.05f, 0.40f, 0.6f, 0.15f, 0.5f, -1.0f, 0f,
+        0.24f, 0.00f, 0.10f, -1.52f, 0.08f, -0.12f, 0.25f, 0.50f, -1.30f, -0.05f, -0.10f, 1.0f, 0.32f, 1.0f, 3.2f, 0.3f,
+        0.30f, 0.05f, 0.18f, -1.64f, 0.05f, -0.06f, 0.35f, 0.55f, -1.20f, -0.06f, -0.16f, 1.0f, 0.36f, 1.0f, 4.0f, 0f,
+        0.20f, 0.03f, 0.08f, -1.30f, 0.10f, -0.40f, 0.00f, 0.30f, -0.90f, 0.00f, -0.05f, 0.8f, 0.20f, 0.8f, 2.4f, 0f,
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f,
+        // ── golpe 1: corte em diagonal (do alto à direita para baixo) ──
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f,
+        -0.12f, -0.20f, -0.50f, -2.55f, 0.50f, -1.25f, -0.40f, 0.50f, -0.80f, -0.10f, 0.30f, 0.6f, 0.05f, 0.4f, -0.6f, 0.3f,
+        0.36f, 0.00f, 0.12f, -1.25f, 0.10f, -0.15f, 0.35f, 0.50f, -1.00f, 0.10f, -0.05f, 1.0f, 0.40f, 1.0f, 3.0f, 0f,
+        0.44f, 0.05f, 0.20f, -1.00f, 0.00f, -0.10f, 0.45f, 0.55f, -0.90f, 0.12f, -0.10f, 1.0f, 0.50f, 1.0f, 3.8f, 0f,
+        0.30f, 0.03f, 0.10f, -0.70f, 0.10f, -0.50f, 0.10f, 0.30f, -0.70f, 0.00f, 0.00f, 0.8f, 0.30f, 0.8f, 2.2f, 0f,
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f,
+        // ── golpe 2: chicotada por cima (os dois braços sobem, o corpo desce junto com a corda) ──
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f,
+        -0.25f, 0.00f, -0.10f, -3.15f, 0.30f, -1.55f, -0.60f, 0.45f, -1.00f, -0.18f, 0.00f, 0.7f, 0.00f, 0.3f, -1.6f, 0.9f,
+        0.50f, 0.00f, 0.05f, -1.45f, 0.08f, -0.15f, 0.35f, 0.45f, -0.70f, 0.12f, 0.00f, 1.0f, 0.45f, 1.0f, 3.6f, 0f,
+        0.64f, 0.05f, 0.10f, -1.05f, 0.00f, -0.15f, 0.50f, 0.50f, -0.60f, 0.20f, 0.00f, 1.0f, 0.62f, 1.0f, 4.6f, 0f,
+        0.42f, 0.03f, 0.05f, -0.80f, 0.10f, -0.40f, 0.20f, 0.35f, -0.70f, 0.05f, 0.00f, 0.8f, 0.40f, 0.8f, 3.0f, 0f,
+        0.05f, 0.00f, 0.00f, -0.10f, 0.14f, -0.30f, -0.10f, 0.14f, -0.30f, 0.00f, 0.00f, 0.3f, 0.00f, 0.0f, 0.0f, 0f
+    )
+
+    // forma da corda por golpe: tempos, direção horizontal (rad, + = esquerda), elevação (rad), folga e comprimento
+    private val RT_T = floatArrayOf(
+        0.00f, 0.11f, 0.19f, 0.27f, 0.50f, 1.00f,
+        0.00f, 0.11f, 0.19f, 0.27f, 0.50f, 1.00f,
+        0.00f, 0.14f, 0.26f, 0.34f, 0.56f, 1.00f
+    )
+    private val RT_MD = intArrayOf(
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0
+    )
+    private val RT_TH = floatArrayOf(
+        -1.90f, -1.90f, 0.17f, 0.17f, 0.17f, 0.17f,
+        -0.90f, -0.90f, 0.22f, 0.22f, 0.22f, 0.22f,
+        0.15f, 0.15f, 0.15f, 0.15f, 0.15f, 0.15f
+    )
+    private val RT_PH = floatArrayOf(
+        0.50f, 0.50f, -0.06f, -0.08f, -0.08f, -0.08f,
+        1.30f, 1.30f, -0.10f, -0.10f, -0.10f, -0.10f,
+        1.90f, 2.15f, -0.32f, -0.32f, -0.32f, -0.32f
+    )
+    private val RT_SL = floatArrayOf(
+        1.00f, 1.00f, 0.00f, 0.00f, 0.00f, 0.06f,
+        1.00f, 1.00f, 0.00f, 0.00f, 0.00f, 0.06f,
+        1.00f, 1.00f, 0.00f, 0.00f, 0.00f, 0.06f
+    )
+    private val RT_LL = floatArrayOf(
+        0.45f, 0.60f, 0.92f, 1.00f, 1.00f, 1.00f,
+        0.45f, 0.60f, 0.95f, 1.00f, 1.00f, 1.00f,
+        0.45f, 0.65f, 0.95f, 1.00f, 1.00f, 1.00f
+    )
 
     // ───────────── estado de animação ─────────────
-    private const val MS = 0.8f   // escala do modelo (altura parecida com a dos outros heróis)
-    private const val NP = 16
-    private const val I_LEAN = 0
-    private const val I_HIPTW = 1
-    private const val I_CHEST = 2
-    private const val I_RSH = 3
-    private const val I_RSHZ = 4
-    private const val I_REL = 5
-    private const val I_LSH = 6
-    private const val I_LSHZ = 7
-    private const val I_LEL = 8
-    private const val I_TILT = 9
-    private const val I_SMIRK = 10
-    private const val I_CROUCH = 11
-    private const val I_LEGB = 12
-    private const val I_WEXT = 13
-    private const val I_WHANG = 14
     private var yaw = 0f
     private var airW = 0f
     private var rollW = 0f
     private var blend = 0f
     private var clock = 0f
-    private var lastNs = 0L
     private var prevPhase = 0f
     private var spd = 0f
     private var prevFlash = 0f
@@ -788,10 +901,41 @@ object Explorer3D {
     private var released = false
     private var rollPuff = false
     private var crackT = 0f
-    private val ps = FloatArray(NP)
-    private val pt = FloatArray(NP)
-    private val mkX = FloatArray(6)
-    private val mkY = FloatArray(6)
+    private var crackX = 0f
+    private var crackY = 0f
+    private var crackZ = 0f
+    private var ringT = 0f
+    private var ringX = 0f
+    private var ringY = 0f
+    private var ringBig = false
+    private var kSeg = 0
+    private var kU = 0f
+    private val ps = FloatArray(NPAR)
+    private val pt = FloatArray(NPAR)
+    private val fp = FloatArray(NPAR)
+    private val mkWX = FloatArray(8)
+    private val mkWY = FloatArray(8)
+    private val mkWZ = FloatArray(8)
+
+    // corda do chicote: RN segmentos; v* = corda pendurada (simulação), a* = forma do golpe, r* = resultado
+    private const val RN = 22
+    private const val HANG_LEN = 12f
+    private const val ROPE_G = 150f
+    private const val ROPE_DAMP = 0.986f
+    private const val LAG = 0.10f
+    private val vX = FloatArray(RN + 1)
+    private val vY = FloatArray(RN + 1)
+    private val vZ = FloatArray(RN + 1)
+    private val vpX = FloatArray(RN + 1)
+    private val vpY = FloatArray(RN + 1)
+    private val vpZ = FloatArray(RN + 1)
+    private val aX = FloatArray(RN + 1)
+    private val aY = FloatArray(RN + 1)
+    private val aZ = FloatArray(RN + 1)
+    private val rX = FloatArray(RN + 1)
+    private val rY = FloatArray(RN + 1)
+    private val rZ = FloatArray(RN + 1)
+    private var ropeInit = false
 
     private const val NSP = 40
     private val spX = FloatArray(NSP)
@@ -804,6 +948,25 @@ object Explorer3D {
     private val spC = IntArray(NSP)
     private val spZ = FloatArray(NSP)
     private var spNext = 0
+
+    private fun rndf(): Float = kotlin.random.Random.nextFloat()
+
+    private fun cl(x: Float, a: Float, b: Float): Float {
+        if (x < a) return a
+        if (x > b) return b
+        return x
+    }
+
+    private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
+
+    private fun ease(t: Float): Float {
+        val x = cl(t, 0f, 1f)
+        return x * x * (3f - 2f * x)
+    }
+
+    private fun sx(wx: Float): Float = ox + wx * rs
+
+    private fun sy(wy: Float, wz: Float): Float = oy + (wz * SINP - wy * COSP) * rs
 
     private fun emitSpark(x: Float, y: Float, vx: Float, vy: Float, life: Float, g: Float, col: Int, size: Float) {
         val i = spNext
@@ -819,26 +982,214 @@ object Explorer3D {
         spZ[i] = size
     }
 
-    /** Interpola o ciclo do golpe: repouso → preparação (0.18) → estalo (0.30) → sustentação (0.55) → volta ao repouso. */
-    private fun k5(t: Float, a: Float, b: Float, c: Float, d: Float, e: Float): Float {
-        return if (t < 0.18f) lerp(a, b, ease(t / 0.18f))
-        else if (t < 0.30f) lerp(b, c, ease((t - 0.18f) / 0.12f))
-        else if (t < 0.55f) lerp(c, d, (t - 0.30f) / 0.25f)
-        else lerp(d, e, ease((t - 0.55f) / 0.45f))
+    /** Localiza o segmento da tabela [tb] (NKEY tempos a partir de [base]) e deixa o ponto em kSeg/kU. */
+    private fun seek(tb: FloatArray, md: IntArray, base: Int, t: Float) {
+        var k = 0
+        for (j in 1 until NKEY - 1) {
+            if (t >= tb[base + j]) k = j
+        }
+        val t0 = tb[base + k]
+        val t1 = tb[base + k + 1]
+        val u = cl((t - t0) / (t1 - t0), 0f, 1f)
+        val m = md[base + k]
+        var e = ease(u)
+        if (m == 1) e = u * u
+        if (m == 2) e = 1f - (1f - u) * (1f - u)
+        if (m == 3) e = u
+        kSeg = k
+        kU = e
     }
 
-    // ───────────── desenho principal ─────────────
+    private fun tabv(vals: FloatArray, base: Int): Float = lerp(vals[base + kSeg], vals[base + kSeg + 1], kU)
 
-    fun draw(
-        c: Canvas, p: Paint, fx: Float, fy: Float, s: Float, phase: Float,
+    /** Cubo esticado entre dois pontos do mundo (usado nos segmentos da corda). */
+    private fun segCube(ax: Float, ay: Float, az: Float, bx: Float, by: Float, bz: Float, hw: Float, col: Int) {
+        val dx = bx - ax
+        val dy = by - ay
+        val dz = bz - az
+        val len = sqrt(dx * dx + dy * dy + dz * dz)
+        if (len < 0.02f) return
+        val zx = dx / len
+        val zy = dy / len
+        val zz = dz / len
+        var upx = 0f
+        var upy = 1f
+        if (abs(zy) > 0.92f) {
+            upx = 1f
+            upy = 0f
+        }
+        var xx = upy * zz
+        var xy = -upx * zz
+        var xz = upx * zy - upy * zx
+        val xl = sqrt(xx * xx + xy * xy + xz * xz)
+        xx = xx / xl
+        xy = xy / xl
+        xz = xz / xl
+        val yx = zy * xz - zz * xy
+        val yy = zz * xx - zx * xz
+        val yz = zx * xy - zy * xx
+        push()
+        val m = stack[top]
+        m[0] = xx
+        m[3] = xy
+        m[6] = xz
+        m[1] = yx
+        m[4] = yy
+        m[7] = yz
+        m[2] = zx
+        m[5] = zy
+        m[8] = zz
+        m[9] = (ax + bx) * 0.5f
+        m[10] = (ay + by) * 0.5f
+        m[11] = (az + bz) * 0.5f
+        cube(0f, 0f, 0f, hw, hw, len * 0.5f + hw * 0.4f, col)
+        pop()
+    }
+
+    /** Altura (em unidades do modelo) da perna esticada: usada para a pelve acompanhar o chão em qualquer postura. */
+    private fun legExt(a: Float, kn: Float): Float = 7.6f * cos(a) + 5.9f * cos(a + kn)
+
+    /**
+     * Corda: pendurada (simulação com inércia, gruda no cabo) ou em golpe (curva guiada por tabelas, com a ponta
+     * atrasada em relação ao cabo para formar a onda do estalo). Os dois se misturam do cabo para a ponta.
+     */
+    private fun ropeUpdate(dt: Float, t: Float, sw: Int, reachU: Float) {
+        val hx = mkWX[4]
+        val hy = mkWY[4]
+        val hz = mkWZ[4]
+        var d0x = mkWX[5] - hx
+        var d0y = mkWY[5] - hy
+        var d0z = mkWZ[5] - hz
+        val d0l = sqrt(d0x * d0x + d0y * d0y + d0z * d0z)
+        if (d0l > 0.0001f) {
+            d0x = d0x / d0l
+            d0y = d0y / d0l
+            d0z = d0z / d0l
+        } else {
+            d0x = 0f
+            d0y = -1f
+            d0z = 0f
+        }
+        val dsH = HANG_LEN / RN
+        val gdt = cl(dt, 0.004f, 0.033f)
+        if (!ropeInit) {
+            ropeInit = true
+            for (i in 0..RN) {
+                vX[i] = hx
+                vY[i] = hy - i * dsH
+                vZ[i] = hz
+                vpX[i] = vX[i]
+                vpY[i] = vY[i]
+                vpZ[i] = vZ[i]
+            }
+        }
+        // corda pendurada: verlet com gravidade, comprimento fixo e o primeiro elo na direção do cabo
+        for (sub in 0..1) {
+            val h = gdt * 0.5f
+            vX[0] = hx
+            vY[0] = hy
+            vZ[0] = hz
+            vpX[0] = hx
+            vpY[0] = hy
+            vpZ[0] = hz
+            for (i in 1..RN) {
+                val nx = vX[i] + (vX[i] - vpX[i]) * ROPE_DAMP
+                val ny = vY[i] + (vY[i] - vpY[i]) * ROPE_DAMP - ROPE_G * h * h
+                val nz = vZ[i] + (vZ[i] - vpZ[i]) * ROPE_DAMP
+                vpX[i] = vX[i]
+                vpY[i] = vY[i]
+                vpZ[i] = vZ[i]
+                vX[i] = nx
+                vY[i] = ny
+                vZ[i] = nz
+            }
+            for (q in 0..5) {
+                vX[1] = hx + d0x * dsH
+                vY[1] = hy + d0y * dsH
+                vZ[1] = hz + d0z * dsH
+                for (i in 1 until RN) {
+                    val ex = vX[i + 1] - vX[i]
+                    val ey = vY[i + 1] - vY[i]
+                    val ez = vZ[i + 1] - vZ[i]
+                    val el = sqrt(ex * ex + ey * ey + ez * ez)
+                    if (el > 0.0001f) {
+                        val df = (el - dsH) / el * 0.5f
+                        vX[i] += ex * df
+                        vY[i] += ey * df
+                        vZ[i] += ez * df
+                        vX[i + 1] -= ex * df
+                        vY[i + 1] -= ey * df
+                        vZ[i + 1] -= ez * df
+                    }
+                }
+                for (i in 2..RN) {
+                    if (vY[i] < 0.4f) vY[i] = 0.4f
+                }
+            }
+        }
+        // direção da frente e da esquerda do herói no chão
+        val fwx = sin(yaw)
+        val fwz = cos(yaw)
+        val lfx = cos(yaw)
+        val lfz = -sin(yaw)
+        val base = sw * NKEY
+        aX[0] = hx
+        aY[0] = hy
+        aZ[0] = hz
+        if (t >= 0f) {
+            seek(RT_T, RT_MD, base, t)
+            val ds = tabv(RT_LL, base) * reachU / RN
+            var cx = hx
+            var cy = hy
+            var cz = hz
+            for (i in 1..RN) {
+                val u = i.toFloat() / RN.toFloat()
+                val tau = cl(t - LAG * u, 0f, 1f)
+                seek(RT_T, RT_MD, base, tau)
+                val th = tabv(RT_TH, base)
+                val ph = tabv(RT_PH, base)
+                val sl = tabv(RT_SL, base)
+                val ph2 = ph - sl * (0.25f + 1.45f * u)
+                val cp = cos(ph2)
+                val rip = 0.03f + 0.10f * sl
+                val wv = rip * sin(u * 11f - clock * 38f)
+                var tx = fwx * cp * cos(th) + lfx * (cp * sin(th) + wv)
+                var ty = sin(ph2) + rip * 0.6f * sin(u * 9f - clock * 31f)
+                var tz = fwz * cp * cos(th) + lfz * (cp * sin(th) + wv)
+                if (i <= 3) {
+                    val bb = i.toFloat() / 4f
+                    tx = lerp(d0x, tx, bb)
+                    ty = lerp(d0y, ty, bb)
+                    tz = lerp(d0z, tz, bb)
+                }
+                val tl = sqrt(tx * tx + ty * ty + tz * tz)
+                cx += tx / tl * ds
+                cy += ty / tl * ds
+                cz += tz / tl * ds * ZK
+                if (cy < 0.4f) cy = 0.4f
+                aX[i] = cx
+                aY[i] = cy
+                aZ[i] = cz
+            }
+        }
+        for (i in 0..RN) {
+            var w = 0f
+            if (t >= 0f) {
+                val u = i.toFloat() / RN.toFloat()
+                w = ease((t - 0.05f * u) / 0.10f) * (1f - ease((t - 0.60f - 0.12f * u) / 0.28f))
+            }
+            rX[i] = lerp(vX[i], aX[i], w)
+            rY[i] = lerp(vY[i], aY[i], w)
+            rZ[i] = lerp(vZ[i], aZ[i], w)
+        }
+    }
+
+    /** Atualiza a pose, monta o modelo (corpo + corda) no buffer de cubos e solta os efeitos. */
+    private fun animate(
+        dt: Float, first: Boolean, s: Float, fx: Float, fy: Float, phase: Float,
         moving: Boolean, faceX: Float, faceY: Float, attack: Float
     ) {
-        val now = System.nanoTime()
-        val first = lastNs == 0L
-        val dt = if (first) 0.016f else ((now - lastNs) / 1_000_000_000f).coerceIn(0.001f, 0.1f)
-        lastNs = now
         clock += dt
-        val rnd = kotlin.random.Random
 
         // direção suave
         if (abs(faceX) + abs(faceY) > 0.01f) {
@@ -847,25 +1198,26 @@ object Explorer3D {
                 yaw = target
             } else {
                 var d = target - yaw
-                while (d > PI.toFloat()) d -= TWO_PI
-                while (d < -PI.toFloat()) d += TWO_PI
+                while (d > PIF) d -= 2f * PIF
+                while (d < -PIF) d += 2f * PIF
                 yaw += d * min(1f, dt * 16f)
             }
         }
         blend += ((if (moving) 1f else 0f) - blend) * min(1f, dt * 12f)
         val dPh = abs(phase - prevPhase)
         prevPhase = phase
-        val spdTgt = if (first) 0f else (dPh / dt / 9.6f).coerceIn(0f, 1.6f)
+        val spdTgt = if (first) 0f else cl(dPh / dt / 9.6f, 0f, 1.6f)
         spd += (spdTgt - spd) * min(1f, dt * 10f)
         val spN = min(spd, 1f)
 
         val t = if (attack > 0.001f) 1f - attack else -1f
         val attacking = t >= 0f
+        val sw = if (swing in 0..2) swing else 0
         val rolling = rollP >= 0f
         val airCand = inAir && !rolling && (airH > 8f || airVz > 60f)
         airTimer = if (airCand) airTimer + dt else 0f
         val airT = if (airTimer > 0.04f) 1f else 0f
-        val rollTgt = if (rolling) min(rollP / 0.12f, (1f - rollP) / 0.2f).coerceIn(0f, 1f) else 0f
+        val rollTgt = if (rolling) cl(min(rollP / 0.12f, (1f - rollP) / 0.2f), 0f, 1f) else 0f
         if (first) {
             airW = airT
             rollW = rollTgt
@@ -886,13 +1238,12 @@ object Explorer3D {
         landDip = max(0f, landDip - dt * 5.5f)
         val bp = clock % 3.4f
         eyeOpen = if (bp < 0.14f) max(0.12f, abs(bp - 0.07f) / 0.07f) else 1f
-        val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
+        val vzN = cl(airVz / 340f, -1.2f, 1f)
         val still = 1f - max(rollW, airW)
         val mvs = still * blend
 
         // ── alvos da pose (repouso, caminhada, ar, cambalhota) ──
         var lean = 0.05f + 0.12f * spN
-        var hipTw = 0f
         var chestTw = -sin(phase) * 0.16f * mvs
         var rsh = -0.1f + sin(phase) * 0.75f * mvs
         var lsh = -0.1f - sin(phase) * 0.75f * mvs
@@ -903,11 +1254,8 @@ object Explorer3D {
         var tilt = 0f
         var smirk = 0.3f
         var crouch = 0f
-        var legB = 0f
-        var wExt = 0f
-        var wHang = 1f
 
-        // no ar: braços abertos, chicote solto
+        // no ar: braços abertos
         rshZ = lerp(rshZ, 1.1f, airW)
         lshZ = lerp(lshZ, 1.1f, airW)
         rsh = lerp(rsh, -0.5f, airW)
@@ -930,104 +1278,46 @@ object Explorer3D {
             smirk = max(smirk, 0.8f * rollW)
         }
 
-        // ── combo de chicote ──
-        if (attacking && rollW < 0.5f) {
-            wHang = 0f
-            if (swing == 0) {
-                // estalo de direita: o braço vai atrás e a corda corta à frente
-                rsh = k5(t, rsh, 0.9f, -1.58f, -1.45f, rsh)
-                rshZ = k5(t, rshZ, 0.25f, 0.0f, 0.02f, rshZ)
-                rel = k5(t, rel, -2.4f, -0.05f, -0.2f, rel)
-                lsh = k5(t, lsh, -0.9f, -0.75f, -0.85f, lsh)
-                lel = k5(t, lel, -2.0f, -2.1f, -2.0f, lel)
-                lshZ = k5(t, lshZ, 0.2f, 0.25f, 0.25f, lshZ)
-                chestTw = k5(t, chestTw, -0.5f, 0.6f, 0.5f, chestTw)
-                hipTw = k5(t, hipTw, -0.25f, 0.3f, 0.25f, hipTw)
-                lean = k5(t, lean, -0.02f, 0.28f, 0.22f, lean)
-                legB = k5(t, 0f, 0.4f, 1f, 0.9f, 0f)
-                smirk = k5(t, smirk, 0.5f, 1f, 0.8f, smirk)
-                wExt = k5(t, 0f, -0.45f, 1f, 0.75f, 0.1f)
-            } else if (swing == 1) {
-                // revés: o braço cruza o corpo e a corda varre de dentro para fora
-                rsh = k5(t, rsh, -0.5f, -1.5f, -1.35f, rsh)
-                rshZ = k5(t, rshZ, -0.55f, 0.55f, 0.5f, rshZ)
-                rel = k5(t, rel, -1.9f, -0.1f, -0.3f, rel)
-                lsh = k5(t, lsh, 0.5f, 0.6f, 0.5f, lsh)
-                lel = k5(t, lel, -0.8f, -0.8f, -0.8f, lel)
-                lshZ = k5(t, lshZ, 0.5f, 0.7f, 0.6f, lshZ)
-                chestTw = k5(t, chestTw, 0.5f, -0.6f, -0.5f, chestTw)
-                hipTw = k5(t, hipTw, 0.25f, -0.3f, -0.25f, hipTw)
-                lean = k5(t, lean, -0.02f, 0.28f, 0.22f, lean)
-                legB = k5(t, 0f, -0.4f, -1f, -0.9f, 0f)
-                smirk = k5(t, smirk, 0.5f, 1f, 0.8f, smirk)
-                wExt = k5(t, 0f, -0.45f, 1f, 0.75f, 0.1f)
-            } else {
-                // chicotada por cima: braço para o alto e a corda desce estalando no chão
-                rsh = k5(t, rsh, -2.9f, -1.25f, -1.1f, rsh)
-                rshZ = k5(t, rshZ, 0.2f, 0.05f, 0.05f, rshZ)
-                rel = k5(t, rel, -1.7f, -0.1f, -0.25f, rel)
-                lsh = k5(t, lsh, -0.5f, -0.6f, -0.6f, lsh)
-                lel = k5(t, lel, -1.2f, -1.2f, -1.2f, lel)
-                lshZ = k5(t, lshZ, 0.3f, 0.3f, 0.3f, lshZ)
-                chestTw = k5(t, chestTw, 0f, 0f, 0f, chestTw)
-                lean = k5(t, lean, -0.15f, 0.42f, 0.34f, lean)
-                crouch = k5(t, 0f, 0.15f, 0.35f, 0.3f, 0f)
-                tilt = k5(t, tilt, 0.1f, -0.1f, -0.05f, tilt)
-                smirk = k5(t, smirk, 0.6f, 1f, 0.9f, smirk)
-                wExt = k5(t, 0f, -0.5f, 1f, 0.9f, 0.1f)
-            }
-        }
-
-        // suaviza a pose (o golpe mantém o ritmo; transições entre estados não dão tranco)
-        pt[I_LEAN] = lean
-        pt[I_HIPTW] = hipTw
-        pt[I_CHEST] = chestTw
-        pt[I_RSH] = rsh
-        pt[I_RSHZ] = rshZ
-        pt[I_REL] = rel
-        pt[I_LSH] = lsh
-        pt[I_LSHZ] = lshZ
-        pt[I_LEL] = lel
-        pt[I_TILT] = tilt
-        pt[I_SMIRK] = smirk
-        pt[I_CROUCH] = crouch
-        pt[I_LEGB] = legB
-        pt[I_WEXT] = wExt
-        pt[I_WHANG] = wHang
+        pt[P_LEAN] = lean
+        pt[P_HIPTW] = 0f
+        pt[P_CHEST] = chestTw
+        pt[P_RSH] = rsh
+        pt[P_RSHZ] = rshZ
+        pt[P_REL] = rel
+        pt[P_LSH] = lsh
+        pt[P_LSHZ] = lshZ
+        pt[P_LEL] = lel
+        pt[P_TILT] = tilt
+        pt[P_HTURN] = -chestTw * 0.6f
+        pt[P_SMIRK] = smirk
+        pt[P_CROUCH] = crouch
+        pt[P_LEGB] = 0f
+        pt[P_LUNGE] = 0f
+        pt[P_RISE] = 0f
         if (first) {
-            for (i in 0 until NP) ps[i] = pt[i]
+            for (i in 0 until NPAR) ps[i] = pt[i]
         } else {
-            val k = min(1f, dt * (if (attacking) 34f else 18f))
-            for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
-            // a corda não pode atrasar: ela precisa estar esticada junto com o estalo
-            ps[I_WEXT] = pt[I_WEXT]
+            val k = min(1f, dt * 18f)
+            for (i in 0 until NPAR) ps[i] += (pt[i] - ps[i]) * k
         }
 
-        // ── monta o modelo ──
-        val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
-        val crouchT = max(ps[I_CROUCH], landDip * 0.5f)
-        val hip = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f
-        val lb = ps[I_LEGB]
-
-        rs = s * PX * MS
-        ox = fx
-        oy = fy
-        n = 0
-        top = 0
-        zMode = true
-        lYc = cos(yaw)
-        lYs = sin(yaw)
-        identity()
-        rotY(yaw)
-        translate(0f, 0f, -hitKick * 1.2f)
-        if (rolling) {
-            // cambalhota completa para a frente em torno do centro do corpo
-            translate(0f, 10f + sin(rollP * PI.toFloat()) * 3f, 0f)
-            rotX(TWO_PI * ease(rollP))
-            translate(0f, -10f, 0f)
+        // ── combo de chicote: keyframes de antecipação, golpe, sustentação e relaxe sobre a pose base ──
+        var wS = 0f
+        if (attacking && rollW < 0.5f) {
+            wS = min(ease(t / 0.09f), 1f - ease((t - 0.62f) / 0.38f))
+            seek(SW_T, SW_MD, sw * NKEY, t)
+            val kb = (sw * NKEY + kSeg) * NPAR
+            for (i in 0 until NPAR) {
+                val sv = lerp(SW_POSE[kb + i], SW_POSE[kb + NPAR + i], kU)
+                fp[i] = lerp(ps[i], sv, wS)
+            }
+        } else {
+            for (i in 0 until NPAR) fp[i] = ps[i]
         }
 
-        // pernas
+        // ── pernas e altura do quadril (a pelve acompanha o chão em qualquer postura) ──
+        val crouchT = max(fp[P_CROUCH], landDip * 0.5f)
+        val lb = fp[P_LEGB]
         var aL = 0f
         var kL = 0f
         var fL = 0f
@@ -1036,7 +1326,7 @@ object Explorer3D {
         var fR = 0f
         for (k in 0..1) {
             val sd = if (k == 0) 1f else -1f
-            val pp = if (sd > 0f) phase else phase + PI.toFloat()
+            val pp = if (sd > 0f) phase else phase + PIF
             var a = sin(pp) * 0.8f * mvs - crouchT * 0.6f
             var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.1f + crouchT * 1.3f
             a = lerp(a, -0.5f + sd * 0.3f - 0.2f * max(0f, vzN), airW)
@@ -1058,101 +1348,103 @@ object Explorer3D {
                 fR = ft
             }
         }
+        val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
+        val hipGround = 1.35f + max(legExt(aL, kL), legExt(aR, kR)) + bob - hitKick * 0.4f
+        val hipAir = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f
+        val hip = lerp(hipGround, hipAir, max(rollW, airW))
 
         val spk = spN * (if (rolling) 0.4f else 1f)
-        val vF = 0.06f + spk * (0.28f + 0.1f * sin(phase * 2f)) + hitKick * 0.2f
-        val vB = 0.08f + spk * 0.25f * sin(phase * 2f + 1f)
-        val satSw = 0.1f + spk * 0.3f * sin(phase * 2f + 0.5f) + hitKick * 0.25f
+        val vF = 0.05f + spk * (0.16f + 0.08f * abs(sin(phase * 2f))) + hitKick * 0.2f
+        val satSw = 0.04f + spk * 0.12f * (0.5f + 0.5f * sin(phase * 2f + 0.5f)) + hitKick * 0.2f
         val hatT = 0.02f + spk * 0.05f * sin(phase * 2f) - airW * 0.1f + hitKick * 0.1f
         val breath = sin(clock * 2.2f) * 0.1f
 
+        // ── monta o modelo ──
+        rs = s * PX * MS
+        ox = fx
+        oy = fy
+        n = 0
+        top = 0
+        zMode = true
+        lYc = cos(yaw)
+        lYs = sin(yaw)
+        identity()
+        rotY(yaw)
+        translate(0f, fp[P_RISE], fp[P_LUNGE] - hitKick * 1.2f)
+        if (rolling) {
+            // cambalhota completa para a frente em torno do centro do corpo
+            translate(0f, 10f + sin(rollP * PIF) * 3f, 0f)
+            rotX(2f * PIF * ease(rollP))
+            translate(0f, -10f, 0f)
+        }
         skeleton(
-            hip, ps[I_HIPTW], ps[I_LEAN] - hitKick * 0.3f, ps[I_CHEST], breath,
+            hip, fp[P_HIPTW], fp[P_LEAN] - hitKick * 0.3f, fp[P_CHEST], breath,
             aR, kR, fR, aL, kL, fL,
-            vF, vB, satSw, hatT,
-            -ps[I_CHEST] * 0.6f, ps[I_TILT] - ps[I_LEAN] * 0.5f, ps[I_SMIRK],
-            ps[I_RSH], ps[I_RSHZ], ps[I_REL], ps[I_LSH], ps[I_LSHZ], ps[I_LEL]
+            vF, satSw, hatT,
+            fp[P_HTURN], fp[P_TILT] - fp[P_LEAN] * 0.5f, fp[P_SMIRK],
+            fp[P_RSH], fp[P_RSHZ], fp[P_REL], fp[P_LSH], fp[P_LSHZ], fp[P_LEL]
         )
 
-        flushZ(c)
+        // ── chicote: corda 3D em coordenadas do mundo (entra no mesmo z-buffer do corpo) ──
+        top = 0
+        identity()
+        val reach = if (sw == 2) Player.EXPL_REACH_3 else Player.EXPL_REACH
+        val reachU = max(24f, reach / rs - 8f)
+        ropeUpdate(dt, if (attacking && rollW < 0.5f) t else -1f, sw, reachU)
+        val tx0 = rX[RN]
+        val ty0 = rY[RN]
+        val tz0 = rZ[RN]
 
-        // ── chicote: corda desenhada em 2D a partir da ponta do cabo ──
-        val hx0 = mkX[0]
-        val hy0 = mkY[0]
-        val fxs = sin(yaw)
-        val fys = cos(yaw) * 0.8f
-        val perpX = cos(yaw)
-        val perpY = -sin(yaw) * 0.8f
-        val reach = if (swing == 2) Player.EXPL_REACH_3 else Player.EXPL_REACH
-        val ext = ps[I_WEXT]
-        val ext01 = ext.coerceIn(0f, 1f)
-        val hang = ps[I_WHANG].coerceIn(0f, 1f)
-        val handH = fy - hy0
-        val sgn = if (swing == 1) -1f else 1f
-        val segs = 16
-        var prevX = hx0
-        var prevY = hy0
-        var tipX = hx0
-        var tipY = hy0
-        p.strokeCap = Paint.Cap.ROUND
-        p.style = Paint.Style.STROKE
-        for (i in 1..segs) {
-            val u = i / segs.toFloat()
-            // forma pendurada: a corda cai do cabo balançando de leve
-            val hxp = hx0 + (sin(u * 2.2f) * 2.2f + sin(phase) * 2.5f * u * spN) * rs
-            val hyp = hy0 + u * (15f + 4f * u) * rs
-            // forma estendida: ondula e vai ficando reta até o estalo
-            val along = u * reach * ext
-            val wave = sgn * (10f * (1f - ext01 * 0.92f) + 1.2f) * sin(u * 6.0f + clock * 20f * (1f - ext01)) * u
-            val hgt = if (swing == 2) handH * (1f - ext01 * Math.pow(u.toDouble(), 1.4).toFloat()) + max(0f, -ext) * u * 10f
-            else handH * (1f - 0.12f * u * u) + max(0f, -ext) * u * 6f
-            val ex = hx0 + along * fxs + wave * perpX
-            val ey = fy + along * fys + wave * perpY - hgt
-            val px = lerp(ex, hxp, hang)
-            val py = lerp(ey, hyp, hang)
-            val w = max(1.4f, rs * (1.05f - 0.55f * u))
-            p.strokeWidth = w + 1.6f
-            p.color = VoxelArt.alpha(WHIP_O, 0.9f)
-            c.drawLine(prevX, prevY, px, py, p)
-            p.strokeWidth = w
-            p.color = if (i % 4 == 0) WHIP_L else WHIP
-            c.drawLine(prevX, prevY, px, py, p)
-            prevX = px
-            prevY = py
-            tipX = px
-            tipY = py
-        }
-        p.strokeCap = Paint.Cap.BUTT
-        p.style = Paint.Style.FILL
-
-        // estalo na ponta: faíscas, clarão e (na chicotada por cima) poeira do chão
+        // estalo na ponta
+        val hit = IMPACT[sw]
         if (attacking && rollW < 0.5f) {
-            if (t >= T_HIT && !released) {
+            if (t >= hit && !released) {
                 released = true
                 crackT = 0.16f
-                for (i in 0..7) {
-                    val ang = rnd.nextFloat() * TWO_PI
-                    val sp0 = (14f + rnd.nextFloat() * 34f) * rs
-                    emitSpark(tipX, tipY, cos(ang) * sp0, sin(ang) * sp0, 0.3f, rs * 40f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
+                crackX = tx0
+                crackY = ty0
+                crackZ = tz0
+                ringT = 0.34f
+                ringX = sx(tx0)
+                ringY = sy(0.4f, tz0)
+                ringBig = sw == 2
+                for (i in 0..9) {
+                    val ang = rndf() * 2f * PIF
+                    val sp0 = (14f + rndf() * 38f) * rs
+                    emitSpark(sx(tx0), sy(ty0, tz0), cos(ang) * sp0, sin(ang) * sp0, 0.32f, rs * 40f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
                 }
-                if (swing == 2) {
-                    for (i in 0..5) {
-                        val ang = rnd.nextFloat() * TWO_PI
-                        val sp0 = (10f + rnd.nextFloat() * 26f) * rs
-                        emitSpark(tipX, tipY, cos(ang) * sp0, sin(ang) * sp0 * 0.5f - 8f * rs, 0.4f, rs * 30f, 0xFFE9D9B0.toInt(), 1.2f)
-                    }
+                for (i in 0..(if (sw == 2) 9 else 4)) {
+                    val ang = rndf() * 2f * PIF
+                    val sp0 = (10f + rndf() * 26f) * rs
+                    emitSpark(sx(tx0), sy(0.4f, tz0), cos(ang) * sp0, sin(ang) * sp0 * 0.5f - 8f * rs, 0.45f, rs * 30f, 0xFFE9D9B0.toInt(), 1.3f)
                 }
             }
         } else {
             released = false
         }
+        var heat = 0f
         if (crackT > 0f) {
             crackT -= dt
-            val q = (crackT / 0.16f).coerceIn(0f, 1f)
-            p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.8f * q)
-            c.drawCircle(tipX, tipY, rs * (1.5f + 4.5f * (1f - q)), p)
-            p.color = VoxelArt.alpha(0xFFFFB02E.toInt(), 0.45f * q)
-            c.drawCircle(tipX, tipY, rs * (2.5f + 7f * (1f - q)), p)
+            heat = cl(crackT / 0.16f, 0f, 1f)
+        }
+
+        // cubos da corda: trançado alternando tons, ponta de fiapos clara, clarão quente no estalo
+        for (i in 1..RN) {
+            val u = i.toFloat() / RN.toFloat()
+            var col = if (i % 2 == 0) WHIP else WHIP_L
+            if (i > RN - 3) col = WHIP_T
+            if (heat > 0f) col = V.mix(col, WHIP_HOT, heat * (0.25f + 0.75f * u))
+            segCube(rX[i - 1], rY[i - 1], rZ[i - 1], rX[i], rY[i], rZ[i], 0.52f - 0.24f * u, col)
+        }
+        // clarão em estrela (cubos emissivos, com oclusão correta)
+        if (heat > 0f) {
+            val q = 1f - heat
+            val sz = 0.5f + 3.2f * q
+            val th = 0.45f * heat
+            val flashCol = 0xFFFFF2B0.toInt()
+            cube(crackX, crackY, crackZ, sz, th, th, flashCol, true)
+            cube(crackX, crackY, crackZ, th, sz, th, flashCol, true)
+            cube(crackX, crackY, crackZ, th, th, sz, flashCol, true)
         }
 
         // ── poeira na largada da cambalhota ──
@@ -1160,8 +1452,8 @@ object Explorer3D {
             if (rollP > 0.05f && !rollPuff) {
                 rollPuff = true
                 for (i in 0..6) {
-                    val ang = rnd.nextFloat() * TWO_PI
-                    val sp0 = (12f + rnd.nextFloat() * 26f) * rs
+                    val ang = rndf() * 2f * PIF
+                    val sp0 = (12f + rndf() * 26f) * rs
                     emitSpark(fx, fy - 2f * rs, cos(ang) * sp0, sin(ang) * sp0 * 0.5f - 6f * rs, 0.36f, rs * 30f, 0xFFE9D9B0.toInt(), 1.2f)
                 }
             }
@@ -1170,14 +1462,47 @@ object Explorer3D {
         }
 
         // ── partículas ──
-        p.style = Paint.Style.FILL
         for (i in 0 until NSP) {
             if (spL[i] <= 0f) continue
             spL[i] -= dt
             spX[i] += spVx[i] * dt
             spY[i] += spVy[i] * dt
             spVy[i] += spG[i] * dt
-            val a = (spL[i] / spM[i]).coerceIn(0f, 1f)
+        }
+        if (ringT > 0f) ringT -= dt
+    }
+    // ═══ LOGIC END
+
+    // ───────────── desenho principal ─────────────
+
+    fun draw(
+        c: Canvas, p: Paint, fx: Float, fy: Float, s: Float, phase: Float,
+        moving: Boolean, faceX: Float, faceY: Float, attack: Float
+    ) {
+        val now = System.nanoTime()
+        val first = lastNs == 0L
+        val dt = if (first) 0.016f else cl((now - lastNs) / 1_000_000_000f, 0.001f, 0.1f)
+        lastNs = now
+
+        animate(dt, first, s, fx, fy, phase, moving, faceX, faceY, attack)
+        flushZ(c)
+
+        // anel de poeira no chão no instante do estalo
+        p.style = Paint.Style.FILL
+        if (ringT > 0f) {
+            val q = cl(1f - ringT / 0.34f, 0f, 1f)
+            val rr = rs * (3f + (if (ringBig) 15f else 9f) * q)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(1.2f, rs * 0.7f * (1f - q))
+            p.color = V.alpha(0xFFE9D9B0.toInt(), 0.7f * (1f - q))
+            c.drawOval(ringX - rr, ringY - rr * 0.5f, ringX + rr, ringY + rr * 0.5f, p)
+            p.style = Paint.Style.FILL
+        }
+
+        // partículas (faíscas e poeira)
+        for (i in 0 until NSP) {
+            if (spL[i] <= 0f) continue
+            val a = cl(spL[i] / spM[i], 0f, 1f)
             val sz = max(1.2f, rs * spZ[i]) * (0.5f + a * 0.5f)
             p.color = (((a * 255f).toInt()) shl 24) or (spC[i] and 0x00FFFFFF)
             c.drawRect(spX[i] - sz, spY[i] - sz, spX[i] + sz, spY[i] + sz, p)
