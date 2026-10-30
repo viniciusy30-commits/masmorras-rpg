@@ -1,8 +1,9 @@
-#id 2026-10-30-ichigo-hd2
-#titulo Ichigo: cabelo e visual refeitos
-- Cabelo novo: franja pontuda sobre a testa, tufos laterais e mechas varridas para trás, sem o formato de capacete
-- Ombros e mangas mais finos, abrindo em sino perto do pulso como na referência
-- Roupa, gola branca, faixa, espada de fio azul e efeitos das skills em alta definição
+#id 2026-10-30-ichigo-hd3
+#titulo Ichigo: casaco longo e espada nova
+- Casaco longo e aberto com abas na frente e nos lados, forro vermelho e pontas rasgadas, deixando a faixa branca com laço à mostra
+- Hakama mais larga e volumosa, com a barra em sino caindo até as sandálias
+- Katana mais larga e comprida, com o fio azul brilhante bem visível e inclinada para fora
+- Cabelo espetado e mangas em sino da versão anterior mantidos
 
 #id 2026-10-30-a
 #titulo Personagem fofinho de verdade

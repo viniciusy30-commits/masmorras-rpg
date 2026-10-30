@@ -783,7 +783,7 @@ object Ichigo3D {
                 spike(0f, 0.3f, -1.4f, -1.5708f, 0f, 1.0f, 0.4f, BLK_D)
             } else {
                 // hakama: coxa larga, com pregas e a dobra da frente
-                prism(0f, -2.8f, 0f, 2.45f, 2.9f, 2.65f, 1.12f, 1.10f, 0f, 0f, BLK)
+                prism(0f, -2.8f, 0f, 2.75f, 2.9f, 2.85f, 1.15f, 1.12f, 0f, 0f, BLK)
                 prism(side * 1.35f, -2.8f, 0.1f, 0.30f, 2.75f, 2.70f, 1.0f, 1.0f, 0f, 0f, BLK_L)
                 prism(side * -1.3f, -2.8f, 0.1f, 0.26f, 2.75f, 2.70f, 1.0f, 1.0f, 0f, 0f, BLK_D)
                 cube(side * 0.2f, -2.8f, 2.72f, 0.14f, 2.75f, 0.10f, BLK_L)
@@ -791,14 +791,14 @@ object Ichigo3D {
                 translate(0f, -5.6f, 0f)
                 rotX(knee)
                 // barra larga em sino, com pregas que abrem
-                prism(0f, -2.9f, 0f, 3.0f, 2.9f, 3.05f, 0.80f, 0.80f, 0f, 0f, BLK)
+                prism(0f, -2.9f, 0f, 3.5f, 2.9f, 3.5f, 0.82f, 0.82f, 0f, 0f, BLK)
                 for (i in -1..1) {
-                    prism(i * 1.05f + side * 0.1f, -2.9f, 2.95f, 0.22f, 2.8f, 0.14f, 0.7f, 1.0f, 0f, 0f, if (i == 0) BLK_L else BLK_D)
+                    prism(i * 1.2f + side * 0.1f, -2.9f, 3.45f, 0.24f, 2.8f, 0.14f, 0.7f, 1.0f, 0f, 0f, if (i == 0) BLK_L else BLK_D)
                 }
-                prism(side * 2.2f, -2.9f, 0f, 0.25f, 2.85f, 2.6f, 1.0f, 1.0f, 0f, 0f, BLK_L)
+                prism(side * 2.6f, -2.9f, 0f, 0.25f, 2.85f, 3.0f, 1.0f, 1.0f, 0f, 0f, BLK_L)
 
-                cube(0f, -5.75f, 0f, 3.04f, 0.16f, 3.10f, BLK_L)
-                cube(0f, -5.95f, 0f, 2.95f, 0.10f, 3.0f, RED_D)
+                cube(0f, -5.75f, 0f, 3.54f, 0.16f, 3.55f, BLK_L)
+                cube(0f, -5.95f, 0f, 3.45f, 0.10f, 3.45f, BLK_D)
                 translate(0f, -5.4f, 0f)
                 rotX(foot)
                 // tabi branca e zori de palha com tira
@@ -874,32 +874,39 @@ object Ichigo3D {
                     cube(0f, -0.6f, 0.2f, 0.06f, 0.8f, 0.05f, RED)
                 pop()
             }
-            // abas laterais do casaco: longas, abertas e rasgadas, com forro vermelho por dentro
+            // abas laterais do casaco: bem longas, abertas para fora, rasgadas, com forro vermelho
             for (sd in intArrayOf(-1, 1)) {
                 push()
-                    translate(sd * 4.9f, 5.0f, 0.2f)
-                    rotZ(sd * (0.10f + 0.12f * sk))
+                    translate(sd * 4.9f, 5.2f, 0.2f)
+                    rotZ(sd * (0.24f + 0.12f * sk))
                     rotX(cw2 * 0.6f)
-                    prism(0f, -4.6f, 0f, 0.30f, 4.6f, 2.2f, 1.0f, 1.45f, 0f, 0f, BLK)
-                    cube(-sd * 0.28f, -4.6f, 0f, 0.08f, 4.4f, 2.0f, RED_D)
-                    cube(0f, -9.2f, 0f, 0.34f, 0.18f, 2.55f, RED_D)
-                    translate(0f, -9.2f, 0f)
+                    prism(0f, -6.2f, 0f, 0.34f, 6.2f, 2.9f, 1.0f, 1.35f, 0f, 0f, BLK)
+                    cube(-sd * 0.30f, -6.2f, 0f, 0.08f, 6.0f, 2.7f, RED_D)
+                    cube(0f, -12.4f, 0f, 0.38f, 0.20f, 3.1f, RED_D)
+                    translate(0f, -12.4f, 0f)
                     rotX(cw0 * 0.5f)
-                    for (k in -1..1) {
-                        prism(0f, -1.3f, k * 1.2f, 0.12f, 1.3f, 0.45f, 1.0f, 0.2f, 0f, 0f, if (k == 0) BLK_L else BLK)
+                    for (k in -2..2) {
+                        val tl = 2.4f - 0.35f * kotlin.math.abs(k) + 0.25f * (k % 2)
+                        push()
+                            translate(0f, 0f, k * 1.15f)
+                            rotZ(sd * (0.10f + 0.06f * k))
+                            rotX(0.08f * k + cw1 * 0.4f)
+                            prism(0f, -tl, 0f, 0.14f, tl, 0.62f, 1.0f, 0.15f, 0f, 0f, if (k % 2 == 0) BLK else BLK_L)
+                            cube(-sd * 0.12f, -tl * 1.1f, 0f, 0.05f, tl * 0.9f, 0.3f, RED_D)
+                        pop()
                     }
                 pop()
             }
-            // abas da frente do casaco (kosode aberto), uma de cada lado do laço
+            // abas da frente do casaco (kosode aberto): compridas, uma de cada lado, com a faixa branca no meio
             for (sd in intArrayOf(-1, 1)) {
                 push()
-                    translate(sd * 2.4f, 2.0f, 3.2f)
-                    rotX(-cw2 * 0.5f - 0.05f)
-
-                    rotZ(sd * 0.04f)
-                    prism(0f, -3.0f, 0f, 1.35f, 3.0f, 0.2f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-                    cube(sd * -1.25f, -3.0f, 0.12f, 0.08f, 3.0f, 0.06f, TABI)
-                    cube(0f, -6.0f, 0f, 1.4f, 0.12f, 0.24f, RED_D)
+                    translate(sd * 4.3f, 6.3f, 3.15f)
+                    rotX(-cw2 * 0.5f - 0.06f)
+                    rotZ(sd * 0.05f)
+                    prism(0f, -6.6f, 0f, 1.8f, 6.6f, 0.22f, 0.8f, 1.0f, 0f, 0f, BLK)
+                    cube(sd * -1.7f, -6.6f, 0.12f, 0.10f, 6.5f, 0.06f, TABI)
+                    cube(sd * 0.5f, -6.6f, 0.14f, 0.08f, 6.3f, 0.05f, BLK_L)
+                    cube(0f, -13.2f, 0f, 1.95f, 0.14f, 0.26f, RED_D)
                 pop()
             }
         }
@@ -1058,9 +1065,9 @@ object Ichigo3D {
         push()
             translate(0f, -5.0f, 0f)
             for (i in 0 until 6) {
-                val len = 3.5f
-                val w0 = 1.02f - i * 0.10f
-                val w1 = 1.02f - (i + 1) * 0.10f
+                val len = 4.0f
+                val w0 = 1.55f - i * 0.15f
+                val w1 = 1.55f - (i + 1) * 0.15f
                 val avg = (w0 + w1) * 0.5f
                 prism(0f, -len * 0.5f, 0f, 0.27f - i * 0.014f, len * 0.5f, w1, 1.0f, w0 / w1, 0f, 0f, BLK)
                 // dorso e linha do shinogi, polidos
@@ -1069,7 +1076,8 @@ object Ichigo3D {
                 // reflexo longo no plano da lâmina
                 cube(0f, -len * 0.5f, avg * 0.30f, 0.30f - i * 0.014f, len * 0.46f, 0.045f, BLK_L)
                 // fio (gume) azul-claro, que acende com a energia
-                cube(0f, -len * 0.5f, avg + 0.02f, 0.10f, len * 0.5f, 0.06f, e, true)
+                cube(0f, -len * 0.5f, avg + 0.02f, 0.16f, len * 0.5f, 0.14f, e, true)
+                cube(0f, -len * 0.5f, avg - 0.12f, 0.12f, len * 0.5f, 0.10f, EDGE_B, true)
                 cube(0f, -len * 0.5f, avg - 0.16f, 0.07f, len * 0.5f, 0.05f, STEEL)
                 // hamon
                 if (i % 2 == 0) cube(0f, -len * 0.5f, avg * 0.62f, 0.31f, len * 0.20f, 0.04f, VoxelArt.mix(STEEL, EDGE_B, 0.3f + 0.7f * glow), true)
@@ -1172,6 +1180,7 @@ object Ichigo3D {
                 mark(0f, -1.3f, 0f, markId)
                 if (hasSword) {
                     rotX(GRIP)
+                    rotZ(-0.32f)
                     sword()
                 }
             }
