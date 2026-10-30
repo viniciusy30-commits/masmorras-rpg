@@ -1,0 +1,30 @@
+SYLVARION - O ARQUEIRO DO VENDAVAL
+===================================
+O antigo "Arqueiro" agora e um personagem: SYLVARION. Elemento unico: VENTO.
+
+ARQUIVOS NOVOS (app/src/main/java/com/viniciusy/masmorras/)
+  SylvarionSkills.kt     arvore de talentos (dados), progressao, icones
+  SylvarionEngine.kt     combate por alvo, skills, passivas, efeitos e HUD
+  SylvarionTreeView.kt   tela da arvore estilo Diablo
+  WindArt.kt             animacoes do vento (desenhadas em codigo)
+ALTERADOS: Classe.kt, Entity.kt, GameView.kt, MainActivity.kt
+(os arquivos antigos ElfoSkills.kt / ElfoEngine.kt foram removidos)
+
+COMBATE
+- Toque num inimigo = marca o alvo (anel vermelho). Ataque basico e skills de alvo vao direto nele.
+- Skills de AREA: aperte o botao -> aparece o circulo -> toque no chao (ou num inimigo) para mirar
+  -> aperte o MESMO botao de novo para soltar.
+- Salto dos analogicos/dashes: vao na direcao do analogico; parado, fogem do alvo.
+- Recurso IMPETO: sobe correndo, cai parado. Da ate +25% de dano e +20% de velocidade.
+- O botao de rolar continua sendo o salto com armadilha de antes.
+
+ARVORE DE TALENTOS (toque no emblema da classe no topo; abre sozinha na 1a vez)
+- 3 ramos: LAMINA DO VENDAVAL (dano) / DANCARINO DAS BRISAS (agilidade) / OLHO DO FURACAO (controle)
+- Cada ramo: 5 ativas (circulos) + 3 passivas (losangos); ultimates com anel dourado (Nv 22).
+- 1 ponto por nivel (nivel max 30), cada talento ate grau 3. Da para misturar ramos.
+- Painel com previa animada da skill, aprender/evoluir/remover e 5 slots para equipar nos botoes.
+- Resetar pontos: botao no topo (pede confirmacao).
+- O jogo pausa enquanto a arvore esta aberta.
+
+NAO FOI COMPILADO (sem Kotlin/Android SDK onde foi feito). Rode o build do GitHub Actions;
+se der erro, mande o log.

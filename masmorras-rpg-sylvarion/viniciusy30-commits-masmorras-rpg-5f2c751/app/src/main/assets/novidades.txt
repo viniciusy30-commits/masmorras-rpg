@@ -1,0 +1,200 @@
+#id 2026-10-27-b
+#titulo Mago: teleporte e voo
+- O botão de rolar do mago agora é Teleporte (15 de mana): ele some num pilar de luz e reaparece até bem à frente, atravessando o que estiver no caminho (só não aparece dentro de parede ou penhasco); fica invulnerável no começo do teleporte
+- Segurar o botão de pular no ar faz o mago voar por até 2,8 segundos: asas de luz batendo, jatos de energia nos pés, anel rúnico no chão e corpo inclinado, andando mais rápido e fora do alcance dos golpes corpo a corpo
+- A barra azul embaixo da vida mostra o combustível do voo; ela recarrega no chão
+- Ao soltar o botão (ou acabar a energia) ele desce flutuando
+
+#id 2026-10-27-a
+#titulo Mago em 3D, no mesmo nível do Guerreiro
+- Mago refeito em blocos 3D articulados: chapéu pontudo com a ponta em mola, barba longa, túnica com saia, manto de ombros, capa comprida com estrelas, grimório e poção no cinto, botas de bico curvo e cristal flutuando sobre o ombro
+- Cajado com orbe flutuante que gira, satélites em órbita e partículas arcanas subindo
+- Feitiço com animação completa: ergue o cajado, a mão livre junta energia e o corpo agacha; o orbe só sai no instante do gesto, com clarão, onda de choque, faíscas e rastro de luz
+- Anel rúnico brilhando no chão enquanto conjura, olhos e mão brilhando
+- Andar, correr, pular, rolar, aterrissar e tomar dano com reação própria: túnica, capa, barba e chapéu balançam em molas
+- Projétil mágico agora deixa rastro luminoso
+
+#id 2026-10-26-k
+#titulo Editor de mapas: mais ferramentas
+- Recortar: marca uma área, ela some do lugar e fica pronta para colocar em outro (mover construções inteiras)
+- Espelhar ↔, Espelhar ↕ e Girar 90° na área copiada ou recortada (rampas giram junto)
+- Oval e Contorno: círculos/elipses preenchidos e retângulos só com a borda
+- Trocar tudo: toque num bloco e todos iguais do mapa viram o bloco escolhido
+- Espalhar: pincel aleatório para árvores, flores, pedras e detalhes
+- Simetria: pinte um lado e o outro se espelha sozinho (esquerda/direita, cima/baixo ou os dois), com linhas-guia no mapa
+- Desfazer agora guarda 100 passos
+- O botão Mover virou Tela (arrasta o mapa)
+
+#id 2026-10-26-j
+#titulo Texturas em alta resolução e blocos novos
+- Todos os pisos e as paredes comuns refeitos em 64 pixels (o dobro de detalhe), com variação de cor, rachaduras, musgo, juntas e relevo nos blocos
+- Água, lava e lodo tóxico animados refeitos, mais o piso rúnico
+- 26 pisos novos: ardósia profunda, pedra negra, rocha infernal, areia das almas, quartzo, cobre, terracota, areia vermelha, tábuas de bétula e escuras, bambu, concreto, podzol, musgo, micélio, ouro, obsidiana, pedra luminosa, pedra rachada, pedregulho musgoso, tijolo de barro, prismarinho, feno e magma animado
+- 23 paredes novas: ardósia, tijolo infernal, quartzo, cobre oxidado, terracota, estante de livros, fardo de feno, prismarinho, púrpura, pedra negra, pedregulho musgoso, pedra rachada, tijolo de barro, bambu, tijolo de neve, caiado, placa de ferro, ouro, ametista e madeiras escura e de bétula
+- 32 objetos novos, vários animados e com luz: mesa de trabalho, fornalha, mesa de encantamento, estande de poções, abóbora lanterna, melancia, flores, samambaia, cana-de-açúcar, bambuzal, colmeia, lanternas (almas, marinha, pedra, pendurada), bastão do fim, sino, farol mágico, gaiola de monstros, dinamite, tear, rebolo e mais
+- A aba Obra ganhou mais paredes e pisos para escolher
+- Mapas antigos continuam funcionando
+
+#id 2026-10-26-i
+#titulo Editor de mapas: relevo, pontes, obras e móveis
+- Nova aba Relevo: suba e baixe o terreno em níveis (até 6), faça rampas nas 4 direções (pincel ou retângulo para rampa comprida) e colinas prontas com rampas em volta; o balde nivela áreas
+- O herói e os inimigos sobem as rampas e não atravessam penhascos. Penhascos e rampas aparecem na ordem certa, escondendo o que está atrás
+- Nova aba Pontes: ponte de madeira, de pedra e passarela de cordas sobre água, lava ou vazio (use a Linha para esticar); dá para atravessar andando
+- Nova aba Obra: arraste uma área e o cômodo é construído sozinho, com escolha de parede, piso, andares, telhado, porta, janelas, lado da porta, caminho com lampiões na entrada e construção maciça (cenário)
+- Móveis automáticos na Obra: quarto, sala, cozinha, biblioteca, banheiro, taverna, armazém, sala de música e ferraria, já arrumados conforme o lado da porta
+- 16 móveis novos, vários animados: sofá, cama de casal, balcão de cozinha, piano, escrivaninha, espelho, relógio de pé, banheira, cômoda, banquinho, abajur, planta em vaso, aquário, cavalete, harpa e pia
+- A paleta de objetos ganhou o botão Tipo para filtrar por categoria (casa, cozinha e banho, natureza, masmorra, magia e luz, cenário)
+- Mapas antigos continuam funcionando
+
+#id 2026-10-26-h
+#titulo Editor de mapas: construções de verdade
+- Paredes empilháveis: escolha "Andares" (1 a 4) na aba Paredes e o botão "Topo" para trocar o material dos andares de cima (ex.: casa de pedra com telhado por cima)
+- Portas animadas que abrem quando o herói chega perto: porta de madeira, porta de ferro e portão levadiço de castelo (ferro e portão só deixam passar abertos)
+- Novas paredes: enxaimel, adobe, muralha, mármore, janela redonda, vitral, janela com grade, arco e chaminé com fumaça animada
+- Telhados novos: verde, azul, madeira e ameixa
+- 39 objetos novos: árvores (bétula, outono, cerejeira, palmeira), cacto, juncos, cogumelo gigante, tenda, barraca, carroça, trono, lustre, jaula, sarcófago, gárgula, tesouro, alquimia, círculo mágico, espantalho e mais, vários animados e com luz
+- 8 pisos novos: ponte, terra arada, cinzas, capim seco, xadrez, tapetes azul e verde e piso rúnico animado
+- Ferramentas novas: Linha, Conta-gotas (pega o bloco tocado) e Copiar (copia uma área e carimba onde quiser)
+- 7 casas novas na aba Casas: casas de 2 andares com telhado e chaminé, castelo pequeno, portão de muralha e mausoléu
+- Mapas antigos continuam funcionando
+
+#id 2026-10-26-g
+#titulo Upgrade do editor de mapas
+- Todas as texturas refeitas com muito mais detalhe (chão, paredes e objetos)
+- Água, lava e lodo tóxico animados, com espuma nas margens e brilho da lava iluminando o chão em volta
+- Paredes agora se emendam: sem linhas nem bordas entre blocos vizinhos, inclusive na vertical
+- Novos pisos: grama florida, cascalho, pedregulho, parquet, ladrilho, mármore, neve, gelo, lama, basalto e lodo
+- Novas paredes: casa, toras, janela, porta (dá para atravessar), telhados vermelho, ardósia e palha, grade, obsidiana, gelo e sebe
+- 43 objetos, vários animados: tochas, fogueira, fonte, estandarte, cristais, portal, caldeirão, forja, lareira e mais, com luz colorida
+- Nova aba Casas: carimbe casas prontas (casinhas, mansão, taverna, ferraria, celeiro, torre e cabanas com telhado)
+
+#id 2026-10-26-f
+#titulo Botões mais bonitos, rolar e pular melhorados
+- Botões de ataque, pulo, rolar, trocar arma e menu redesenhados: anel de ferro com rebites (espinhos no ataque), aro dourado, brilho de vidro e acabamento mais detalhado; o visual voltou a ser liso, sem pixel art
+- Novo símbolo de rolagem (seta circular limpa) e novo símbolo de pulo
+- Ao segurar a lança para arremessar, a ombreira fica sempre com o topo para cima (sem inverter) e só inclina um pouco junto com o braço
+- O braço agora aparece sempre na frente da ombreira ao segurar a lança (antes ficava escondido atrás dela)
+- Rolamento: agacha, gira com começo e fim suaves, levanta amortecendo e solta poeira
+- Pulo: poeira na decolagem, pernas assimétricas no ar e agachada mais funda ao aterrissar
+
+#id 2026-10-26-d
+#titulo Lança: mira no botão de ataque e arremesso fluido
+- Para mirar a lança, segure o botão de ataque e arraste o dedo na direção desejada (o joystick de movimento não mira mais); solte para arremessar
+- A lança arremessada agora tem exatamente o mesmo tamanho da lança da mão, voando e fincada
+- Se acertar a parede, fica fincada na parede; se acabar o alcance, cai e fica fincada no chão
+- O arremesso sai da mão do herói: a lança parte do braço esticado e acelera suave, sem tranco, e o movimento ficou mais lento e fluido
+- Corrigido: ao segurar para arremessar, a lança não atravessa mais a cabeça (fica ao lado do elmo, sobre o ombro)
+
+#id 2026-10-26-c
+#titulo Guerreiro novo: armadura de herói de verdade!
+- Elmo com asas douradas, viseira, protetores de bochecha, gema na testa e penacho vermelho em mola
+- Ombreiras em camadas com ponteiras, peitoral com placas e detalhes dourados, gola de pele, cinto com bolsas e saiote de malha
+- Capa maior e mais pesada, com 3 segmentos que balançam, e tabardo com brasão
+- Espada nova com guarda dourada, lâmina com friso, runas brilhantes e gema que pulsa
+- Escudo redesenhado com brasão em cruz, rebites e borda dourada
+- Lança com flâmula, guarda de aço e runas brilhando na lâmina
+- Gemas e runas agora pulsam, e brilham mais ao atacar e carregar o golpe
+
+#id 2026-10-26-b
+#titulo Câmera centralizada no personagem
+- A câmera agora fica sempre travada no centro da tela, sem atraso, sem olhar à frente e sem deslocar o herói para baixo (só para nas bordas do mapa)
+
+#id 2026-10-26-a
+#titulo Lança refeita: golpes de verdade e arremesso com mira!
+- Estocada rápida, varrida lateral e investida forte refeitas do zero: as duas mãos agora ficam sempre agarradas à haste, sem a lança "escapar" da mão
+- O dano agora sai exatamente quando a ponta acerta (antes saía antes da animação); a estocada atravessa todos os inimigos em linha e a varrida acerta em arco
+- Riscos de velocidade e clarão na ponta nas estocadas; a investida forte empurra os inimigos bem mais longe
+- Golpe carregado agora é o arremesso: segure o ataque, mire com o joystick (linha pontilhada, mira que trava em inimigos próximos) e solte para lançar
+- A lança voa reta, atravessa os inimigos e finca no chão ou na parede; fica brilhando com uma seta até você passar perto para pegar de volta
+- Sem a lança você fica de punhos fechados: pegue ela de volta ou troque para a espada
+
+#id 2026-10-25-e
+#titulo HUD refeito do zero, inspirado em Diablo 3 e Minecraft Dungeons
+- Orbes de vida e mana em vidro, menores, com moldura de ferro, ouro, espinhos e gema; o líquido sobe e desce e os números ficam dentro de cada orbe
+- Dois slots de item no meio da barra, para poção de vida e poção de mana
+- Botões redondos de metal com rebites e gemas coloridas: ataque em vermelho, rolar em azul, pular em verde e trocar arma em âmbar
+- Joystick com anel dourado, setas nas direções e manopla de metal
+- Medalhão da classe, contador de inimigos com caveira, etiqueta e faixa de objetivo em placas de ferro com borda dourada
+- Ícones novos e coloridos: espada, lança, rolar, pular, trocar, caveira, sair e as quatro classes
+- Anel de carga do golpe forte agora circular, em volta do botão de ataque
+#id 2026-10-25-d
+#titulo Golpes de espada e lança mais certeiros
+- Espada: os quatro golpes foram refeitos, com a lâmina seguindo um arco limpo da preparação até o impacto, sem atravessar o corpo
+- Lança: aponta para a frente durante os golpes, com guarda refeita e cotovelos para baixo e para fora
+#id 2026-10-25-c
+#titulo Lança de duas mãos, troca de arma e HUD mais caprichado
+- Guerreiro ganhou uma lança: ele segura com as duas mãos, com combo próprio (estocada, giro e investida) e golpe forte com alcance maior
+- Botão hexagonal novo para trocar entre espada com escudo e lança, com animação de troca
+- Ícones do HUD centralizados e redesenhados, medalhão de mana na barra
+- Fonte pixel em todo o jogo (menus, HUD, botões, logo e números de dano)
+- Painéis de pedra com moldura dourada, botões biselados, barras de vida, mana e atributos em pixel art
+- Ícones novos desenhados em pixel: espada, rolar, pular, coração, mana e caveira
+- HUD refeito do zero no estilo Dungeons: botões e joystick hexagonais com moldura de metal e gemas, barra inferior compacta com coração de vida em encaixe dourado, mana em tubo de vidro, caveira e etiqueta de classe no topo
+- Ícones de rolar e pular com setas duplas
+- Golpes do Guerreiro mais lentos, com arco mais claro e rastro bem mais discreto
+- Golpe forte: o indicador de carga agora aparece no botão de ataque, não mais ao redor do herói
+
+#id 2026-10-25-a
+#titulo Guerreiro sem piscar: render novo, mais estável e com mais vida
+- Corrigido o "piscar": peças da armadura (peitoral, tabardo, cinto, pernas) não trocam mais de ordem ao andar, girar ou atacar
+- Render com profundidade por pixel e contorno nítido: o guerreiro fica sólido de qualquer ângulo, inclusive de costas e rolando
+- Iluminação estável: as cores não mudam mais a cada passo ou balanço de braço e perna
+- Sombreado suave perto do chão dá mais volume ao corpo
+- Ao tomar dano o guerreiro recua, a cabeça chicoteia e a capa balança
+- Piscar de olhos, poeira nos passos, na aterrissagem e no rolamento
+- Pose de pulo não ativa mais sozinha em pequenos desníveis; anel de carga agora fica no chão, sob o herói
+
+#id 2026-10-24-n
+#titulo Combo de 3 golpes e golpe forte do Guerreiro
+- Combo encadeado: corte diagonal de cima para baixo, corte vertical voltando e estocada final (um golpe começa de onde o outro terminou)
+- Estocada com mais alcance e dano
+- Segure o botão de ataque: o guerreiro ergue a espada, agacha e acumula energia; solte para o golpe forte com onda de choque
+- Quanto mais segura, mais forte o golpe
+- Apertar o ataque um pouco antes do fim do golpe anterior já entra no combo (sem perder o toque)
+
+#id 2026-10-24-m
+#titulo Zoom da câmera e correção das bordas pretas
+- Zoom com gesto de pinça: aproxima até 1.9x; o mais longe é a visão padrão de antes
+- Removido o afastamento automático ao correr (era ele que mostrava bordas pretas piscando)
+- Corrigidas as frestas escuras entre os blocos do mapa ao andar e ao dar zoom
+
+#id 2026-10-24-l
+#titulo Guerreiro redesenhado e muito mais fluido
+- Armadura nova em camadas: elmo alado com penacho, ombreiras com espinhos, joelheiras, grevas, cinto e tabardo
+- Espada com runas brilhantes que pulsam e acendem no golpe; escudo com aro dourado
+- Caminhada com joelho dobrando, quadril e peito girando em sentidos opostos e balanço de peso
+- Capa em 3 partes, penacho e tabardo com física de mola (balançam, atrasam e vibram ao parar)
+- Golpe com antecipação, estocada com passo e recuperação suave; combo alterna entre corte diagonal e varredura
+- Rastro dourado mais largo e faíscas na lâmina
+- Inclinação do corpo nas curvas e amortecimento na aterrissagem
+
+#id 2026-10-24-k
+#titulo Interface nova estilo Minecraft Dungeons
+- Menu com parede de tijolos, tochas tremeluzindo e brasas subindo
+- Logo MASMORRAS em blocos de pedra 3D
+- Botões de pedra biselada e botão dourado de destaque
+- Escolha de classe em cards com barras de vida, dano e velocidade
+- HUD novo: retrato do herói, coração de vida, mana e contador de caveiras (acabou a barra preta cobrindo o jogo)
+- Botões de ação com ícones: espada (atacar), rolar e pular
+- Joystick com visual de pedra
+- Jogo em tela cheia (sem barra de status/navegação, respeita o notch)
+- Painéis de configurações, novidades, fim de jogo e diálogos em pedra
+
+#id 2026-10-24-j
+#titulo Editor de mapas
+- Novo botão "Editor de mapas" no menu: monte seus próprios mapas dentro do jogo
+- Pincel, retângulo, balde, borracha, desfazer/refazer, zoom com dois dedos
+- Chão, paredes, objetos (caixote, barril, pilar, braseiro...) e entidades (início, inimigos, chefe)
+- Botão "Testar" joga o mapa na hora; depois volta para o editor
+- Em "Jogar" agora você escolhe entre o mundo aberto e seus mapas
+- Texturas de teste no estilo Minecraft Dungeons (troque por PNGs em assets/tiles)
+- Botão ✕ para sair da partida
+
+#titulo Câmera e animações estilo Minecraft Dungeons
+- Câmera com look-ahead na direção do movimento (como em Dungeons)
+- Framing do herói mais baixo na tela e spring suave (não trava no personagem)
+- Zoom dinâmico: afasta um pouco em corrida e em combate com vários inimigos
+- Shake de tela com ruído suave (menos “tremido aleatório”)
+- Squash/stretch na aterrissagem e impulso visual no golpe (juice de animação)
+- HUD inferior redesenhado (pill escuro com accent dourado)
+- Menu principal polido: tipografia, subtítulo e botões com cantos arredondados

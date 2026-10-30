@@ -1,0 +1,708 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background">
+
+    <!-- Fundo animado do menu (tijolos + tochas + brasas) -->
+    <com.viniciusy.masmorras.MenuBgView
+        android:id="@+id/menuBg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
+
+    <!-- ═════════ MENU PRINCIPAL ═════════ -->
+    <LinearLayout
+        android:id="@+id/menuLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="24dp"
+        android:visibility="visible">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1.1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <com.viniciusy.masmorras.TitleView
+                android:id="@+id/titleView"
+                android:layout_width="match_parent"
+                android:layout_height="96dp"/>
+
+            <TextView
+                style="@style/Mc.Text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:background="@drawable/ribbon_gold"
+                android:paddingLeft="22dp"
+                android:paddingRight="16dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:text="RPG DE MASMORRAS"
+                android:textColor="@color/mc_ink"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.3"
+                android:shadowColor="#99FFF2C0"
+                android:shadowDx="0"
+                android:shadowDy="2"/>
+
+            <TextView
+                style="@style/Mc.Body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="14dp"
+                android:text="Hack &amp; slash nas profundezas"
+                android:textSize="13sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="0.9"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnJogar"
+                style="@style/Mc.Button.Gold"
+                android:layout_width="260dp"
+                android:layout_height="60dp"
+                android:text="@string/jogar"
+                android:textSize="22sp"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnEditor"
+                style="@style/Mc.Button"
+                android:layout_width="260dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="Editor de mapas"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnConfig"
+                style="@style/Mc.Button"
+                android:layout_width="260dp"
+                android:layout_height="50dp"
+                android:layout_marginTop="12dp"
+                android:text="@string/configuracoes"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ═════════ SELEÇÃO DE CLASSE ═════════ -->
+    <LinearLayout
+        android:id="@+id/classLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:visibility="gone">
+
+        <TextView
+            style="@style/Mc.Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/escolher_classe"
+            android:textSize="22sp"/>
+
+        <View
+            android:layout_width="90dp"
+            android:layout_height="3dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="8dp"
+            android:background="@color/mc_gold"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvClasses"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"/>
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnVoltarClasse"
+            style="@style/Mc.Button.Small"
+            android:layout_width="180dp"
+            android:layout_height="42dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:text="@string/voltar"/>
+    </LinearLayout>
+
+    <!-- ═════════ JOGO ═════════ -->
+    <FrameLayout
+        android:id="@+id/gameContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone">
+
+        <com.viniciusy.masmorras.GameView
+            android:id="@+id/gameView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <!-- Camada de interface (respeita notch / bordas) -->
+        <FrameLayout
+            android:id="@+id/hudLayer"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="8dp">
+
+            <!-- Herói: retrato + vida + mana (compacto, sem barra cobrindo o jogo) -->
+            <LinearLayout
+                android:id="@+id/hudPanel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|start"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/panel_hud"
+                android:padding="7dp">
+
+                <TextView
+                    android:id="@+id/tvClasseBadge"
+                    style="@style/Mc.Text"
+                    android:layout_width="46dp"
+                    android:layout_height="46dp"
+                    android:gravity="center"
+                    android:textSize="24sp"
+                    android:textStyle="bold"/>
+
+                <LinearLayout
+                    android:layout_width="176dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="9dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvClasseHud"
+                        style="@style/Mc.Text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/mc_gold"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textAllCaps="true"
+                        android:letterSpacing="0.1"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_heart"/>
+
+                        <FrameLayout
+                            android:layout_width="0dp"
+                            android:layout_height="17dp"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1">
+
+                            <ProgressBar
+                                android:id="@+id/hpBar"
+                                style="?android:attr/progressBarStyleHorizontal"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:max="100"
+                                android:progress="100"
+                                android:progressDrawable="@drawable/bar_hp"/>
+
+                            <TextView
+                                android:id="@+id/tvHpNum"
+                                style="@style/Mc.Text"
+                                android:layout_width="match_parent"
+                                android:layout_height="match_parent"
+                                android:gravity="center"
+                                android:textSize="11sp"
+                                android:textStyle="bold"
+                                android:shadowDx="1"
+                                android:shadowDy="1"/>
+                        </FrameLayout>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/mpRow"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_mana"/>
+
+                        <ProgressBar
+                            android:id="@+id/mpBar"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="0dp"
+                            android:layout_height="12dp"
+                            android:layout_marginStart="5dp"
+                            android:layout_weight="1"
+                            android:max="100"
+                            android:progress="100"
+                            android:progressDrawable="@drawable/bar_mp"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- Contador de inimigos (topo central) -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|center_horizontal"
+                android:background="@drawable/panel_hud"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingLeft="12dp"
+                android:paddingRight="14dp"
+                android:paddingTop="5dp"
+                android:paddingBottom="5dp">
+
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_skull"/>
+
+                <TextView
+                    android:id="@+id/tvInimigos"
+                    style="@style/Mc.Text"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="0"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="20sp"
+                    android:textStyle="bold"/>
+            </LinearLayout>
+
+            <!-- Sair -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSairJogo"
+                style="@style/Mc.Button"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
+                android:layout_gravity="top|end"
+                android:paddingLeft="0dp"
+                android:paddingRight="0dp"
+                android:text="✕"
+                android:textSize="16sp"/>
+
+            <!-- Joystick -->
+            <FrameLayout
+                android:id="@+id/joystickArea"
+                android:layout_width="150dp"
+                android:layout_height="150dp"
+                android:layout_gravity="bottom|start"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:id="@+id/joystickBase"
+                    android:layout_width="112dp"
+                    android:layout_height="112dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/joystick_base"/>
+
+                <View
+                    android:id="@+id/joystickKnob"
+                    android:layout_width="52dp"
+                    android:layout_height="52dp"
+                    android:layout_gravity="center"
+                    android:background="@drawable/joystick_knob"/>
+            </FrameLayout>
+
+            <!-- Botões de ação: ATK grande, ROLAR ao lado, PULAR acima -->
+            <FrameLayout
+                android:layout_width="184dp"
+                android:layout_height="172dp"
+                android:layout_gravity="bottom|end">
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnJump"
+                    style="@style/Mc.Slot"
+                    android:layout_width="58dp"
+                    android:layout_height="58dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="76dp"
+                    android:layout_marginBottom="100dp"
+                    android:contentDescription="Pular"
+                    android:src="@drawable/ic_jump"/>
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnRoll"
+                    style="@style/Mc.Slot"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="104dp"
+                    android:layout_marginBottom="6dp"
+                    android:contentDescription="Rolar"
+                    android:src="@drawable/ic_roll"/>
+
+                <androidx.appcompat.widget.AppCompatImageButton
+                    android:id="@+id/btnAttack"
+                    style="@style/Mc.Slot.Gold"
+                    android:layout_width="92dp"
+                    android:layout_height="92dp"
+                    android:layout_gravity="bottom|end"
+                    android:layout_marginEnd="4dp"
+                    android:layout_marginBottom="4dp"
+                    android:contentDescription="Atacar"
+                    android:src="@drawable/ic_sword"/>
+
+                <com.viniciusy.masmorras.ChargeRingView
+                    android:id="@+id/chargeRing"
+                    android:layout_width="100dp"
+                    android:layout_height="100dp"
+                    android:layout_gravity="bottom|end"/>
+            </FrameLayout>
+
+        </FrameLayout>
+
+        <!-- Fim de jogo -->
+        <LinearLayout
+            android:id="@+id/overlayFim"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#CC000000"
+            android:gravity="center"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:layout_width="320dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/panel_stone"
+                android:gravity="center_horizontal"
+                android:orientation="vertical"
+                android:padding="22dp">
+
+                <TextView
+                    android:id="@+id/tvFim"
+                    style="@style/Mc.Header"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="34sp"/>
+
+                <View
+                    android:layout_width="100dp"
+                    android:layout_height="3dp"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="18dp"
+                    android:background="@color/mc_gold"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnTentar"
+                    style="@style/Mc.Button.Gold"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:text="@string/tentar_novamente"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnMenu"
+                    style="@style/Mc.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="46dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/menu"/>
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═════════ LISTA DE MAPAS ═════════ -->
+    <LinearLayout
+        android:id="@+id/mapListLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:padding="14dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/tvMapListTitle"
+            style="@style/Mc.Header"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="22sp"/>
+
+        <View
+            android:layout_width="90dp"
+            android:layout_height="3dp"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="6dp"
+            android:background="@color/mc_gold"/>
+
+        <TextView
+            android:id="@+id/tvMapListHint"
+            style="@style/Mc.Body"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp"
+            android:gravity="center"
+            android:textSize="12sp"/>
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvMaps"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:gravity="center"
+            android:orientation="horizontal">
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnVoltarMapas"
+                style="@style/Mc.Button.Small"
+                android:layout_width="180dp"
+                android:layout_height="42dp"
+                android:text="@string/voltar"/>
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnNovoMapa"
+                style="@style/Mc.Button.Gold"
+                android:layout_width="180dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="12dp"
+                android:text="+ Novo mapa"
+                android:textSize="13sp"
+                android:visibility="gone"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ═════════ EDITOR DE MAPAS (botões criados em código) ═════════ -->
+    <FrameLayout
+        android:id="@+id/editorLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#14181D"
+        android:visibility="gone">
+
+        <com.viniciusy.masmorras.MapEditorView
+            android:id="@+id/editorView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"/>
+
+        <LinearLayout
+            android:id="@+id/edTopBar"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_gravity="top"
+            android:background="@drawable/bar_top"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="3dp"/>
+
+        <LinearLayout
+            android:id="@+id/edTools"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|center_vertical"
+            android:layout_marginStart="6dp"
+            android:orientation="vertical"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="78dp"
+            android:layout_gravity="bottom"
+            android:background="@drawable/bar_bottom"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingTop="3dp"
+            android:paddingEnd="6dp">
+
+            <LinearLayout
+                android:id="@+id/edTabs"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+            <HorizontalScrollView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_marginStart="8dp"
+                android:layout_weight="1"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/edPalette"
+                    android:layout_width="wrap_content"
+                    android:layout_height="match_parent"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"/>
+            </HorizontalScrollView>
+        </LinearLayout>
+    </FrameLayout>
+
+    <!-- ═════════ CONFIGURAÇÕES ═════════ -->
+    <ScrollView
+        android:id="@+id/configLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="60dp"
+                android:background="@drawable/panel_stone"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    style="@style/Mc.Header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/configuracoes"
+                    android:textSize="22sp"/>
+
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="3dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="14dp"
+                    android:background="@color/mc_gold"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVerificarUpdate"
+                    style="@style/Mc.Button"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:text="@string/verificar_atualizacao"/>
+
+                <TextView
+                    android:id="@+id/tvUpdateStatus"
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center"
+                    android:textSize="13sp"/>
+
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="2dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="#55000000"/>
+
+                <TextView
+                    style="@style/Mc.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/sobre"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="true"/>
+
+                <TextView
+                    style="@style/Mc.Body"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:text="RPG top-down hack &amp; slash inspirado em Minecraft Dungeons.\nA versão do app usa o número do build do GitHub. Atualizações automáticas via Releases públicas."
+                    android:textSize="12sp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVoltarConfig"
+                    style="@style/Mc.Button.Small"
+                    android:layout_width="match_parent"
+                    android:layout_height="42dp"
+                    android:layout_marginTop="14dp"
+                    android:text="@string/voltar"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- ═════════ NOVIDADES ═════════ -->
+    <ScrollView
+        android:id="@+id/novidadesLayout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#E6000000"
+        android:fillViewport="true"
+        android:padding="12dp"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="60dp"
+                android:layout_marginEnd="60dp"
+                android:background="@drawable/panel_stone"
+                android:orientation="vertical"
+                android:padding="20dp">
+
+                <TextView
+                    style="@style/Mc.Header"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/novidades"
+                    android:textColor="@color/mc_gold"
+                    android:textSize="22sp"/>
+
+                <View
+                    android:layout_width="90dp"
+                    android:layout_height="3dp"
+                    android:layout_gravity="center_horizontal"
+                    android:layout_marginTop="6dp"
+                    android:layout_marginBottom="12dp"
+                    android:background="@color/mc_gold"/>
+
+                <TextView
+                    android:id="@+id/tvNovidades"
+                    style="@style/Mc.Text"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:lineSpacingExtra="5dp"
+                    android:textSize="13sp"/>
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnFecharNovidades"
+                    style="@style/Mc.Button.Gold"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:layout_marginTop="16dp"
+                    android:text="Entendi!"/>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>

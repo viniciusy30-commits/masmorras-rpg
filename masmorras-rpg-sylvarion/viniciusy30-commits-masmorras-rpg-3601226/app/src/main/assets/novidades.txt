@@ -1,0 +1,64 @@
+#id 2026-10-25-a
+#titulo Guerreiro sem piscar: render novo, mais estável e com mais vida
+- Corrigido o "piscar": peças da armadura (peitoral, tabardo, cinto, pernas) não trocam mais de ordem ao andar, girar ou atacar
+- Render com profundidade por pixel e contorno nítido: o guerreiro fica sólido de qualquer ângulo, inclusive de costas e rolando
+- Iluminação estável: as cores não mudam mais a cada passo ou balanço de braço e perna
+- Sombreado suave perto do chão dá mais volume ao corpo
+- Ao tomar dano o guerreiro recua, a cabeça chicoteia e a capa balança
+- Piscar de olhos, poeira nos passos, na aterrissagem e no rolamento
+- Pose de pulo não ativa mais sozinha em pequenos desníveis; anel de carga agora fica no chão, sob o herói
+
+#id 2026-10-24-n
+#titulo Combo de 3 golpes e golpe forte do Guerreiro
+- Combo encadeado: corte diagonal de cima para baixo, corte vertical voltando e estocada final (um golpe começa de onde o outro terminou)
+- Estocada com mais alcance e dano
+- Segure o botão de ataque: o guerreiro ergue a espada, agacha e acumula energia; solte para o golpe forte com onda de choque
+- Quanto mais segura, mais forte o golpe
+- Apertar o ataque um pouco antes do fim do golpe anterior já entra no combo (sem perder o toque)
+
+#id 2026-10-24-m
+#titulo Zoom da câmera e correção das bordas pretas
+- Zoom com gesto de pinça: aproxima até 1.9x; o mais longe é a visão padrão de antes
+- Removido o afastamento automático ao correr (era ele que mostrava bordas pretas piscando)
+- Corrigidas as frestas escuras entre os blocos do mapa ao andar e ao dar zoom
+
+#id 2026-10-24-l
+#titulo Guerreiro redesenhado e muito mais fluido
+- Armadura nova em camadas: elmo alado com penacho, ombreiras com espinhos, joelheiras, grevas, cinto e tabardo
+- Espada com runas brilhantes que pulsam e acendem no golpe; escudo com aro dourado
+- Caminhada com joelho dobrando, quadril e peito girando em sentidos opostos e balanço de peso
+- Capa em 3 partes, penacho e tabardo com física de mola (balançam, atrasam e vibram ao parar)
+- Golpe com antecipação, estocada com passo e recuperação suave; combo alterna entre corte diagonal e varredura
+- Rastro dourado mais largo e faíscas na lâmina
+- Inclinação do corpo nas curvas e amortecimento na aterrissagem
+
+#id 2026-10-24-k
+#titulo Interface nova estilo Minecraft Dungeons
+- Menu com parede de tijolos, tochas tremeluzindo e brasas subindo
+- Logo MASMORRAS em blocos de pedra 3D
+- Botões de pedra biselada e botão dourado de destaque
+- Escolha de classe em cards com barras de vida, dano e velocidade
+- HUD novo: retrato do herói, coração de vida, mana e contador de caveiras (acabou a barra preta cobrindo o jogo)
+- Botões de ação com ícones: espada (atacar), rolar e pular
+- Joystick com visual de pedra
+- Jogo em tela cheia (sem barra de status/navegação, respeita o notch)
+- Painéis de configurações, novidades, fim de jogo e diálogos em pedra
+
+#id 2026-10-24-j
+#titulo Editor de mapas
+- Novo botão "Editor de mapas" no menu: monte seus próprios mapas dentro do jogo
+- Pincel, retângulo, balde, borracha, desfazer/refazer, zoom com dois dedos
+- Chão, paredes, objetos (caixote, barril, pilar, braseiro...) e entidades (início, inimigos, chefe)
+- Botão "Testar" joga o mapa na hora; depois volta para o editor
+- Em "Jogar" agora você escolhe entre o mundo aberto e seus mapas
+- Texturas de teste no estilo Minecraft Dungeons (troque por PNGs em assets/tiles)
+- Botão ✕ para sair da partida
+
+#titulo Câmera e animações estilo Minecraft Dungeons
+- Câmera com look-ahead na direção do movimento (como em Dungeons)
+- Framing do herói mais baixo na tela e spring suave (não trava no personagem)
+- Zoom dinâmico: afasta um pouco em corrida e em combate com vários inimigos
+- Shake de tela com ruído suave (menos “tremido aleatório”)
+- Squash/stretch na aterrissagem e impulso visual no golpe (juice de animação)
+- HUD inferior redesenhado (pill escuro com accent dourado)
+- Menu principal polido: tipografia, subtítulo e botões com cantos arredondados

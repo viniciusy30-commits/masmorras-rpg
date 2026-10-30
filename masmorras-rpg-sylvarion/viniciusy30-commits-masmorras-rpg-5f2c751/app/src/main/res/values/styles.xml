@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Texto base: sombra dura estilo jogo. Fonte pixel em res/font/pixel.xml. -->
+    <style name="Mc.Text" parent="">
+        <item name="android:fontFamily">@font/pixel</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:shadowColor">#FF000000</item>
+        <item name="android:shadowDx">2</item>
+        <item name="android:shadowDy">2</item>
+        <item name="android:shadowRadius">0.01</item>
+    </style>
+
+    <style name="Mc.Header" parent="Mc.Text">
+        <item name="android:textSize">22sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.04</item>
+        <item name="android:gravity">center</item>
+    </style>
+
+    <style name="Mc.Body" parent="Mc.Text">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/text_secondary</item>
+        <item name="android:lineSpacingExtra">3dp</item>
+    </style>
+
+    <style name="Mc.Button" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/btn_stone</item>
+        <item name="android:fontFamily">@font/pixel</item>
+        <item name="android:textColor">#FFFFFF</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:letterSpacing">0.03</item>
+        <item name="android:shadowColor">#FF000000</item>
+        <item name="android:shadowDx">2</item>
+        <item name="android:shadowDy">2</item>
+        <item name="android:shadowRadius">0.01</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">0dp</item>
+        <item name="android:paddingLeft">14dp</item>
+        <item name="android:paddingRight">14dp</item>
+        <item name="android:paddingTop">0dp</item>
+        <item name="android:paddingBottom">0dp</item>
+    </style>
+
+    <style name="Mc.Button.Gold">
+        <item name="android:background">@drawable/btn_gold</item>
+        <item name="android:textColor">@color/mc_ink</item>
+        <item name="android:shadowColor">#99FFF2C0</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowDy">2</item>
+    </style>
+
+    <style name="Mc.Button.Small">
+        <item name="android:textSize">13sp</item>
+    </style>
+
+    <!-- botões só com ícone (ataque, rolar, pular) -->
+    <style name="Mc.Slot" parent="Widget.AppCompat.ImageButton">
+        <item name="android:background">@drawable/btn_stone</item>
+        <item name="android:scaleType">fitCenter</item>
+        <item name="android:stateListAnimator">@null</item>
+        <item name="android:padding">14dp</item>
+    </style>
+
+    <style name="Mc.Slot.Gold">
+        <item name="android:background">@drawable/btn_gold</item>
+        <item name="android:padding">18dp</item>
+    </style>
+</resources>
