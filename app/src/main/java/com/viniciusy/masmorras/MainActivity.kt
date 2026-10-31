@@ -467,6 +467,12 @@ class MainActivity : AppCompatActivity() {
                         prevCd[1] = c2
                         tvSkill2Cd.text = if (ativo) Math.ceil(p.g2T.toDouble()).toInt().toString() else if (c2 > 0f) Math.ceil(c2.toDouble()).toInt().toString() else ""
                         btnSkill2.alpha = if (ativo || (c2 <= 0f && !p.skilling)) 1f else 0.45f
+                        // Gomu Gomu no Bazooka
+                        val c3 = p.skillCd(3, System.currentTimeMillis())
+                        if (prevCd[2] > 0f && c3 <= 0f) Sfx.play("ui_ping", 0.6f)
+                        prevCd[2] = c3
+                        tvSkill3Cd.text = if (c3 > 0f) Math.ceil(c3.toDouble()).toInt().toString() else ""
+                        btnSkill3.alpha = if (c3 <= 0f && !p.skilling) 1f else 0.45f
                     }
                     if (p.classe == Classe.PIKACHU) {
                         val nowMs = System.currentTimeMillis()
@@ -660,7 +666,7 @@ class MainActivity : AppCompatActivity() {
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
         val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
         val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
-        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
+        val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
         if (classe == Classe.NINJA) {
             btnRoll.setImageResource(R.drawable.hd_ic_nin_w)
@@ -689,6 +695,8 @@ class MainActivity : AppCompatActivity() {
             btnSkill1.contentDescription = "Gomu Gomu no Gatling"
             btnSkill2.setImageResource(R.drawable.hd_ic_luffy_gear2)
             btnSkill2.contentDescription = "Gomu Gomu no Gear Second"
+            btnSkill3.setImageResource(R.drawable.hd_ic_luffy_bazooka)
+            btnSkill3.contentDescription = "Gomu Gomu no Bazooka"
         } else if (classe == Classe.PIKACHU) {
             btnSkill1.setImageResource(R.drawable.hd_ic_pika_bolt)
             btnSkill2.setImageResource(R.drawable.hd_ic_pika_tail)

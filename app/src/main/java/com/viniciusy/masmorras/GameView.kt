@@ -1452,6 +1452,30 @@ class GameView @JvmOverloads constructor(
             snd("spell_charge", 0.8f, 0.7f)
             return
         }
+        if (k == 3) {
+            // Bazooka: vira para o alvo marcado (ou o mais perto) e arma os dois braços
+            val tg3 = luffyPickTarget(p)
+            if (!p.startSkill(3, System.currentTimeMillis())) {
+                snd("ui_error", 0.5f)
+                return
+            }
+            if (tg3 != null) {
+                val dx3 = tg3.x - p.x
+                val dy3 = tg3.y - p.y
+                val d3 = hypot(dx3, dy3).coerceAtLeast(1f)
+                p.facingX = dx3 / d3
+                p.facingY = dy3 / d3
+            }
+            pendingLuffyT = -1f
+            luffyHitTarget = null
+            luffyAimT = null
+            p.luffyTgtOn = false
+            queuedAt = 0L
+            bazFired = false
+            snd("spell_charge", 0.9f, 0.6f)
+            snd("leap_charge", 0.7f, 0.8f)
+            return
+        }
         if (k != 1) return
         val tgt = luffyPickTarget(p)
         if (!p.startSkill(k, System.currentTimeMillis())) {
@@ -1554,6 +1578,126 @@ class GameView @JvmOverloads constructor(
             h[2] += dt
             if (h[2] > 0.22f) it2.remove()
         }
+    }
+
+    // Bazooka: origem, direção e idade do golpe desde o estalo
+    private var bazFired = false
+    private var bazAge = -1f
+    private var bazOX = 0f
+    private var bazOY = 0f
+    private var bazDX = 1f
+    private var bazDY = 0f
+    private var bazBig = false
+
+    /** Todo quadro: faíscas da preparação, o golpe no instante do estalo (área à frente) e envelhecimento do efeito. */
+    private fun luffyBazUpdate(p: Player, dt: Float) {
+        if (bazAge >= 0f) {
+            bazAge += dt
+            if (bazAge > 0.6f) bazAge = -1f
+        }
+        if (p.skillK != 3 || !p.alive) {
+            bazFired = false
+            return
+        }
+        val el = p.skillDur - p.skillT
+        val cy = p.y - p.alt - 20f
+        if (el < Luffy3D.BAZ_HIT) {
+            val q = (el / Luffy3D.BAZ_HIT).coerceIn(0f, 1f)
+            if (Random.nextFloat() < dt * (16f + 50f * q)) {
+                val ang = Random.nextFloat() * 6.2832f
+                burst(p.x - p.facingX * 22f + cos(ang) * 20f, cy - p.facingY * 12f + sin(ang) * 14f, 1, if (Random.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt())
+            }
+            shake = max(shake, 0.01f + 0.03f * q)
+        } else if (!bazFired) {
+            bazFired = true
+            val big = p.g2T > 0f
+            bazBig = big
+            bazDX = p.facingX
+            bazDY = p.facingY
+            bazOX = p.x + p.facingX * 20f
+            bazOY = cy + p.facingY * 10f
+            bazAge = 0f
+            val mul = if (big) 1.6f else 1f
+            for (e in enemies) {
+                if (!e.alive) continue
+                if (e.alt - p.alt > 30f) continue
+                val ex = e.x - p.x
+                val ey = e.y - p.y
+                val along = ex * p.facingX + ey * p.facingY
+                val side = ex * p.facingY - ey * p.facingX
+                if (along > -10f && along < Player.LUFFY_BAZ_LEN + e.radius && abs(side) < Player.LUFFY_BAZ_HALFW + e.radius * 0.6f) {
+                    damageEnemy(e, p.danoH * Player.LUFFY_BAZ_DMG * mul, p.x, p.y, 3.4f)
+                    e.stunT = max(e.stunT, 1.0f)
+                    val hy = e.y + e.radius * 0.55f - e.alt - 26f
+                    burst(e.x, hy, 10, 0xFFFFFFFF.toInt())
+                    burst(e.x, hy, 8, 0xFFFFC23A.toInt())
+                    g2Hits.add(floatArrayOf(e.x, hy, 0f, Random.nextFloat() * 1.0472f))
+                }
+            }
+            burst(bazOX, bazOY, 14, 0xFFFFFFFF.toInt())
+            burst(bazOX, bazOY, 10, 0xFFFFC23A.toInt())
+            shake = max(shake, 0.34f)
+            snd("hit_heavy", 1f, 0.75f)
+            snd("thunder_cast", 0.8f, 1.35f)
+            texts.add(DmgText(p.x, p.y - 92f - p.alt, if (big) "JET BAZOOKA!" else "BAZOOKA!", 1.3f, 0xFFFFC23A.toInt()))
+        }
+    }
+
+    /** Efeito do Bazooka: cone de choque, riscos de velocidade e anéis que correm à frente. */
+    private fun drawBazFx(canvas: Canvas) {
+        if (bazAge < 0f) return
+        val q = (bazAge / 0.6f).coerceIn(0f, 1f)
+        val a = 1f - q
+        val dx = bazDX
+        val dy = bazDY
+        val nx = -dy
+        val ny = dx
+        val ox = bazOX - camX
+        val oy = bazOY - camY
+        val len = Player.LUFFY_BAZ_LEN * (if (bazBig) 1.1f else 1f)
+        val reach = len * (0.3f + 0.7f * kotlin.math.min(1f, q * 3.5f))
+        paint.style = Paint.Style.FILL
+        paint.color = (((0.55f * a * 255f).toInt()) shl 24) or 0xFFC23A
+        canvas.drawCircle(ox, oy, 14f + 34f * q, paint)
+        paint.color = (((0.8f * a * 255f).toInt()) shl 24) or 0xFFFFFF
+        canvas.drawCircle(ox, oy, 8f + 16f * q, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        // cone: raios saindo das palmas
+        for (i in -3..3) {
+            val ang = i * 0.1f
+            val ca = cos(ang)
+            val sa = sin(ang)
+            val rx = dx * ca - dy * sa
+            val ry = dx * sa + dy * ca
+            paint.strokeWidth = 3f + 9f * a * (1f - kotlin.math.abs(i) * 0.2f)
+            paint.color = (((0.5f * a * 255f).toInt()) shl 24) or 0xFFFFFF
+            canvas.drawLine(ox + rx * 16f, oy + ry * 16f, ox + rx * reach, oy + ry * reach, paint)
+            paint.strokeWidth = 1.5f + 2f * a
+            paint.color = (((0.9f * a * 255f).toInt()) shl 24) or 0xFFC23A
+            canvas.drawLine(ox + rx * 24f, oy + ry * 24f, ox + rx * reach * 0.85f, oy + ry * reach * 0.85f, paint)
+        }
+        // riscos de velocidade paralelos
+        for (k in 0..7) {
+            val off = (k - 3.5f) * 9f
+            val s0 = reach * 0.08f + (k % 3) * 12f
+            val s1 = reach * (0.65f + 0.35f * ((k * 37) % 10) / 10f)
+            paint.strokeWidth = 1.6f + 1.4f * a
+            paint.color = (((0.85f * a * 255f).toInt()) shl 24) or 0xFFFFFF
+            canvas.drawLine(ox + dx * s0 + nx * off, oy + dy * s0 + ny * off, ox + dx * s1 + nx * off, oy + dy * s1 + ny * off, paint)
+        }
+        // anéis de choque correndo para a frente
+        for (r in 0..1) {
+            val d0 = 30f + len * 0.75f * q + r * 22f
+            val rad = 16f + 32f * q + r * 9f
+            val cx2 = ox + dx * d0
+            val cy2 = oy + dy * d0
+            paint.strokeWidth = 1.5f + (6f - 3f * r) * a
+            paint.color = (((0.9f * a * 255f).toInt()) shl 24) or (if (r == 0) 0xFFFFFF else 0xFFC23A)
+            canvas.drawOval(cx2 - rad * 0.75f, cy2 - rad, cx2 + rad * 0.75f, cy2 + rad, paint)
+        }
+        paint.strokeCap = Paint.Cap.BUTT
+        paint.style = Paint.Style.FILL
     }
 
     private fun drawSoruFx(canvas: Canvas, p: Player) {
@@ -2899,7 +3043,7 @@ class GameView @JvmOverloads constructor(
             p.luffyTgtOn = false
             if (aimE != null && (!aimE.alive || p.attackAnim <= 0.001f)) luffyAimT = null
         }
-        if (p.classe == Classe.LUFFY) { luffyGatUpdate(p); luffySoruUpdate(p, dt) }
+        if (p.classe == Classe.LUFFY) { luffyGatUpdate(p); luffySoruUpdate(p, dt); luffyBazUpdate(p, dt) }
         if (pendingLuffyT >= 0f) {
             pendingLuffyT -= dt
             if (pendingLuffyT <= 0f) {
@@ -3278,7 +3422,7 @@ class GameView @JvmOverloads constructor(
         traps.forEach { it.draw(canvas, paint, camX, camY, time) }
         rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
         if (player?.classe == Classe.ARQUEIRO) sylv.drawGround(canvas, paint, camX, camY, time)
-        player?.let { if (it.classe == Classe.LUFFY) { drawLuffyTarget(canvas, it); drawGatArea(canvas, it); drawSoruFx(canvas, it) } }
+        player?.let { if (it.classe == Classe.LUFFY) { drawLuffyTarget(canvas, it); drawGatArea(canvas, it); drawSoruFx(canvas, it); drawBazFx(canvas) } }
 
         drawList.clear()
         for (e in enemies) {

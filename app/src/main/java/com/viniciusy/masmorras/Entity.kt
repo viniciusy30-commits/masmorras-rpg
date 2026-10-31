@@ -121,6 +121,11 @@ class Player(
         const val LUFFY_GAT_CD = 8000L     // recarga (ms)
         const val LUFFY_GAT_LEN = 240f     // comprimento do retângulo à frente do Luffy (px)
         const val LUFFY_GAT_HALFW = 64f    // meia largura do retângulo (px)
+        // Gomu Gomu no Bazooka (botão de skill 3): os dois braços esticam para trás e estouram à frente, palmas juntas
+        const val LUFFY_BAZ_CD = 9000L     // recarga (ms)
+        const val LUFFY_BAZ_LEN = 230f     // alcance à frente do Luffy (px)
+        const val LUFFY_BAZ_HALFW = 58f    // meia largura da área (px)
+        const val LUFFY_BAZ_DMG = 3.2f     // dano (x dano do herói); no Gear Second (Jet Bazooka) ainda x1,6
         // Gomu Gomu no Gear Second (botão de skill 2): bombeia o sangue, a pele fica rosa e sai vapor. Buff temporário
         const val LUFFY_G2_TIME = 16f      // duração do buff depois da animação (s)
         const val LUFFY_G2_CD = 12000L     // recarga (ms), contada a partir do fim do buff
@@ -248,6 +253,7 @@ class Player(
     var soruDX = 0f          // direção atual do Soru (unitária); o joystick muda
     var soruDY = 1f
     var luffySoruReadyAt = 0L
+    var luffyBazReadyAt = 0L
     var gatPtN = 0           // Gatling: inimigos dentro do retângulo (frente, lado em px), preenchido pelo GameView
     val gatPtF = FloatArray(6)
     val gatPtU = FloatArray(6)
@@ -667,6 +673,7 @@ class Player(
         }
         if (classe == Classe.LUFFY) {
             if (k == 2) return alive && skillK == 0 && !rolling && grounded && luffyPh == 0 && !heli && !heliCharging && !swinging && g2T <= 0f && now >= luffyG2ReadyAt
+            if (k == 3) return alive && skillK == 0 && !rolling && grounded && luffyPh == 0 && !heli && !heliCharging && !swinging && now >= luffyBazReadyAt
             return k == 1 && alive && skillK == 0 && !rolling && grounded && luffyPh == 0 && !heli && !heliCharging && !swinging && now >= luffyGatReadyAt
         }
         if (classe == Classe.PIKACHU) {
@@ -685,7 +692,7 @@ class Player(
             val rd = if (hollow) ichiReadyH else ichiReadyN
             return if (k in 1..5) ((rd[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         }
-        if (classe == Classe.LUFFY) return if (k == 1) ((luffyGatReadyAt - now) / 1000f).coerceAtLeast(0f) else if (k == 2) ((luffyG2ReadyAt - now) / 1000f).coerceAtLeast(0f) else 0f
+        if (classe == Classe.LUFFY) return if (k == 1) ((luffyGatReadyAt - now) / 1000f).coerceAtLeast(0f) else if (k == 2) ((luffyG2ReadyAt - now) / 1000f).coerceAtLeast(0f) else if (k == 3) ((luffyBazReadyAt - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.PIKACHU) return if (k in 1..4) ((pikaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         return (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
@@ -703,6 +710,9 @@ class Player(
             if (k == 2) {
                 skillDur = Luffy3D.G2_DUR
                 luffyG2ReadyAt = now + ((Luffy3D.G2_DUR + LUFFY_G2_TIME) * 1000f).toLong() + LUFFY_G2_CD
+            } else if (k == 3) {
+                skillDur = Luffy3D.BAZ_DUR
+                luffyBazReadyAt = now + LUFFY_BAZ_CD
             } else {
                 skillDur = Luffy3D.GAT_DUR
                 luffyGatReadyAt = now + LUFFY_GAT_CD
@@ -1424,6 +1434,8 @@ class Player(
             Luffy3D.gatPtU[gi] = gatPtU[gi]
         }
         Luffy3D.g2P = if (classe == Classe.LUFFY && skillK == 2) 1f - skillT / skillDur else -1f
+        Luffy3D.bazP = if (classe == Classe.LUFFY && skillK == 3) 1f - skillT / skillDur else -1f
+        Luffy3D.bazLen = LUFFY_BAZ_LEN
         Luffy3D.g2Act = if (classe == Classe.LUFFY && g2T > 0f) min(1f, g2T) else 0f   // apaga devagar no último segundo
         Luffy3D.rollP = if (classe == Classe.LUFFY && luffyPh != 0) 0.5f else -1f
         Luffy3D.dashPh = if (classe == Classe.LUFFY) luffyPh else 0

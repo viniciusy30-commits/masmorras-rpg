@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <path
+        android:fillColor="#33FFC23A"
+        android:pathData="M4,50 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0 Z"/>
+    <!-- explosão do impacto -->
+    <path
+        android:fillColor="#FFFFC23A"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2"
+        android:strokeLineJoin="round"
+        android:pathData="M74,50 L88,40 L82,54 L96,58 L82,62 L88,76 L74,66 L66,80 L62,64 L48,70 L56,58 L44,50 L56,42 L48,30 L62,36 L66,20 Z"/>
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M60,50 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z"/>
+    <!-- dois braços esticados vindo de trás -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round"
+        android:pathData="M8,42 L50,42 M8,58 L50,58"/>
+    <path
+        android:fillColor="#FFFF8A3C"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:pathData="M46,34 L62,34 L62,50 L46,50 Z M46,50 L62,50 L62,66 L46,66 Z"/>
+</vector>

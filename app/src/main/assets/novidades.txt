@@ -1,3 +1,10 @@
+#id 2026-10-31-luffy-bazooka
+#titulo Luffy: Gomu Gomu no Bazooka
+- Skill nova (botão de skill 3, recarga de 9 s, vale em qualquer forma): o Luffy abaixa, estica os dois braços para trás tremendo e soltando faíscas, e então dispara os dois juntos para a frente, palmas unidas, num estalo
+- Acerta uma faixa larga à frente dele (mira no alvo marcado, ou no mais perto): dano de 3,2x, empurra os inimigos para bem longe e deixa todos atordoados por 1 s
+- Efeito de impacto: explosão dourada nas mãos, cone de choque com riscos de velocidade, anéis correndo à frente, clarão em cada inimigo atingido e tremor forte de tela
+- No Gear Second vira o Jet Bazooka: dano 60% maior e o golpe estoura ainda mais forte
+
 #id 2026-10-31-luffy-soru-rastro
 #titulo Luffy: rastro de velocidade, soco com recarga e novo Gear Second
 - Soru: o rastro vermelho saiu. Agora ele deixa só linhas finas de velocidade brancas, paralelas, que somem rápido; o ícone e as explosões também ficaram brancos

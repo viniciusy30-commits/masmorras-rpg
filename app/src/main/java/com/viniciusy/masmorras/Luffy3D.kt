@@ -938,6 +938,9 @@ object Luffy3D {
     // e intensidade do buff (0..1, apaga no último segundo)
     var g2P = -1f
     var g2Act = 0f
+    // Gomu Gomu no Bazooka: progresso 0..1 da animação (<0 = fora dela) e alcance do golpe (px)
+    var bazP = -1f
+    var bazLen = 230f
     var heli = false       // pulo duplo: helicóptero ativo
     var heliT = 0f         // segundos desde a soltura do pulo carregado
     var heliCharge = -1f   // segundos segurando o pulo no chão (<0 = não está carregando)
@@ -1087,6 +1090,12 @@ object Luffy3D {
     // G2_P0 a G2_PUMP bombeia com o braço direito junto à coxa (frequência crescente), o corpo treme, a pele esquenta
     // e sai vapor | G2_PUMP: explosão de vapor + anel de choque, levanta, peito estufado e braços abertos |
     // relaxa até G2_DUR. Depois o buff fica ligado: pele rosa, aura, vapor fino atrás do corpo e rastros ao correr.
+    // ───────────── Gomu Gomu no Bazooka ─────────────
+    // 0 a BAZ_HIT: abaixa e puxa os dois braços esticados para trás (o corpo treme, faíscas) | BAZ_HIT: estalo, os dois
+    // braços disparam juntos à frente, palmas unidas | segura um instante e volta como elástico até BAZ_DUR.
+    const val BAZ_DUR = 1.15f
+    const val BAZ_HIT = 0.62f
+
     const val G2_DUR = 2.8f
     const val G2_P0 = 0.5f
     const val G2_PUMP = 2.15f
@@ -1111,6 +1120,7 @@ object Luffy3D {
     private var stStreakAcc = 0f
     private var g2W = 0f                // peso visual suavizado (tinta da pele, aura)
     private var g2Burst = false
+    private var bazRel = false
     private var g2Ring = -1f
     private var pwx = 0f
     private var pwy = 0f
@@ -2121,6 +2131,69 @@ object Luffy3D {
             }
         }
 
+        // ── Gomu Gomu no Bazooka ──
+        var bazIK = false
+        if (bazP >= 0f && rollW < 0.5f && !gatOn && heliCharge < 0f && !heli) {
+            bazIK = true
+            val tb = bazP * BAZ_DUR
+            val bzIn = ease(tb / 0.16f)
+            val bzOut = 1f - smoother((tb - (BAZ_DUR - 0.28f)) / 0.28f)
+            val wB = bzIn * bzOut
+            val bzWind = ease(tb / BAZ_HIT)
+            val bzSnap = ease((tb - BAZ_HIT) / 0.045f)
+            val bzRet = smoother((tb - (BAZ_HIT + 0.32f)) / (BAZ_DUR - BAZ_HIT - 0.32f))
+            val bzBack = bzWind * (1f - bzSnap)
+            val bzFwd = bzSnap * (1f - bzRet)
+            val bzTrm = sin(clock * 85f) * bzBack * bzBack
+            lean = lerp(lean, -0.30f * bzBack + 0.58f * bzFwd, wB)
+            crouch = lerp(crouch, 0.8f * bzBack + 0.4f * bzFwd, wB)
+            bodyZ = lerp(bodyZ, -3.5f * bzBack + 6.5f * bzFwd, wB)
+            chestTw = lerp(chestTw, 0.10f * bzTrm, wB)
+            hipTw = lerp(hipTw, 0.04f * bzTrm, wB)
+            tilt = lerp(tilt, 0.12f * bzBack - 0.14f * bzFwd + 0.03f * bzTrm, wB)
+            shout = max(shout, wB * (0.7f * bzBack + bzFwd))
+            legB = lerp(legB, 0f, wB)
+            gatSplay = (0.34f * bzBack + 0.26f * bzFwd) * wB
+            // os dois braços: esticados para trás, depois juntos à frente, estendidos até o alcance do golpe
+            val armSh = 1.25f * bzBack - 1.55f * bzFwd
+            val armZ = 0.5f * bzBack + 0.02f * bzFwd
+            val armEl = -0.25f * bzBack - 0.04f * bzFwd
+            val bzExt = 1f + 0.9f * bzBack + (extFor(bazLen * 0.92f / rsNow) - 1f) * bzFwd
+            rsh = lerp(rsh, armSh, wB)
+            lsh = lerp(lsh, armSh, wB)
+            rshZ = lerp(rshZ, armZ, wB)
+            lshZ = lerp(lshZ, armZ, wB)
+            rel = lerp(rel, armEl, wB)
+            lel = lerp(lel, armEl, wB)
+            extR = lerp(1f, bzExt, wB)
+            extL = lerp(1f, bzExt, wB)
+            // armando: faíscas e vapor saindo das mãos esticadas atrás do corpo
+            if (tb < BAZ_HIT && rnd.nextFloat() < dt * (14f + 40f * bzWind)) {
+                val kk = rnd.nextInt(2)
+                val ang = rnd.nextFloat() * TWO_PI
+                val sp0 = (10f + rnd.nextFloat() * 22f) * rs
+                emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.25f, rs * 30f, if (rnd.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+            }
+            // estalo: explosão nas duas mãos
+            if (tb >= BAZ_HIT && !bazRel) {
+                bazRel = true
+                for (kk in 0..1) {
+                    for (i in 0..9) {
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (18f + rnd.nextFloat() * 50f) * rs
+                        emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.35f, rs * 46f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
+                    }
+                    for (i in 0..5) {
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (24f + rnd.nextFloat() * 46f) * rs
+                        emitSteam(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0 - 10f * rs, 0.45f + rnd.nextFloat() * 0.3f, (2.6f + rnd.nextFloat() * 2.2f) * rs)
+                    }
+                }
+            }
+        } else {
+            bazRel = false
+        }
+
         // suaviza a pose (o golpe mantém o ritmo; transições entre estados não dão tranco)
         pt[0] = lean; pt[1] = hipTw; pt[2] = chestTw; pt[3] = rsh; pt[4] = rshZ; pt[5] = rel
         pt[6] = 0f; pt[7] = lsh; pt[8] = lshZ; pt[9] = lel; pt[10] = 0f; pt[11] = hd
@@ -2131,7 +2204,7 @@ object Luffy3D {
         } else {
             var k = min(1f, dt * (if (attacking) 34f else 18f))
             // soco por IK e mãos presas no chão usam a pose exata (qualquer atraso faria o punho / as mãos escorregarem)
-            if (punchIK || gatIK || g2IK) k = 1f
+            if (punchIK || gatIK || g2IK || bazIK) k = 1f
             else if (plant && aimOn) k = lerp(k, 1f, ((rollW - 0.5f) * 2f).coerceIn(0f, 1f))
             for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
             // o esticar do braço não pode atrasar: o punho tem que chegar junto com o golpe
