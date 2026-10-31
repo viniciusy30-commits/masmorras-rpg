@@ -638,6 +638,9 @@ object Luffy3D {
         rotZ(-0.22f)
         cube(0f, -2.4f, 0f, 0.8f, 2.5f, 0.23f, SASH_D)
         pop()
+        // costas da barriga cobertas pela camisa (evita aparecer pele por trás quando o peito gira ou inclina)
+        cube(0f, 6.1f, -3.42f, 4.9f, 2.0f, 0.16f, RED)
+        cube(0f, 4.2f, -3.42f, 4.9f, 0.14f, 0.18f, RED_D)
         // laterais da barriga na cor do colete
         cube(-4.8f, 6.3f, 0f, 0.14f, 1.9f, 3.35f, RED)
         cube(4.8f, 6.3f, 0f, 0.14f, 1.9f, 3.35f, RED)
@@ -735,7 +738,7 @@ object Luffy3D {
      */
     private fun arm(side: Float, sh: Float, shZ: Float, el: Float, tw: Float, id: Int, ext: Float) {
         val e = max(1f, ext)
-        val th = if (e <= 1.01f) 1f else max(0.52f, 1f / sqrt(e))
+        val th = if (e <= 1.01f) 1f else 1f - 0.2f * min(1f, (e - 1f) / 6f)   // esticado afina só um pouco: continua grosso como o ombro
         val fs = 1f + 0.3f * min(1f, (e - 1f) / 3f)
         push()
         translate(side * 8.1f, 12.3f, 0f)
@@ -1439,8 +1442,9 @@ object Luffy3D {
                 lsh = mSh; lshZ = mZ; lel = mEl; extL = mExt
                 rsh = gSh; rshZ = gZ; rel = gEl
             }
-            chestTw = k5(t, chestTw, -0.75f * sdp, 0.7f * sdp, 0.6f * sdp, chestTw)
-            hipTw = k5(t, hipTw, -0.4f * sdp, 0.42f * sdp, 0.34f * sdp, hipTw)
+            // peito + quadril somam zero no golpe: o braço aponta exatamente para o alvo (só a preparação gira o corpo)
+            chestTw = k5(t, chestTw, -0.75f * sdp, -0.3f * sdp, -0.25f * sdp, chestTw)
+            hipTw = k5(t, hipTw, -0.4f * sdp, 0.3f * sdp, 0.25f * sdp, hipTw)
             lean = k5(t, lean, -0.1f, 0.36f, 0.3f, lean)
             crouch = k5(t, crouch, 0.5f, 0.3f, 0.25f, crouch)
             tilt = k5(t, tilt, 0.12f, -0.12f, -0.08f, tilt)

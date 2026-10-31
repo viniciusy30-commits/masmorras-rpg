@@ -126,6 +126,9 @@ class Player(
         const val SWING_PUMP = 900f        // empurrão do balanço para o lado em que o jogador anda
         const val SWING_MAXV = 620f        // velocidade máxima do balanço
         // dash estilingue do Luffy: segurar o botão puxa o corpo (carga), soltar lança em arco; pousa rolando e levanta
+        const val LUFFY_ANCHOR_D = 90f     // distância das mãos presas no chão (px)
+        const val LUFFY_STRAFE_MAX = 90f   // quanto o corpo pode andar para os lados durante a carga (px)
+        const val LUFFY_STRAFE_SPD = 150f  // velocidade lateral durante a carga (px/s)
         const val LUFFY_WIND_MIN = 0.24f   // preparação mínima (toque rápido no botão)
         const val LUFFY_CHARGE_T = 0.55f   // tempo extra segurando até a carga máxima
         const val LUFFY_DIST_MIN = 200f    // alcance do voo sem carga (px)
@@ -203,6 +206,11 @@ class Player(
     var luffyG = 1000f       // gravidade do arco
     var luffyFlip = false    // o dash atual é o mortal (toque rápido)
     var luffyLandT = LUFFY_ROLL_T // duração da fase 3 (rolagem ou pouso do mortal)
+    var luffyAX = 0f         // ponto do chão onde as mãos agarram (fixo durante a carga)
+    var luffyAY = 0f
+    var luffyDX0 = 0f        // direção inicial do dash
+    var luffyDY0 = 1f
+    var luffyOff = 0f        // deslocamento lateral do corpo durante a carga (px)
     var luffyLaunchReq = false // o GameView toca o som / poeira do lançamento quando liga
     var heliCharging = false // Luffy: segurando o pulo no chão (agacha e fica parado: não anda)
     var heliChargeT = 0f     // segundos segurando
@@ -821,6 +829,11 @@ class Player(
         luffyHeld = true
         luffyVh = 0f
         luffyVl = 0f
+        luffyDX0 = rollDX
+        luffyDY0 = rollDY
+        luffyAX = x + rollDX * LUFFY_ANCHOR_D
+        luffyAY = y + rollDY * LUFFY_ANCHOR_D
+        luffyOff = 0f
         rollT = 9f    // fica positivo nas 3 fases (o resto do jogo usa "rolling"); o fim é decidido por luffyEnd()
         rollDur = 9f
     }
@@ -889,19 +902,30 @@ class Player(
                 // preparação: segurar depois do mínimo vai carregando; soltar (ou carga cheia) lança
                 val ready = luffyT >= LUFFY_WIND_MIN
                 if (luffyHeld && ready) luffyCharge = min(1f, (luffyT - LUFFY_WIND_MIN) / LUFFY_CHARGE_T)
-                // o analógico ainda pode mirar enquanto carrega
-                val il = hypot(inX, inY)
-                if (il > 0.3f) {
-                    rollDX = inX / il
-                    rollDY = inY / il
-                    facingX = rollDX
-                    facingY = rollDY
+                // as mãos ficam presas no chão: o corpo só anda para os lados (sem dar a volta no braço) e o
+                // lançamento sai na direção das mãos: reto ou nas diagonais
+                val px = -luffyDY0
+                val py = luffyDX0
+                var mv = (inX * px + inY * py) * LUFFY_STRAFE_SPD
+                if (dt > 0f) {
+                    val next = (luffyOff + mv * dt).coerceIn(-LUFFY_STRAFE_MAX, LUFFY_STRAFE_MAX)
+                    mv = (next - luffyOff) / dt
+                    luffyOff = next
                 }
                 val k = 1f - min(1f, luffyT / LUFFY_WIND_MIN)
                 val rec = -50f * k * k          // leve recuo no começo, depois fica firme no chão
-                vx = rollDX * rec
-                vy = rollDY * rec
-                if (ready && (!luffyHeld || luffyCharge >= 1f)) luffyLaunch()
+                vx = px * mv + luffyDX0 * rec
+                vy = py * mv + luffyDY0 * rec
+                val ax = luffyAX - x
+                val ay = luffyAY - y
+                val al = hypot(ax, ay)
+                if (al > 8f) {
+                    rollDX = ax / al
+                    rollDY = ay / al
+                    facingX = rollDX
+                    facingY = rollDY
+                }
+                if (ready && !luffyHeld) luffyLaunch()
             }
             2 -> {
                 // voo: sai um pouco mais devagar e ganha velocidade suave (sem arrancada seca)

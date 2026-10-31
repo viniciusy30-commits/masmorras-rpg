@@ -273,7 +273,7 @@ class GameView @JvmOverloads constructor(
         pendingLuffySwing = p.swing
     }
 
-    /** Anel vermelho no chão em volta do alvo do Luffy (e um traço fino do herói até ele). */
+    /** Anel vermelho no chão em volta do alvo do Luffy. */
     private fun drawLuffyTarget(canvas: Canvas, p: Player) {
         val t = luffyTarget ?: return
         if (!t.alive) return
@@ -288,10 +288,6 @@ class GameView @JvmOverloads constructor(
         paint.strokeWidth = 3f
         paint.color = 0xFFFF5252.toInt()
         canvas.drawOval(sx - r, feet - r * 0.72f, sx + r, feet + r * 0.72f, paint)
-        val inRange = hypot(t.x - p.x, t.y - p.y) - t.radius <= Player.LUFFY_RANGE
-        paint.strokeWidth = 2f
-        paint.color = if (inRange) 0xAAFFE08A.toInt() else 0x66B0BEC5
-        canvas.drawLine(p.x - camX, p.y - camY + p.radius * 0.55f - p.alt, sx, feet, paint)
         paint.style = Paint.Style.FILL
     }
 
