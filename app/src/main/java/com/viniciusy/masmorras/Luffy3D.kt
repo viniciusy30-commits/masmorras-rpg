@@ -862,7 +862,10 @@ object Luffy3D {
     private fun projectTo(x: Float, y: Float, z: Float, id: Int) = mark(x, y, z, id)
 
     // ───────────── estado externo (preenchido pelo Player antes de desenhar) ─────────────
-    var rollP = -1f        // 0..1 durante o rolamento; <0 = fora dele
+    var rollP = -1f        // >= 0 enquanto o dash está ativo; <0 = fora dele
+    var dashPh = 0         // 0 fora, 1 preparação (carrega), 2 voo em arco, 3 rolagem e levantar
+    var dashU = 0f         // fase 1: segundos de preparação; fases 2 e 3: progresso 0..1
+    var dashCharge = 0f    // 0..1: quanto o botão ficou segurado
     var inAir = false
     var airVz = 0f
     var airH = 0f
@@ -872,8 +875,11 @@ object Luffy3D {
     /** Instante (0..1 da animação) em que o punho esticado chega ao alvo. */
     const val T_HIT = 0.28f
 
-    /** Fração do dash (0..1) gasta na preparação do estilingue; depois dela o corpo é lançado. */
-    const val DASH_WIND = 0.32f
+    /** Pitch do corpo no fim do voo (um pouco de mergulho de cabeça), de onde a rolagem continua. */
+    private const val DIVE_PITCH = 1.7907964f
+
+    /** Altura do pivô do corpo (unidades do modelo) em torno do qual ele gira deitado / rola. */
+    private const val PIV = 16f
 
     /** Distância (em unidades do modelo) à frente onde as mãos se agarram no chão. */
     private const val DASH_ANCHOR = 46f
@@ -905,12 +911,22 @@ object Luffy3D {
     private var eyeOpen = 1f
     private var released = false
     private var dashBurst = false
+    private var touchBurst = false
+    private var prevDashPh = 0
+    private var lastPitch2 = DIVE_PITCH
+    private var lastSpin2 = 0f
+    private var touchPitch = DIVE_PITCH
+    private var touchSpin = 0f
+    private var spinEnd = 0f
+    private var liftS = 0f
+    private var lastExt1 = 1f
+    private var liftOn = false
     private val ps = FloatArray(NP)
     private val pt = FloatArray(NP)
     private val mkX = FloatArray(6)
     private val mkY = FloatArray(6)
 
-    private const val NSP = 40
+    private const val NSP = 64
     private val spX = FloatArray(NSP)
     private val spY = FloatArray(NSP)
     private val spVx = FloatArray(NSP)
@@ -942,6 +958,29 @@ object Luffy3D {
         else if (t < 0.30f) lerp(b, c, ease((t - 0.18f) / 0.12f))
         else if (t < 0.55f) lerp(c, d, (t - 0.30f) / 0.25f)
         else lerp(d, e, ease((t - 0.55f) / 0.45f))
+    }
+
+    // pontos do corpo (z para frente, y para cima) relativos ao pivô: em pé e encolhido (bola da rolagem)
+    private val BZ0 = floatArrayOf(0f, -5f, 6f, 5f, -5f, 4f, -5f, 3f, 6f, -2f)
+    private val BY0 = floatArrayOf(27f, 19f, 19f, 8f, 5f, -2f, -2f, -9f, -16f, -16f)
+    private val BZ1 = floatArrayOf(5f, -2f, 7f, 8f, -9f, 8f, -8f, 8f, 7f, -3f)
+    private val BY1 = floatArrayOf(11f, 9f, 10f, 3f, 2f, -2f, -2f, 2f, -8f, -8f)
+
+    /**
+     * Quanto o modelo precisa subir (+) ou descer (-) para o ponto mais baixo do corpo, girado em [pitch],
+     * ficar rente ao chão (deitado ele fica mais baixo que em pé; encolhido, a bola é pequena).
+     */
+    private fun pivotLift(pitch: Float, tuck: Float): Float {
+        val c = cos(pitch)
+        val sn = sin(pitch)
+        var low = 1e9f
+        for (i in BZ0.indices) {
+            val z = lerp(BZ0[i], BZ1[i], tuck)
+            val y = lerp(BY0[i], BY1[i], tuck)
+            val yy = c * y - sn * z
+            if (yy < low) low = yy
+        }
+        return -low - PIV
     }
 
     // ───────────── desenho principal ─────────────
@@ -982,7 +1021,8 @@ object Luffy3D {
         val airCand = inAir && !rolling && (airH > 8f || airVz > 60f)
         airTimer = if (airCand) airTimer + dt else 0f
         val airT = if (airTimer > 0.04f) 1f else 0f
-        val rollTgt = if (rolling) min(rollP / 0.12f, (1f - rollP) / 0.2f).coerceIn(0f, 1f) else 0f
+        // o dash entra de uma vez e só se dissolve nos últimos 18% do "levantar" (a pose já é a de repouso)
+        val rollTgt = if (rolling) (if (dashPh == 3 && dashU > 0.82f) ((1f - dashU) / 0.18f).coerceIn(0f, 1f) else 1f) else 0f
         if (first) {
             airW = airT
             rollW = rollTgt
@@ -1031,65 +1071,102 @@ object Luffy3D {
         rel = lerp(rel, -0.2f, airW)
         lel = lerp(lel, -0.2f, airW)
         shout = max(shout, 0.5f * airW)
-        // dash estilingue (Gomu Gomu no Rocket): as duas mãos esticam e agarram o chão à frente,
-        // o corpo se encolhe e depois é lançado; os braços encolhem e ficam para trás no voo
+        // ── dash estilingue (Gomu Gomu no Rocket) ──
+        // fase 1: as mãos esticam e agarram o chão à frente; segurar o botão puxa o corpo mais para trás (carga)
+        // fase 2: lançado em arco, deitado e girando em torno do próprio eixo, braços à frente
+        // fase 3: pousa de mergulho, faz uma rolagem para a frente e levanta de pé
         val rsNow = s * PX * MS
         var extR = 1f
         var extL = 1f
         var bodyZ = 0f
         var legW = 0f
+        var legA = 0f
+        var legK = 0f
+        var bPitch = 0f
+        var bSpin = 0f
+        var bTuck = 0f
         if (rolling) {
-            val rp = rollP
-            val dLean: Float
-            val dCrouch: Float
-            val dRsh: Float
-            val dExt: Float
-            val dTilt: Float
-            if (rp < DASH_WIND) {
-                val u = ease(rp / DASH_WIND)
-                dLean = 0.8f * u
-                dCrouch = 1.0f * u
-                bodyZ = -6f * u
-                val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
-                val sz = 12.3f * sin(dLean) + bodyZ
-                val dz = DASH_ANCHOR - sz
-                dRsh = -atan2(dz, sy) - dLean
-                dExt = extFor(sqrt(dz * dz + sy * sy))
-                dTilt = -0.2f * u
-            } else {
-                val v = ((rp - DASH_WIND) / (1f - DASH_WIND)).coerceIn(0f, 1f)
-                val e3 = ease(min(1f, v * 3f))
-                dLean = lerp(0.8f, 1.3f, e3)
-                dCrouch = lerp(1.0f, 0.5f, e3)
-                bodyZ = lerp(-6f, 0f, ease(min(1f, v * 4f)))
-                legW = ease(min(1f, v * 4f))
-                // as mãos ficam presas no chão enquanto o corpo ainda não passou por elas
-                val f = 1f - Math.pow((1f - v).toDouble(), 2.2).toFloat()
-                val travelled = f * Player.LUFFY_DASH_DIST / rsNow
-                val pw = (1f - travelled / (DASH_ANCHOR * 0.8f)).coerceIn(0f, 1f)
-                val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
-                val sz = 12.3f * sin(dLean) + bodyZ
-                val dz = max(1f, DASH_ANCHOR - travelled - sz)
-                val rshP = -atan2(dz, sy) - dLean
-                val extP = extFor(sqrt(dz * dz + sy * sy))
-                dRsh = lerp(0.95f, rshP, pw)
-                dExt = lerp(1f, extP, pw)
-                dTilt = -0.55f
+            val du = dashU
+            val cc = dashCharge
+            var dLean = 0.05f
+            var dCrouch = 0f
+            var dRsh = -0.1f
+            var dRshZ = 0.05f
+            var dRel = -0.05f
+            var dExt = 1f
+            var dTilt = 0f
+            when (dashPh) {
+                1 -> {
+                    val u = ease(du / Player.LUFFY_WIND_MIN)
+                    dLean = 0.8f * u + 0.18f * cc
+                    dCrouch = 1.0f * u + 0.3f * cc
+                    bodyZ = -6f * u - 11f * cc + sin(clock * 55f) * 0.5f * cc   // treme quando está carregado
+                    val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
+                    val sz = 12.3f * sin(dLean) + bodyZ
+                    val dz = DASH_ANCHOR - sz
+                    dRsh = -atan2(dz, sy) - dLean
+                    dExt = extFor(sqrt(dz * dz + sy * sy))
+                    dTilt = -0.2f * u
+                    lastExt1 = dExt
+                    lastPitch2 = DIVE_PITCH
+                    lastSpin2 = 0f
+                }
+                2 -> {
+                    val turns = if (cc > 0.45f) 2f else 1f
+                    bPitch = (PI.toFloat() / 2f) * ease(du / 0.2f) + 0.22f * ease((du - 0.78f) / 0.22f)
+                    bSpin = TWO_PI * turns * ease((du - 0.1f) / 0.8f)
+                    lastPitch2 = bPitch
+                    lastSpin2 = bSpin
+                    dLean = 0.05f
+                    dCrouch = 0f
+                    dRsh = -2.95f
+                    dRshZ = 0.1f
+                    dRel = -0.05f
+                    dExt = lerp(lastExt1, 1f, ease(du / 0.16f))   // as mãos soltam o chão e os braços voltam como elástico
+                    dTilt = -1.15f
+                    legW = ease(du / 0.15f)
+                    legA = 0.08f
+                    legK = 0.25f
+                }
+                else -> {
+                    if (prevDashPh != 3) {
+                        touchPitch = lastPitch2
+                        touchSpin = lastSpin2
+                        spinEnd = Math.ceil(((lastSpin2 - 0.01f) / TWO_PI).toDouble()).toFloat() * TWO_PI   // termina o giro para a frente
+                    }
+                    val stand = ease((du - 0.68f) / 0.32f)
+                    val cr = ease(du / 0.18f) * (1f - stand)
+                    bTuck = ease(du / 0.18f) * (1f - ease((du - 0.5f) / 0.24f))
+                    bPitch = lerp(touchPitch, TWO_PI, ease(du / 0.72f))
+                    bSpin = lerp(touchSpin, spinEnd, ease(du / 0.25f))
+                    val fold = ease((du - 0.12f) / 0.14f)    // braços: esticados à frente → recolhidos
+                    val unfold = ease((du - 0.55f) / 0.35f)  // soltam ao levantar
+                    dLean = lerp(0.05f, 0.95f, bTuck) + 0.35f * cr * (1f - bTuck)
+                    dCrouch = 1.25f * bTuck + 0.9f * cr * (1f - bTuck)
+                    dRsh = lerp(lerp(-2.95f, -0.9f, fold), -0.1f, unfold)
+                    dRshZ = 0.1f
+                    dRel = lerp(lerp(-0.05f, -2.3f, fold), -0.3f, unfold)
+                    dTilt = lerp(-1.15f, 0.5f, ease(du / 0.14f)) * (1f - stand)
+                    legW = 1f - ease((du - 0.5f) / 0.25f)
+                    legA = lerp(0.08f, -1.45f, ease(du / 0.16f))
+                    legK = lerp(0.25f, 2.0f, ease(du / 0.16f))
+                }
             }
             lean = lerp(lean, dLean, rollW)
             crouch = lerp(crouch, dCrouch, rollW)
             rsh = lerp(rsh, dRsh, rollW)
             lsh = lerp(lsh, dRsh, rollW)
-            rshZ = lerp(rshZ, 0.05f, rollW)
-            lshZ = lerp(lshZ, 0.05f, rollW)
-            rel = lerp(rel, -0.05f, rollW)
-            lel = lerp(lel, -0.05f, rollW)
+            rshZ = lerp(rshZ, dRshZ, rollW)
+            lshZ = lerp(lshZ, dRshZ, rollW)
+            rel = lerp(rel, dRel, rollW)
+            lel = lerp(lel, dRel, rollW)
             tilt = lerp(tilt, dTilt, rollW)
-            shout = max(shout, 0.8f * rollW)
+            shout = max(shout, (if (dashPh == 3) 0.3f else 0.8f) * rollW)
             extR = lerp(1f, dExt, rollW)
             extL = extR
             bodyZ *= rollW
         }
+        prevDashPh = if (rolling) dashPh else 0
         val lgR = rollW * legW
 
         // ── socos ──
@@ -1192,6 +1269,19 @@ object Luffy3D {
         identity()
         rotY(yaw)
         translate(0f, 0f, -hitKick * 1.2f + ps[18])
+        // dash: o corpo inteiro deita (pitch) e gira em torno do próprio eixo (spin) / rola (pitch até 2π)
+        if (rolling && (bPitch != 0f || bSpin != 0f)) {
+            val lf = pivotLift(bPitch, bTuck)
+            liftS = if (liftOn) liftS + (lf - liftS) * min(1f, dt * 22f) else lf
+            liftOn = true
+            translate(0f, liftS, 0f)
+            translate(0f, PIV, 0f)
+            rotZ(bSpin)
+            rotX(bPitch)
+            translate(0f, -PIV, 0f)
+        } else {
+            liftOn = false
+        }
 
         // pernas
         var aL = 0f
@@ -1207,8 +1297,8 @@ object Luffy3D {
             var kn = max(0f, -cos(pp)) * 1.1f * mvs + 0.1f + crouchT * 1.3f
             a = lerp(a, -0.5f + sd * 0.3f - 0.2f * max(0f, vzN), airW)
             kn = lerp(kn, 0.9f, airW)
-            a = lerp(a, 1.45f + sd * 0.1f, lgR)
-            kn = lerp(kn, 0.35f, lgR)
+            a = lerp(a, legA + sd * 0.06f, lgR)
+            kn = lerp(kn, legK, lgR)
             // base do soco: perna da frente adiantada, a de trás esticada
             a -= sd * 0.6f * lb
             kn += 0.5f * max(0f, sd * lb) + 0.2f * max(0f, -sd * lb)
@@ -1289,43 +1379,67 @@ object Luffy3D {
             }
         }
 
-        // ── dash estilingue: poeira quando as mãos prendem no chão e rastro de velocidade no lançamento ──
+        // ── dash estilingue: poeira ao prender as mãos, faíscas de carga, rastro no voo e poeira da rolagem ──
         if (rolling) {
-            if (rollP >= DASH_WIND && !dashBurst) {
-                dashBurst = true
-                for (k in 0..1) {
-                    for (i in 0..8) {
+            when (dashPh) {
+                1 -> {
+                    if (dashU >= 0.18f && !dashBurst) {
+                        dashBurst = true
+                        for (k in 0..1) {
+                            for (i in 0..8) {
+                                val ang = rnd.nextFloat() * TWO_PI
+                                val sp0 = (16f + rnd.nextFloat() * 36f) * rs
+                                emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0 * 0.6f - 10f * rs, 0.36f, rs * 50f, if (i % 2 == 0) 0xFFE9D9B0.toInt() else 0xFFFFC23A.toInt(), 1.1f)
+                            }
+                        }
+                    }
+                    if (dashCharge > 0.02f && rnd.nextFloat() < dt * (12f + 36f * dashCharge)) {
+                        val k = rnd.nextInt(2)
                         val ang = rnd.nextFloat() * TWO_PI
-                        val sp0 = (16f + rnd.nextFloat() * 36f) * rs
-                        emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0 * 0.6f - 10f * rs, 0.36f, rs * 50f, if (i % 2 == 0) 0xFFE9D9B0.toInt() else 0xFFFFC23A.toInt(), 1.1f)
+                        val sp0 = (10f + rnd.nextFloat() * 22f) * rs
+                        emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0 - 8f * rs, 0.3f, rs * 30f, if (rnd.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+                    }
+                }
+                2 -> {
+                    val spf = (1f - 0.55f * dashU)
+                    var dx = -sin(yaw)
+                    var dy = -cos(yaw) * 0.8f
+                    val dl = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
+                    dx /= dl
+                    dy /= dl
+                    val cy = fy - (PIV + liftS) * COSP * rs
+                    p.strokeCap = Paint.Cap.ROUND
+                    p.style = Paint.Style.STROKE
+                    for (i in 0..6) {
+                        val off = (i - 3f) * 3.2f * rs
+                        val len = (22f + 36f * ((i * 37) % 5) / 4f) * rs * spf
+                        val bx = fx - dy * off + dx * 6f * rs
+                        val by = cy + dx * off
+                        p.strokeWidth = max(1.4f, rs * (if (i == 3) 1.6f else 1.1f))
+                        p.color = VoxelArt.alpha(if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.6f * spf)
+                        c.drawLine(bx, by, bx + dx * len, by + dy * len, p)
+                    }
+                    p.strokeCap = Paint.Cap.BUTT
+                    p.style = Paint.Style.FILL
+                    if (rnd.nextFloat() < dt * 40f) {
+                        emitSpark(fx + (rnd.nextFloat() - 0.5f) * 8f * rs, cy + (rnd.nextFloat() - 0.5f) * 8f * rs, dx * 14f * rs, dy * 14f * rs, 0.26f, 0f, 0xFFFFFFFF.toInt(), 0.9f)
+                    }
+                }
+                else -> {
+                    if (!touchBurst) {
+                        touchBurst = true
+                        for (i in 0..9) {
+                            emitSpark(fx + (rnd.nextFloat() - 0.5f) * 10f * rs, fy - rs, (rnd.nextFloat() - 0.5f) * 70f * rs, -(10f + rnd.nextFloat() * 32f) * rs, 0.42f, rs * 45f, if (i % 2 == 0) 0xFFE9D9B0.toInt() else 0xFFB8B0A8.toInt(), 1.2f)
+                        }
+                    }
+                    if (dashU < 0.7f && rnd.nextFloat() < dt * 30f) {
+                        emitSpark(fx + (rnd.nextFloat() - 0.5f) * 12f * rs, fy - rs, (rnd.nextFloat() - 0.5f) * 40f * rs, -(6f + rnd.nextFloat() * 18f) * rs, 0.34f, rs * 40f, 0xFFD8CFB8.toInt(), 1.0f)
                     }
                 }
             }
-            if (rollP >= DASH_WIND) {
-                val v = ((rollP - DASH_WIND) / (1f - DASH_WIND)).coerceIn(0f, 1f)
-                val spf = Math.pow((1f - v).toDouble(), 1.2).toFloat()
-                var dx = -sin(yaw)
-                var dy = -cos(yaw) * 0.8f
-                val dl = sqrt(dx * dx + dy * dy).coerceAtLeast(0.001f)
-                dx /= dl
-                dy /= dl
-                p.strokeCap = Paint.Cap.ROUND
-                p.style = Paint.Style.STROKE
-                for (i in 0..6) {
-                    val off = (i - 3f) * 3.2f * rs
-                    val len = (26f + 44f * ((i * 37) % 5) / 4f) * rs * spf
-                    val bx = fx - dy * off + dx * 6f * rs
-                    val by = fy - 10f * rs + dx * off
-                    p.strokeWidth = max(1.4f, rs * (if (i == 3) 1.6f else 1.1f))
-                    p.color = VoxelArt.alpha(if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.7f * spf)
-                    c.drawLine(bx, by, bx + dx * len, by + dy * len, p)
-                }
-                p.strokeCap = Paint.Cap.BUTT
-                p.style = Paint.Style.FILL
-            }
-        } else {
-            dashBurst = false
         }
+        if (!rolling || dashPh == 2) dashBurst = false
+        if (!rolling || dashPh != 3) touchBurst = false
 
         // ── partículas ──
         p.style = Paint.Style.FILL

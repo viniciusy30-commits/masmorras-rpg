@@ -559,6 +559,11 @@ class GameView @JvmOverloads constructor(
         snd("teleport_in", 0.85f)
     }
 
+    /** Soltou o botão de rolar: o dash do Luffy deixa de carregar e é lançado. */
+    fun rollRelease() {
+        player?.luffyHeld = false
+    }
+
     fun roll() {
         val p = player ?: return
         if (gameOver) return
@@ -2589,6 +2594,7 @@ class GameView @JvmOverloads constructor(
         } else {
             if (!playerBlocked(p, tx2, oldY)) p.x = tx2
             if (!playerBlocked(p, p.x, ty2)) p.y = ty2
+            if (p.classe == Classe.LUFFY) p.luffyBump(dt)
             if (p.rolling) p.rollT = (p.rollT - dt * 2f).coerceAtLeast(0f)
             if (p.voltT > 0f) p.voltT = (p.voltT - dt * 2f).coerceAtLeast(0f)
             if (p.ichiT > 0f) p.ichiT = (p.ichiT - dt * 2f).coerceAtLeast(0f)
@@ -2604,6 +2610,11 @@ class GameView @JvmOverloads constructor(
             noLandSnd = false
             p.landed = 0f
         }
+        if (p.luffyLaunchReq) {
+            p.luffyLaunchReq = false
+            snd("dash", 0.95f, 0.9f * vary())
+            burst(p.x, p.y + p.radius * 0.55f - p.ground, 8, 0xFFB8B0A8.toInt())
+        }
         // passos: um a cada tantos pixels andados no chão
         if (p.grounded && !p.rolling && !p.flying && !p.skilling && p.flipT <= 0f) {
             stepAcc += hypot(p.x - oldX, p.y - oldY)
@@ -2615,7 +2626,7 @@ class GameView @JvmOverloads constructor(
                 snd("step" + (1 + stepIdx % 3), if (heavy) 0.5f else 0.32f, vary() * (if (heavy) 0.82f else 1f))
             }
         } else stepAcc = 0f
-        if (p.rolling && Random.nextInt(3) == 0) {
+        if (p.rolling && (p.classe != Classe.LUFFY || p.luffyPh == 3) && Random.nextInt(3) == 0) {
             burst(p.x, p.y + p.radius * 0.55f - p.ground, 1, 0xFFB8B0A8.toInt())
         }
 
@@ -2647,7 +2658,7 @@ class GameView @JvmOverloads constructor(
             e.ground = map.heightAt(e.x, e.y)
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
-            if (e.stunT <= 0f && !p.rolling && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+            if (e.stunT <= 0f && !p.invuln && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage * (1f - p.defesaH))
                 snd("player_hurt", 1f, vary())
                 e.lastHit = now

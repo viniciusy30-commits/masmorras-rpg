@@ -354,8 +354,31 @@ class MainActivity : AppCompatActivity() {
         gameView.onWeapon = { w ->
             runOnUiThread { btnAttack.setImageResource(if (w == 1) R.drawable.hd_ic_spear else R.drawable.hd_ic_sword) }
         }
-        findViewById<View>(R.id.btnRoll).setOnClickListener {
-            gameView.roll()
+        findViewById<View>(R.id.btnRoll).apply {
+            setOnClickListener {
+                if (gameView.getPlayer()?.classe != Classe.LUFFY) gameView.roll()
+            }
+            // Luffy: o dash estilingue começa ao apertar e carrega enquanto segura; soltar lança
+            setOnTouchListener { v, ev ->
+                if (gameView.getPlayer()?.classe == Classe.LUFFY) {
+                    when (ev.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> {
+                            v.isPressed = true
+                            gameView.roll()
+                        }
+                        MotionEvent.ACTION_UP -> {
+                            v.isPressed = false
+                            gameView.rollRelease()
+                            v.performClick()
+                        }
+                        MotionEvent.ACTION_CANCEL -> {
+                            v.isPressed = false
+                            gameView.rollRelease()
+                        }
+                    }
+                    true
+                } else false
+            }
         }
 
         val chargeRing = findViewById<ChargeRingView>(R.id.chargeRing)

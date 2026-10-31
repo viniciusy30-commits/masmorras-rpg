@@ -1,7 +1,12 @@
-Ichigo - katana, gola, cor da espada e andar no ceu
+Luffy - novo dash estilingue (segurar para ir mais longe, arco alto, giro deitado, rolagem e levantar)
 Arquivos (todos em app/src/main/java/com/viniciusy/masmorras/):
-- Ichigo3D.kt  : katana nova, gola sem branco no queixo, animacao de andar no ceu
-- Entity.kt    : nova plataforma de reiatsu sob os pes (so o bloco do Ichigo no ceu foi trocado)
-- GameView.kt  : particulas e rastro de reiatsu ao andar no ceu
-ATENCAO: Entity.kt e GameView.kt sao os da pasta app do projeto enviado; substituem os atuais.
-NAO FOI COMPILADO. Se o build falhar, mande o log.
+- Luffy3D.kt     : nova animacao. Fase 1 carrega (maos agarram o chao, corpo e puxado para tras e treme com a carga),
+                   fase 2 voo deitado girando em torno do proprio eixo (1 volta, ou 2 com carga alta), bracos a frente,
+                   fase 3 pousa de mergulho, rola para a frente e levanta de pe. Poeira, faiscas de carga e rastro.
+- Entity.kt      : logica do dash em 3 fases (constantes LUFFY_* no topo da classe: alcance, altura, tempos).
+                   Toque rapido ~230 px no total; segurando ate a carga cheia ~550 px (a carga enche em 0,55 s).
+                   Enquanto carrega o Luffy fica vulneravel; no voo e na rolagem fica imune a contato.
+- GameView.kt    : rollRelease() (soltar o botao), som/poeira do lancamento, perde velocidade ao bater na parede.
+- MainActivity.kt: botao de rolar do Luffy agora reage ao apertar e ao soltar (outras classes continuam no clique).
+Dica: o analogico ainda mira a direcao enquanto o botao esta segurado.
+NAO FOI COMPILADO nem testado no aparelho. Se o build falhar, mande o log.
