@@ -67,6 +67,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvSkill4Cd: TextView
     private lateinit var hudLayer: View
     private val prevCd = FloatArray(5)
+    private var soruShown = false
     private var ichiHolShown = false
     private lateinit var shadowTimer: ShadowTimerView
     private lateinit var btnRoll: android.widget.ImageButton
@@ -451,6 +452,14 @@ class MainActivity : AppCompatActivity() {
                         prevCd[0] = c
                         tvSkill1Cd.text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
                         btnSkill1.alpha = if (pronto) 1f else 0.45f
+                        // no Gear Second o botão de dash vira Soru
+                        val soruMode = p.g2T > 0f
+                        if (soruMode != soruShown) {
+                            soruShown = soruMode
+                            btnRoll.setImageResource(if (soruMode) R.drawable.hd_ic_luffy_soru else R.drawable.hd_ic_roll)
+                            btnRoll.contentDescription = if (soruMode) "Soru" else "Rolar"
+                        }
+                        btnRoll.alpha = if (soruMode && !p.soruReady(System.currentTimeMillis())) 0.45f else 1f
                         // Gear Second: enquanto ligado mostra os segundos que faltam; depois, a recarga
                         val c2 = p.skillCd(2, System.currentTimeMillis())
                         val ativo = p.g2T > 0f
@@ -667,6 +676,7 @@ class MainActivity : AppCompatActivity() {
             btnRoll.contentDescription = "Rolar"
         }
         btnRoll.alpha = 1f
+        soruShown = false
         shadowTimer.clear()
         if (classe == Classe.NINJA) {
             btnSkill1.setImageResource(R.drawable.hd_ic_nin_q)

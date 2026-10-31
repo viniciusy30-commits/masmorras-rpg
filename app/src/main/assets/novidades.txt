@@ -1,6 +1,12 @@
+#id 2026-10-31-luffy-gear-second-soru
+#titulo Luffy: soco instantâneo e Soru no Gear Second
+- Soco básico no Gear Second: o Luffy só levanta o braço de leve, rapidíssimo (cerca de 0,26 s por soco), e o impacto estoura direto no inimigo com clarões e estrelas, sem o braço esticar até lá. Dá a sensação de velocidade absurda, que nem dá para ver o golpe
+- Dash no Gear Second vira o Soru: o botão de dash troca de ícone, o Luffy some de tão rápido por 1 s (fica só um anel rosa no chão e fitas de velocidade), corre quase 4x mais rápido e é imune a dano. Você controla a direção com o joystick; sem joystick ele segue em frente. Recarga de 3,5 s depois que acaba. Ao sumir e ao reaparecer sai uma explosão de vapor
+- Fora do Gear Second o dash estilingue continua como antes
+
 #id 2026-10-31-luffy-gear-second
 #titulo Luffy: Gomu Gomu no Gear Second
-- Skill nova (botão de skill 2): o Luffy se agacha e bombeia o sangue com o braço como um pistão, o corpo treme e a pele vai esquentando até ficar rosa-avermelhada, soltando vapor. No fim, explosão de vapor com anel de choque e o peito estufa, como no anime
+- Skill nova (botão de skill 2): como no anime, o Luffy abre bem as pernas, apoia o punho esquerdo no chão e bombeia o sangue com o braço direito ao lado da coxa, cada vez mais rápido (cerca de 2,8 s). O corpo treme e a pele esquenta até ficar rosa-avermelhada, com vapor fino saindo por trás do corpo. No fim, explosão de vapor com anel de choque, ele levanta e estufa o peito
 - Buff de 16 s: velocidade de movimento +40%, socos 50% mais rápidos e +30% de dano (vale também para o Gatling, que vira um Jet Gatling cercado de vapor)
 - Durante o Gear Second: pele rosa, aura vermelha pulsando, vapor constante saindo do corpo, riscos de velocidade ao correr e vapor extra a cada soco
 - O botão mostra os segundos restantes do buff e, depois, a recarga (12 s depois que o buff acaba)

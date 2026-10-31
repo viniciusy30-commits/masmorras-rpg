@@ -127,6 +127,12 @@ class Player(
         const val LUFFY_G2_SPD = 1.4f      // velocidade de movimento
         const val LUFFY_G2_ATK = 1.5f      // velocidade dos socos (animação e recarga)
         const val LUFFY_G2_DMG = 1.3f      // dano
+        const val LUFFY_G2_RATE = 3.8f     // Gear Second: o soco é só um tranco rápido de braço (animação de 0,26 s)
+        const val LUFFY_G2_PUNCH_CD = 230L // Gear Second: recarga do soco básico (ms)
+        // Soru (dash do Gear Second): fica invisível de tão rápido, controlável pelo joystick
+        const val LUFFY_SORU_T = 1.0f      // duração (s)
+        const val LUFFY_SORU_SPD = 2.8f    // multiplicador de velocidade (além do +40% do Gear Second)
+        const val LUFFY_SORU_CD = 3500L    // recarga depois que acaba (ms)
         const val LUFFY_GAT_DMG = 0.16f    // dano de cada soco (x dano do herói); são Luffy3D.GAT_N = 60 socos (total 9,6x; antes 16 x 0,5 = 8x)
         const val EXPL_RATE_1 = 1.55f      // velocidade dos 2 primeiros estalos do chicote do Explorador
         const val EXPL_RATE_3 = 1.2f       // velocidade da chicotada por cima
@@ -238,6 +244,10 @@ class Player(
     var luffyGatReadyAt = 0L // Gatling: instante em que a recarga acaba
     var luffyG2ReadyAt = 0L  // Gear Second: instante em que a recarga acaba
     var g2T = 0f             // Gear Second: segundos restantes do buff (0 = desligado)
+    var soruT = 0f           // Soru: segundos restantes (0 = fora)
+    var soruDX = 0f          // direção atual do Soru (unitária); o joystick muda
+    var soruDY = 1f
+    var luffySoruReadyAt = 0L
     var gatPtN = 0           // Gatling: inimigos dentro do retângulo (frente, lado em px), preenchido pelo GameView
     val gatPtF = FloatArray(6)
     val gatPtU = FloatArray(6)
@@ -262,7 +272,7 @@ class Player(
     val rolling: Boolean get() = rollT > 0f
 
     /** Imune a contato: rolando, exceto o Luffy ainda carregando o dash (aí ele está parado e vulnerável). */
-    val invuln: Boolean get() = rolling && !(classe == Classe.LUFFY && luffyPh == 1)
+    val invuln: Boolean get() = (rolling && !(classe == Classe.LUFFY && luffyPh == 1)) || soruT > 0f
     val grounded: Boolean get() = alt <= ground + 0.6f && vz <= 0f
 
     // combo do guerreiro: 0 corte diagonal, 1 corte vertical (volta), 2 estocada; 3 = golpe forte
@@ -468,13 +478,13 @@ class Player(
     fun ichiCost(k: Int): Float = (if (hollow) ICHI_COST_H else ICHI_COST_N)[k.coerceIn(1, 5)]
 
     fun canAttack(now: Long): Boolean {
-        if (rolling || swinging || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
+        if (soruT > 0f || rolling || swinging || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
         if (classe == Classe.LUFFY && (heliCharging || heli)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
-        else if (classe == Classe.LUFFY) (LUFFY_PUNCH_CD / (if (g2T > 0f) LUFFY_G2_ATK else 1f)).toLong()
+        else if (classe == Classe.LUFFY) (if (g2T > 0f) LUFFY_G2_PUNCH_CD else LUFFY_PUNCH_CD)
         else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 760L else 560L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
@@ -524,7 +534,7 @@ class Player(
             // soco direto no alvo: alterna a mão direita e a esquerda
             comboStep = if (comboStep == 0) 1 else 0
             swing = comboStep
-            attackRate = LUFFY_RATE_1 * (if (g2T > 0f) LUFFY_G2_ATK else 1f)
+            attackRate = if (g2T > 0f) LUFFY_G2_RATE else LUFFY_RATE_1
         }
         if (classe == Classe.EXPLORADOR) {
             // combo de 3: estalo de direita, estalo de revés e chicotada por cima
@@ -634,6 +644,21 @@ class Player(
     /** Dash do botão de rolar (só Ichigo): pronto quando não há skill, avanço ou recarga em andamento. */
     fun ichiDashReady(now: Long): Boolean =
         classe == Classe.ICHIGO && alive && skillK == 0 && ichiT <= 0f && !rolling && now - lastIchiDash >= ICHI_DASH_CD
+
+    /** Soru: só no Gear Second, parado em qualquer outra ação e fora da recarga. */
+    fun soruReady(now: Long): Boolean =
+        classe == Classe.LUFFY && alive && g2T > 0f && soruT <= 0f && skillK == 0 && !rolling && luffyPh == 0 &&
+            !heli && !heliCharging && now >= luffySoruReadyAt
+
+    fun startSoru(now: Long, dx: Float, dy: Float) {
+        soruT = LUFFY_SORU_T
+        soruDX = dx
+        soruDY = dy
+        facingX = dx
+        facingY = dy
+        attackAnim = 0f
+        luffySoruReadyAt = now + (LUFFY_SORU_T * 1000f).toLong() + LUFFY_SORU_CD
+    }
 
     fun skillReady(k: Int, now: Long): Boolean {
         if (classe == Classe.ICHIGO) {
@@ -1174,9 +1199,23 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0f else 1f) * (if (classe == Classe.LUFFY && attackAnim > 0f) 0.45f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else if (classe == Classe.LUFFY) 0f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f) * (if (classe == Classe.LUFFY && g2T > 0f) LUFFY_G2_SPD else 1f)
-            vx = inX * velH * 60f * slow * spdMul + momX
-            vy = inY * velH * 60f * slow * spdMul + momY
+            var ix = inX
+            var iy = inY
+            if (classe == Classe.LUFFY && soruT > 0f) {
+                // Soru: sempre em velocidade máxima; o joystick vira o rumo, sem joystick segue o último
+                val il = hypot(inX, inY)
+                if (il > 0.15f) {
+                    soruDX = inX / il
+                    soruDY = inY / il
+                }
+                ix = soruDX
+                iy = soruDY
+                facingX = soruDX
+                facingY = soruDY
+            }
+            val slow = if (classe == Classe.LUFFY && soruT > 0f) LUFFY_SORU_SPD * LUFFY_G2_SPD else (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0f else 1f) * (if (classe == Classe.LUFFY && attackAnim > 0f) 0.45f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else if (classe == Classe.LUFFY) 0f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f) * (if (classe == Classe.LUFFY && g2T > 0f) LUFFY_G2_SPD else 1f)
+            vx = ix * velH * 60f * slow * spdMul + momX
+            vy = iy * velH * 60f * slow * spdMul + momY
             val md = max(0f, 1f - dt * 2.0f)
             momX *= md
             momY *= md
@@ -1208,6 +1247,7 @@ class Player(
         if (g2T > 0f) {
             g2T = if (alive) max(0f, g2T - dt) else 0f
         }
+        if (soruT > 0f) soruT = if (alive) max(0f, soruT - dt) else 0f
         if (classe == Classe.MAGO) {
             if (flying) {
                 fuel -= dt
@@ -1416,7 +1456,11 @@ class Player(
         Luffy3D.anchorTY = (luffyAY + radius * 0.55f - alt - camY - drawY) / squashY
         Luffy3D.dashVX = vx
         Luffy3D.dashVY = vy
-        Luffy3D.alphaV = 1f
+        // Soru: some quase por completo (some em 0,08 s e volta em 0,15 s)
+        Luffy3D.alphaV = if (classe == Classe.LUFFY && soruT > 0f) {
+            val el = LUFFY_SORU_T - soruT
+            if (el < 0.08f) 1f - el / 0.08f else if (soruT < 0.15f) 1f - soruT / 0.15f else 0.03f
+        } else 1f
         Explorer3D.rollP = if (classe == Classe.EXPLORADOR && rollT > 0f) 1f - rollT / rollDur else -1f
         Explorer3D.inAir = up > 1f
         Explorer3D.airH = up

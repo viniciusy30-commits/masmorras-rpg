@@ -708,6 +708,10 @@ class GameView @JvmOverloads constructor(
     fun roll() {
         val p = player ?: return
         if (gameOver) return
+        if (p.classe == Classe.LUFFY && p.g2T > 0f) {
+            luffySoru(p)
+            return
+        }
         if (p.swinging) {
             // rolar enquanto balança = soltar a corda
             explorerSwingEnd(p)
@@ -1473,6 +1477,119 @@ class GameView @JvmOverloads constructor(
 
     /** Todo quadro: marca quem está no retângulo (os punhos miram neles) e aplica os socos que já chegaram na hora de acertar. */
     private var g2PumpIdx = 0
+
+    // Soru: rastro (x0, y0, x1, y1, idade) e impactos instantâneos do soco do Gear Second (x, y, idade, rotação)
+    private val soruTr = ArrayList<FloatArray>()
+    private val g2Hits = ArrayList<FloatArray>()
+    private var soruWas = false
+    private var soruLX = 0f
+    private var soruLY = 0f
+
+    private fun soruPuff(x: Float, y: Float) {
+        burst(x, y, 9, 0xFFFFFFFF.toInt())
+        burst(x, y, 8, 0xFFFF7C86.toInt())
+        shake = max(shake, 0.06f)
+    }
+
+    /** Soru: some de tão rápido por 1 s e corre controlado pelo joystick. */
+    private fun luffySoru(p: Player) {
+        val now = System.currentTimeMillis()
+        if (!p.soruReady(now)) {
+            snd("ui_error", 0.4f)
+            return
+        }
+        var dx = p.inX
+        var dy = p.inY
+        if (hypot(dx, dy) < 0.15f) {
+            dx = p.facingX
+            dy = p.facingY
+        }
+        val l = hypot(dx, dy).coerceAtLeast(0.001f)
+        p.startSoru(now, dx / l, dy / l)
+        pendingLuffyT = -1f
+        luffyHitTarget = null
+        luffyAimT = null
+        p.luffyTgtOn = false
+        queuedAt = 0L
+        soruTr.clear()
+        soruLX = p.x
+        soruLY = p.y - p.alt - 14f
+        soruPuff(p.x, p.y - p.alt - 14f)
+        snd("dash", 0.9f, 1.9f)
+        snd("teleport_in", 0.55f, 1.7f)
+    }
+
+    /** Todo quadro: rastro do Soru (fitas que somem), fim do Soru e envelhecimento dos impactos. */
+    private fun luffySoruUpdate(p: Player, dt: Float) {
+        val on = p.soruT > 0f && p.alive
+        val cy = p.y - p.alt - 14f
+        if (on) {
+            if (hypot(p.x - soruLX, cy - soruLY) > 0.5f) soruTr.add(floatArrayOf(soruLX, soruLY, p.x, cy, 0f))
+            if (Random.nextFloat() < dt * 40f) burst(p.x, cy, 1, if (Random.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFF7C86.toInt())
+            shake = max(shake, 0.02f)
+        }
+        if (soruWas && !on) {
+            soruPuff(p.x, cy)
+            snd("teleport_in", 0.7f, 1.3f)
+        }
+        soruWas = on
+        soruLX = p.x
+        soruLY = cy
+        val it1 = soruTr.iterator()
+        while (it1.hasNext()) {
+            val sg = it1.next()
+            sg[4] += dt
+            if (sg[4] > 0.45f) it1.remove()
+        }
+        val it2 = g2Hits.iterator()
+        while (it2.hasNext()) {
+            val h = it2.next()
+            h[2] += dt
+            if (h[2] > 0.22f) it2.remove()
+        }
+    }
+
+    private fun drawSoruFx(canvas: Canvas, p: Player) {
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
+        for (sg in soruTr) {
+            val a = (1f - sg[4] / 0.45f).coerceIn(0f, 1f)
+            paint.strokeWidth = 4f + 16f * a
+            paint.color = (((0.38f * a * 255f).toInt()) shl 24) or 0xFF4D5E
+            canvas.drawLine(sg[0] - camX, sg[1] - camY, sg[2] - camX, sg[3] - camY, paint)
+            paint.strokeWidth = 1.5f + 5f * a
+            paint.color = (((0.9f * a * 255f).toInt()) shl 24) or 0xFFFFFF
+            canvas.drawLine(sg[0] - camX, sg[1] - camY, sg[2] - camX, sg[3] - camY, paint)
+        }
+        paint.strokeCap = Paint.Cap.BUTT
+        // impactos instantâneos do soco do Gear Second: clarão + estrela no inimigo
+        for (h in g2Hits) {
+            val q = (h[2] / 0.22f).coerceIn(0f, 1f)
+            val cx = h[0] - camX
+            val cyy = h[1] - camY
+            paint.style = Paint.Style.FILL
+            paint.color = (((0.8f * (1f - q) * 255f).toInt()) shl 24) or 0xFFFFFF
+            canvas.drawCircle(cx, cyy, 5f + 13f * q, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeWidth = 2.5f
+            paint.color = (((0.95f * (1f - q) * 255f).toInt()) shl 24) or 0xFFE08A
+            for (k in 0..5) {
+                val ang = k * 1.0472f + h[3]
+                canvas.drawLine(cx + cos(ang) * (8f + 8f * q), cyy + sin(ang) * (8f + 8f * q), cx + cos(ang) * (16f + 16f * q), cyy + sin(ang) * (16f + 16f * q), paint)
+            }
+            paint.strokeCap = Paint.Cap.BUTT
+        }
+        // enquanto invisível, um anel rosa no chão mostra onde ele está
+        if (p.soruT > 0f && p.alive) {
+            val sx = p.x - camX
+            val feet = p.y - camY + p.radius * 0.55f - p.alt
+            paint.strokeWidth = 2.5f
+            paint.color = 0x99FF7C86.toInt()
+            canvas.drawOval(sx - 17f, feet - 11f, sx + 17f, feet + 11f, paint)
+        }
+        paint.style = Paint.Style.FILL
+    }
     private var g2Was = false
 
     private fun luffyG2Update(p: Player) {
@@ -1615,6 +1732,15 @@ class GameView @JvmOverloads constructor(
         burst(e.x, hy, 6, 0xFFFFE08A.toInt())
         burst(e.x, hy, 3, 0xFFFFFFFF.toInt())
         shake = max(shake, 0.07f)
+        if (p.g2T > 0f) {
+            // Gear Second: o braço mal se mexe, mas o impacto estoura direto no inimigo (vários clarões espalhados)
+            for (i in 0..2) {
+                val ox = (Random.nextFloat() - 0.5f) * e.radius * 1.1f
+                val oy = (Random.nextFloat() - 0.5f) * e.radius * 0.8f
+                g2Hits.add(floatArrayOf(e.x + ox, hy + oy, -0.04f * i, Random.nextFloat() * 1.0472f))
+                burst(e.x + ox, hy + oy, 3, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt())
+            }
+        }
     }
 
     /** Chicote: a corda estala numa faixa reta à frente; a chicotada por cima (3º golpe) vai mais longe, abre mais e bate mais forte. */
@@ -2739,7 +2865,7 @@ class GameView @JvmOverloads constructor(
             p.luffyTgtOn = false
             if (aimE != null && (!aimE.alive || p.attackAnim <= 0.001f)) luffyAimT = null
         }
-        if (p.classe == Classe.LUFFY) luffyGatUpdate(p)
+        if (p.classe == Classe.LUFFY) { luffyGatUpdate(p); luffySoruUpdate(p, dt) }
         if (pendingLuffyT >= 0f) {
             pendingLuffyT -= dt
             if (pendingLuffyT <= 0f) {
@@ -3118,7 +3244,7 @@ class GameView @JvmOverloads constructor(
         traps.forEach { it.draw(canvas, paint, camX, camY, time) }
         rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
         if (player?.classe == Classe.ARQUEIRO) sylv.drawGround(canvas, paint, camX, camY, time)
-        player?.let { if (it.classe == Classe.LUFFY) { drawLuffyTarget(canvas, it); drawGatArea(canvas, it) } }
+        player?.let { if (it.classe == Classe.LUFFY) { drawLuffyTarget(canvas, it); drawGatArea(canvas, it); drawSoruFx(canvas, it) } }
 
         drawList.clear()
         for (e in enemies) {

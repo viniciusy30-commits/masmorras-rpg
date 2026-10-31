@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#33FF4D5E"
+        android:pathData="M4,50 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0 Z"/>
+    <!-- fitas de velocidade -->
+    <path
+        android:strokeColor="#FFFF7C86"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:pathData="M10,40 L52,40 M4,56 L44,56"/>
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M12,40 L54,40 M6,56 L46,56 M16,70 L40,70 M20,26 L42,26"/>
+    <!-- silhueta fantasma do Luffy -->
+    <path
+        android:fillColor="#66FFFFFF"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineJoin="round"
+        android:pathData="M70,22 a9,9 0 1,0 18,0 a9,9 0 1,0 -18,0 Z M66,36 L92,36 L96,60 L86,60 L86,82 L74,82 L74,60 L64,60 Z"/>
+</vector>
