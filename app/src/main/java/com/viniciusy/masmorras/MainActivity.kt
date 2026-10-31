@@ -451,6 +451,13 @@ class MainActivity : AppCompatActivity() {
                         prevCd[0] = c
                         tvSkill1Cd.text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
                         btnSkill1.alpha = if (pronto) 1f else 0.45f
+                        // Gear Second: enquanto ligado mostra os segundos que faltam; depois, a recarga
+                        val c2 = p.skillCd(2, System.currentTimeMillis())
+                        val ativo = p.g2T > 0f
+                        if (prevCd[1] > 0f && c2 <= 0f) Sfx.play("ui_ping", 0.6f)
+                        prevCd[1] = c2
+                        tvSkill2Cd.text = if (ativo) Math.ceil(p.g2T.toDouble()).toInt().toString() else if (c2 > 0f) Math.ceil(c2.toDouble()).toInt().toString() else ""
+                        btnSkill2.alpha = if (ativo || (c2 <= 0f && !p.skilling)) 1f else 0.45f
                     }
                     if (p.classe == Classe.PIKACHU) {
                         val nowMs = System.currentTimeMillis()
@@ -643,7 +650,7 @@ class MainActivity : AppCompatActivity() {
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
         val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
-        val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
         val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
         if (classe == Classe.NINJA) {
@@ -670,6 +677,8 @@ class MainActivity : AppCompatActivity() {
         } else if (classe == Classe.LUFFY) {
             btnSkill1.setImageResource(R.drawable.hd_ic_luffy_gatling)
             btnSkill1.contentDescription = "Gomu Gomu no Gatling"
+            btnSkill2.setImageResource(R.drawable.hd_ic_luffy_gear2)
+            btnSkill2.contentDescription = "Gomu Gomu no Gear Second"
         } else if (classe == Classe.PIKACHU) {
             btnSkill1.setImageResource(R.drawable.hd_ic_pika_bolt)
             btnSkill2.setImageResource(R.drawable.hd_ic_pika_tail)

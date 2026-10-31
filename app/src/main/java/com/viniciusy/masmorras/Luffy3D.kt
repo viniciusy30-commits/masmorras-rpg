@@ -404,6 +404,22 @@ object Luffy3D {
 
     private fun lerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
+    private fun mixC(a: Int, b: Int, t: Float): Int {
+        val k = t.coerceIn(0f, 1f)
+        val r = ((a shr 16 and 255) * (1f - k) + (b shr 16 and 255) * k).toInt()
+        val g = ((a shr 8 and 255) * (1f - k) + (b shr 8 and 255) * k).toInt()
+        val bl = ((a and 255) * (1f - k) + (b and 255) * k).toInt()
+        return (0xFF shl 24) or (r shl 16) or (g shl 8) or bl
+    }
+
+    /** Pinta a pele do Luffy para o Gear Second (w = 0 normal, 1 rosa-avermelhado). */
+    private fun setSkin(w: Float) {
+        SKIN = mixC(SKIN_B, 0xFFF2677A.toInt(), w)
+        SKIN_L = mixC(SKIN_LB, 0xFFFF93A0.toInt(), w)
+        SKIN_D = mixC(SKIN_DB, 0xFFD6465E.toInt(), w)
+        SKIN_DD = mixC(SKIN_DDB, 0xFF9C2A42.toInt(), w)
+    }
+
     private fun ease(t: Float): Float {
         val x = t.coerceIn(0f, 1f)
         return x * x * (3f - 2f * x)
@@ -431,10 +447,15 @@ object Luffy3D {
     /** true = chapéu de palha na cabeça (visual clássico); false = pendurado nas costas. */
     private const val HAT_ON_HEAD = true
 
-    private val SKIN = 0xFFF2BF8C.toInt()
-    private val SKIN_L = 0xFFFBD3A6.toInt()
-    private val SKIN_D = 0xFFD99B68.toInt()
-    private val SKIN_DD = 0xFFB4744A.toInt()
+    private val SKIN_B = 0xFFF2BF8C.toInt()
+    private val SKIN_LB = 0xFFFBD3A6.toInt()
+    private val SKIN_DB = 0xFFD99B68.toInt()
+    private val SKIN_DDB = 0xFFB4744A.toInt()
+    // Gear Second: a pele fica rosa-avermelhada (sangue bombeado). As cores mudam por quadro em setSkin()
+    private var SKIN = SKIN_B
+    private var SKIN_L = SKIN_LB
+    private var SKIN_D = SKIN_DB
+    private var SKIN_DD = SKIN_DDB
     private val HAIR = 0xFF1B1722.toInt()
     private val HAIR_D = 0xFF0C0A12.toInt()
     private val RED = 0xFFD42A2E.toInt()
@@ -913,6 +934,10 @@ object Luffy3D {
     var gatPtN = 0         // inimigos dentro do retângulo (frente, lado) em px: os punhos miram neles
     val gatPtF = FloatArray(6)
     val gatPtU = FloatArray(6)
+    // Gomu Gomu no Gear Second (preenchido pelo Player): progresso 0..1 da animação de bombeamento (<0 = fora dela)
+    // e intensidade do buff (0..1, apaga no último segundo)
+    var g2P = -1f
+    var g2Act = 0f
     var heli = false       // pulo duplo: helicóptero ativo
     var heliT = 0f         // segundos desde a soltura do pulo carregado
     var heliCharge = -1f   // segundos segurando o pulo no chão (<0 = não está carregando)
@@ -1056,6 +1081,49 @@ object Luffy3D {
 
     /** Quanto o braço precisa esticar para o punho alcançar [len] unidades do modelo a partir do ombro. */
     private fun extFor(len: Float): Float = max(1f, (len - 2.8f) / 10.8f)
+
+    // ───────────── Gomu Gomu no Gear Second ─────────────
+    // Linha do tempo (s): 0 a 0,14 se agacha | 0,10 a G2_PUMP bombeia (braço direito vai e vem como pistão, o corpo treme,
+    // a pele esquenta e o vapor aumenta; a frequência sobe) | G2_PUMP: explosão de vapor + anel de choque, o peito se estufa
+    // e os braços abrem | volta à postura em pé até G2_DUR. Depois o buff fica ligado: pele rosa, vapor constante,
+    // aura vermelha, rastros de velocidade ao correr e vapor extra nos socos.
+    const val G2_DUR = 1.45f
+    const val G2_PUMP = 1.08f
+
+    /** Ciclos de bombeamento acumulados em [tg] segundos (a frequência sobe com o tempo). */
+    fun g2Cyc(tg: Float): Float = 4.5f * tg + 2f * tg * tg
+
+    private const val NST = 150
+    private val stX = FloatArray(NST)
+    private val stY = FloatArray(NST)
+    private val stVx = FloatArray(NST)
+    private val stVy = FloatArray(NST)
+    private val stL = FloatArray(NST)
+    private val stM = FloatArray(NST)
+    private val stS = FloatArray(NST)
+    private val stK = IntArray(NST)     // 0 = nuvem de vapor, 1 = risco de velocidade
+    private var stNext = 0
+    private var stAcc = 0f
+    private var stStreakAcc = 0f
+    private var g2W = 0f                // peso visual suavizado (tinta da pele, aura)
+    private var g2Burst = false
+    private var g2Ring = -1f
+    private var g2Flash = -1f
+    private var pwx = 0f
+    private var pwy = 0f
+
+    private fun emitSteam(x: Float, y: Float, vx: Float, vy: Float, life: Float, size: Float, kind: Int = 0) {
+        val i = stNext
+        stNext = (stNext + 1) % NST
+        stX[i] = x
+        stY[i] = y
+        stVx[i] = vx
+        stVy[i] = vy
+        stL[i] = life
+        stM[i] = life
+        stS[i] = size
+        stK[i] = kind
+    }
 
     // ───────────── Gomu Gomu no Gatling ─────────────
     // Linha do tempo (s): preparação até GAT_WIND; socos alternados, um impacto a cada GAT_DT a partir de GAT_T0
@@ -1360,6 +1428,12 @@ object Luffy3D {
         lastNs = now
         clock += dt
         val rnd = kotlin.random.Random
+
+        // ── Gear Second: tinta da pele (sobe durante o bombeamento, depois segue o buff) ──
+        val tg2 = if (g2P >= 0f) g2P * G2_DUR else -1f
+        val tintW = if (tg2 >= 0f) ease((tg2 - 0.1f) / (G2_PUMP - 0.1f)) else g2Act
+        g2W = if (first) tintW else g2W + (tintW - g2W) * min(1f, dt * 12f)
+        setSkin(g2W)
 
         // ── mira em coordenadas do modelo ──
         // O modelo é achatado na vertical (y da tela = z*SINP - altura*COSP), então um alvo em px de tela precisa ser
@@ -1869,6 +1943,14 @@ object Luffy3D {
                     val sp0 = (14f + rnd.nextFloat() * 34f) * rs
                     emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0, 0.3f, rs * 40f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
                 }
+                if (g2W > 0.3f) {
+                    // Gear Second: o soco sai soltando vapor
+                    for (i in 0..5) {
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (20f + rnd.nextFloat() * 40f) * rs
+                        emitSteam(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0 - 10f * rs, 0.4f + rnd.nextFloat() * 0.3f, (2.4f + rnd.nextFloat() * 2f) * rs)
+                    }
+                }
             }
         } else {
             released = false
@@ -1957,6 +2039,39 @@ object Luffy3D {
             gatGhAcc = 0f
         }
 
+        // ── Gomu Gomu no Gear Second: bombeamento ──
+        // agacha de pernas abertas e o braço direito bombeia como um pistão ao lado da perna (frequência crescente),
+        // o esquerdo fica fechado junto ao peito; o corpo treme. Na explosão o peito estufa e os braços abrem.
+        var g2IK = false
+        if (tg2 >= 0f && rollW < 0.5f && !gatOn) {
+            g2IK = true
+            val tt = tg2
+            val inW = ease(tt / 0.14f)
+            val outW = 1f - smoother((tt - 1.2f) / (G2_DUR - 1.2f))
+            val wB = inW * outW
+            val ph = TWO_PI * g2Cyc(min(tt, G2_PUMP))
+            val pumpAmt = ease((tt - 0.1f) / 0.15f) * (1f - ease((tt - G2_PUMP) / 0.08f))
+            val flex = ease((tt - G2_PUMP) / 0.12f)
+            val sn = sin(ph)
+            val sn2 = sin(ph + 1.3f)
+            val shake = sin(clock * 75f) * pumpAmt
+            lean = lerp(lean, lerp(0.40f + 0.07f * sn * pumpAmt, -0.14f, flex), wB)
+            crouch = lerp(crouch, lerp(0.85f + 0.10f * abs(sn) * pumpAmt, 0.1f, flex), wB)
+            bodyZ = lerp(bodyZ, lerp(-0.9f * pumpAmt * (0.5f + 0.5f * sn), 0.6f, flex), wB)
+            chestTw = lerp(chestTw, 0.2f * sn * pumpAmt, wB)
+            hipTw = lerp(hipTw, 0.05f * shake, wB)
+            tilt = lerp(tilt, 0.09f * sn2 * pumpAmt + 0.025f * shake, wB)
+            shout = max(shout, wB * (0.45f * pumpAmt + flex))
+            legB = lerp(legB, 0.25f * pumpAmt, wB)
+            gatSplay = lerp(0.12f, 0.22f, flex) * wB
+            rsh = lerp(rsh, lerp(0.2f + 0.65f * sn * pumpAmt, -0.25f, flex), wB)
+            rshZ = lerp(rshZ, lerp(0.16f, 1.0f, flex), wB)
+            rel = lerp(rel, lerp(-1.0f - 0.85f * sn2 * pumpAmt, -0.35f, flex), wB)
+            lsh = lerp(lsh, lerp(-0.7f + 0.2f * sn2 * pumpAmt, -0.25f, flex), wB)
+            lshZ = lerp(lshZ, lerp(0.3f, 1.0f, flex), wB)
+            lel = lerp(lel, lerp(-1.9f + 0.25f * sn * pumpAmt, -0.35f, flex), wB)
+        }
+
         // suaviza a pose (o golpe mantém o ritmo; transições entre estados não dão tranco)
         pt[0] = lean; pt[1] = hipTw; pt[2] = chestTw; pt[3] = rsh; pt[4] = rshZ; pt[5] = rel
         pt[6] = 0f; pt[7] = lsh; pt[8] = lshZ; pt[9] = lel; pt[10] = 0f; pt[11] = hd
@@ -1967,7 +2082,7 @@ object Luffy3D {
         } else {
             var k = min(1f, dt * (if (attacking) 34f else 18f))
             // soco por IK e mãos presas no chão usam a pose exata (qualquer atraso faria o punho / as mãos escorregarem)
-            if (punchIK || gatIK) k = 1f
+            if (punchIK || gatIK || g2IK) k = 1f
             else if (plant && aimOn) k = lerp(k, 1f, ((rollW - 0.5f) * 2f).coerceIn(0f, 1f))
             for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
             // o esticar do braço não pode atrasar: o punho tem que chegar junto com o golpe
@@ -2166,6 +2281,84 @@ object Luffy3D {
             p.style = Paint.Style.FILL
         }
 
+        // ── Gatling: braços-fantasma ficam ATRÁS do corpo (a cabeça/chapéu cobre), vermelhos como o braço real ──
+        if (gatIK) {
+            for (i in 0 until NG) {
+                if (gfL[i] <= 0f || gfK[i] != 2) continue
+                val a = (gfL[i] / gfM[i]).coerceIn(0f, 1f)
+                val cx = fx + gfX[i]
+                val cy = fy + gfY[i]
+                val sx = fx + gfSX[i]
+                val sy = fy + gfSY[i]
+                p.strokeCap = Paint.Cap.ROUND
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2.2f, rs * 3.8f)
+                p.color = VoxelArt.alpha(RED_D, 0.6f * a)
+                c.drawLine(sx, sy, cx, cy, p)
+                p.strokeWidth = max(1.4f, rs * 2.3f)
+                p.color = VoxelArt.alpha(RED, 0.75f * a)
+                c.drawLine(sx, sy, cx, cy, p)
+                p.strokeCap = Paint.Cap.BUTT
+                val h = rs * 3.2f
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(SKIN, 0.85f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(1f, rs * 0.9f)
+                p.color = VoxelArt.alpha(SKIN_DD, 0.9f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.FILL
+            }
+        }
+
+        // ── Gear Second: aura vermelha e anel no chão (atrás do corpo) + anel de choque da explosão ──
+        if (tg2 >= G2_PUMP && !g2Burst) {
+            g2Burst = true
+            g2Ring = 0f
+            g2Flash = 0f
+            val bcy = fy - 13f * COSP * rs
+            for (i in 0..49) {
+                val ang = rnd.nextFloat() * TWO_PI
+                val sp0 = (40f + rnd.nextFloat() * 90f) * rs
+                emitSteam(fx + cos(ang) * 6f * rs, bcy + sin(ang) * 6f * rs, cos(ang) * sp0, sin(ang) * sp0 * 0.65f - 18f * rs, 0.6f + rnd.nextFloat() * 0.5f, (3.5f + rnd.nextFloat() * 3.5f) * rs)
+            }
+        }
+        if (tg2 < 0f && g2Act <= 0f) g2Burst = false
+        if (g2W > 0.02f) {
+            val ccx = fx
+            val ccy = fy - 13f * COSP * rs
+            val pul = 1f + 0.06f * sin(clock * 9f)
+            p.style = Paint.Style.FILL
+            p.color = VoxelArt.alpha(0xFFFF4D5E.toInt(), 0.07f * g2W)
+            c.drawCircle(ccx, ccy, 25f * rs * pul, p)
+            p.color = VoxelArt.alpha(0xFFFF7C86.toInt(), 0.09f * g2W)
+            c.drawCircle(ccx, ccy, 17f * rs * pul, p)
+            heliRect.set(fx - 14f * rs * pul, fy - 14f * rs * pul * SINP, fx + 14f * rs * pul, fy + 14f * rs * pul * SINP)
+            p.style = Paint.Style.STROKE
+            p.strokeWidth = max(1.5f, 1.6f * rs)
+            p.color = VoxelArt.alpha(0xFFFF8A94.toInt(), 0.5f * g2W)
+            c.drawOval(heliRect, p)
+            p.style = Paint.Style.FILL
+        }
+        if (g2Ring >= 0f) {
+            g2Ring += dt
+            val q = g2Ring / 0.5f
+            if (q >= 1f) {
+                g2Ring = -1f
+            } else {
+                val rr = (10f + 52f * ease(q)) * rs
+                p.style = Paint.Style.STROKE
+                for (i in 0..1) {
+                    val r2 = rr * (1f - 0.22f * i)
+                    heliRect.set(fx - r2, fy - r2 * SINP, fx + r2, fy + r2 * SINP)
+                    p.strokeWidth = max(1.5f, (5f - 4f * q) * rs * (1f - 0.4f * i))
+                    p.color = VoxelArt.alpha(if (i == 0) 0xFFFFFFFF.toInt() else 0xFFFF7C86.toInt(), 0.85f * (1f - q))
+                    c.drawOval(heliRect, p)
+                }
+                p.style = Paint.Style.FILL
+            }
+        }
+
         flushZ(c)
 
         // ── helicóptero: arcos de vento girando em volta das pernas ──
@@ -2276,27 +2469,7 @@ object Luffy3D {
             val cx = fx + gfX[i]
             val cy = fy + gfY[i]
             if (gfK[i] == 2) {
-                // braço-fantasma: braço de borracha esticado do ombro até o punho, com contorno, sumindo rápido
-                val sx = fx + gfSX[i]
-                val sy = fy + gfSY[i]
-                p.strokeCap = Paint.Cap.ROUND
-                p.style = Paint.Style.STROKE
-                p.strokeWidth = max(2.2f, rs * 3.8f)
-                p.color = VoxelArt.alpha(0xFF8A4A2A.toInt(), 0.55f * a)
-                c.drawLine(sx, sy, cx, cy, p)
-                p.strokeWidth = max(1.4f, rs * 2.3f)
-                p.color = VoxelArt.alpha(0xFFF2BF8C.toInt(), 0.7f * a)
-                c.drawLine(sx, sy, cx, cy, p)
-                p.strokeCap = Paint.Cap.BUTT
-                val h = rs * 3.6f
-                p.style = Paint.Style.FILL
-                p.color = VoxelArt.alpha(0xFFF2BF8C.toInt(), 0.85f * a)
-                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
-                p.style = Paint.Style.STROKE
-                p.strokeWidth = max(1f, rs * 0.9f)
-                p.color = VoxelArt.alpha(0xFF8A4A2A.toInt(), 0.9f * a)
-                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
-                p.style = Paint.Style.FILL
+                // desenhado antes do corpo (ver acima): aqui só envelhece
             } else if (gfK[i] == 1) {
                 // punho-fantasma: quadradinho de pele com contorno que some rápido
                 val h = rs * 4.2f
@@ -2387,5 +2560,97 @@ object Luffy3D {
             p.color = (((a * 255f).toInt()) shl 24) or (spC[i] and 0x00FFFFFF)
             c.drawRect(spX[i] - sz, spY[i] - sz, spX[i] + sz, spY[i] + sz, p)
         }
+
+        // ── Gear Second: vapor saindo do corpo, rastros de velocidade e clarão da explosão ──
+        val pumping = tg2 in 0.1f..G2_PUMP
+        val vwx = if (first || pwx == 0f && pwy == 0f) 0f else (wx - pwx) / dt
+        val vwy = if (first || pwx == 0f && pwy == 0f) 0f else (wy - pwy) / dt
+        pwx = wx
+        pwy = wy
+        val sp2 = hypot(vwx, vwy)
+        val rate = if (pumping) 18f + 75f * ease((tg2 - 0.1f) / (G2_PUMP - 0.1f))
+        else if (g2W > 0.05f) (30f + (if (sp2 > 60f) 26f else 0f)) * g2W
+        else 0f
+        if (rate > 0f) {
+            stAcc += dt * rate
+            var cnt = 0
+            while (stAcc >= 1f && cnt < 6) {
+                stAcc -= 1f
+                cnt++
+                var ex: Float
+                var ey: Float
+                val pick = rnd.nextFloat()
+                if (pick < 0.3f) {
+                    val a = rnd.nextInt(2)                  // ombro
+                    ex = mkX[4 + a]
+                    ey = mkY[4 + a]
+                } else if (pick < 0.45f) {
+                    val a = rnd.nextInt(2)                  // punho
+                    ex = mkX[a]
+                    ey = mkY[a]
+                } else {
+                    ex = fx + (rnd.nextFloat() - 0.5f) * 13f * rs
+                    ey = fy - (2f + rnd.nextFloat() * 25f) * COSP * rs
+                }
+                emitSteam(ex, ey, (rnd.nextFloat() - 0.5f) * 16f * rs, -(22f + rnd.nextFloat() * 34f) * rs, 0.55f + rnd.nextFloat() * 0.55f, (2.4f + rnd.nextFloat() * 2.6f) * rs)
+            }
+        } else {
+            stAcc = 0f
+        }
+        if (g2Act > 0.5f && sp2 > 80f) {
+            stStreakAcc += dt * 45f
+            val ux = vwx / sp2
+            val uy = vwy / sp2
+            var cn2 = 0
+            while (stStreakAcc >= 1f && cn2 < 3) {
+                stStreakAcc -= 1f
+                cn2++
+                val sx = fx + (rnd.nextFloat() - 0.5f) * 16f * rs - ux * 8f * rs
+                val sy = fy - (3f + rnd.nextFloat() * 22f) * COSP * rs - uy * 4f * rs
+                val v0 = (200f + rnd.nextFloat() * 160f) * rs
+                emitSteam(sx, sy, -ux * v0, -uy * v0, 0.16f + rnd.nextFloat() * 0.08f, 1f, 1)
+            }
+        } else {
+            stStreakAcc = 0f
+        }
+        for (i in 0 until NST) {
+            if (stL[i] <= 0f) continue
+            stL[i] -= dt
+            stX[i] += stVx[i] * dt
+            stY[i] += stVy[i] * dt
+            val a = (stL[i] / stM[i]).coerceIn(0f, 1f)
+            if (stK[i] == 0) {
+                stVx[i] *= max(0f, 1f - dt * 1.6f)
+                stVy[i] *= max(0f, 1f - dt * 0.9f)
+                val r = stS[i] * (1f + 1.5f * (1f - a))
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.42f * a)
+                c.drawCircle(stX[i], stY[i], r, p)
+                p.color = VoxelArt.alpha(0xFFFFC2CA.toInt(), 0.25f * a)
+                c.drawCircle(stX[i] - r * 0.18f, stY[i] - r * 0.12f, r * 0.62f, p)
+            } else {
+                p.style = Paint.Style.STROKE
+                p.strokeCap = Paint.Cap.ROUND
+                p.strokeWidth = max(1f, rs * 0.9f)
+                p.color = VoxelArt.alpha(if (i % 3 == 0) 0xFFFFC2CA.toInt() else 0xFFFFFFFF.toInt(), 0.6f * a)
+                c.drawLine(stX[i], stY[i], stX[i] - stVx[i] * 0.06f, stY[i] - stVy[i] * 0.06f, p)
+                p.strokeCap = Paint.Cap.BUTT
+                p.style = Paint.Style.FILL
+            }
+        }
+        if (g2Flash >= 0f) {
+            g2Flash += dt
+            val q = g2Flash / 0.3f
+            if (q >= 1f) {
+                g2Flash = -1f
+            } else {
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.5f * (1f - q) * (1f - q))
+                c.drawCircle(fx, fy - 13f * COSP * rs, (18f + 34f * q) * rs, p)
+                p.color = VoxelArt.alpha(0xFFFF7C86.toInt(), 0.3f * (1f - q))
+                c.drawCircle(fx, fy - 13f * COSP * rs, (26f + 40f * q) * rs, p)
+            }
+        }
+        p.style = Paint.Style.FILL
     }
 }

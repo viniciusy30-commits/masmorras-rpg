@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#33FF4D5E"
+        android:pathData="M4,50 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0 Z"/>
+    <!-- vapor subindo -->
+    <path
+        android:fillColor="#AAFFFFFF"
+        android:pathData="M22,30 a8,8 0 1,0 16,0 a8,8 0 1,0 -16,0 Z"/>
+    <path
+        android:fillColor="#88FFFFFF"
+        android:pathData="M40,20 a10,10 0 1,0 20,0 a10,10 0 1,0 -20,0 Z"/>
+    <path
+        android:fillColor="#AAFFFFFF"
+        android:pathData="M62,28 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0 Z"/>
+    <path
+        android:fillColor="#66FFFFFF"
+        android:pathData="M74,14 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0 Z"/>
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M30,44 Q26,36 30,30 M50,38 Q46,30 50,24 M68,42 Q64,36 68,30"/>
+    <!-- punho rosa de borracha -->
+    <path
+        android:fillColor="#FFF2727D"
+        android:strokeColor="#FF7A1F2C"
+        android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M30,50 L66,50 Q80,50 80,62 L80,72 Q80,84 66,84 L36,84 Q24,84 24,72 L24,60 Q24,50 30,50 Z"/>
+    <path
+        android:strokeColor="#FF7A1F2C"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M46,52 L46,68 M60,52 L60,68 M32,68 L76,68"/>
+    <!-- brilho -->
+    <path
+        android:strokeColor="#CCFFC9D0"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M32,56 L40,56"/>
+</vector>

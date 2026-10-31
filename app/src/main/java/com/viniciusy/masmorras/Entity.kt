@@ -121,6 +121,12 @@ class Player(
         const val LUFFY_GAT_CD = 8000L     // recarga (ms)
         const val LUFFY_GAT_LEN = 240f     // comprimento do retângulo à frente do Luffy (px)
         const val LUFFY_GAT_HALFW = 64f    // meia largura do retângulo (px)
+        // Gomu Gomu no Gear Second (botão de skill 2): bombeia o sangue, a pele fica rosa e sai vapor. Buff temporário
+        const val LUFFY_G2_TIME = 16f      // duração do buff depois da animação (s)
+        const val LUFFY_G2_CD = 12000L     // recarga (ms), contada a partir do fim do buff
+        const val LUFFY_G2_SPD = 1.4f      // velocidade de movimento
+        const val LUFFY_G2_ATK = 1.5f      // velocidade dos socos (animação e recarga)
+        const val LUFFY_G2_DMG = 1.3f      // dano
         const val LUFFY_GAT_DMG = 0.16f    // dano de cada soco (x dano do herói); são Luffy3D.GAT_N = 60 socos (total 9,6x; antes 16 x 0,5 = 8x)
         const val EXPL_RATE_1 = 1.55f      // velocidade dos 2 primeiros estalos do chicote do Explorador
         const val EXPL_RATE_3 = 1.2f       // velocidade da chicotada por cima
@@ -173,7 +179,9 @@ class Player(
     val heroi: HeroiPerfil = Herois.perfil(classe)
     val maxMpH: Float = heroi.maxMp
     val velH: Float = heroi.velocidade
-    val danoH: Float = heroi.dano
+    private val danoBase: Float = heroi.dano
+    /** Dano do herói; o Luffy no Gear Second causa mais. */
+    val danoH: Float get() = danoBase * (if (classe == Classe.LUFFY && g2T > 0f) LUFFY_G2_DMG else 1f)
     val defesaH: Float = heroi.defesa
     val regenHpH: Float = heroi.regenHp
     val regenMpH: Float = heroi.regenMp
@@ -228,6 +236,8 @@ class Player(
     var luffyTgtR = 0f       // raio do alvo
     var heli = false         // Luffy: pulo carregado ativo (da soltura até pousar)
     var luffyGatReadyAt = 0L // Gatling: instante em que a recarga acaba
+    var luffyG2ReadyAt = 0L  // Gear Second: instante em que a recarga acaba
+    var g2T = 0f             // Gear Second: segundos restantes do buff (0 = desligado)
     var gatPtN = 0           // Gatling: inimigos dentro do retângulo (frente, lado em px), preenchido pelo GameView
     val gatPtF = FloatArray(6)
     val gatPtU = FloatArray(6)
@@ -464,7 +474,7 @@ class Player(
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
-        else if (classe == Classe.LUFFY) LUFFY_PUNCH_CD
+        else if (classe == Classe.LUFFY) (LUFFY_PUNCH_CD / (if (g2T > 0f) LUFFY_G2_ATK else 1f)).toLong()
         else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 760L else 560L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
@@ -514,7 +524,7 @@ class Player(
             // soco direto no alvo: alterna a mão direita e a esquerda
             comboStep = if (comboStep == 0) 1 else 0
             swing = comboStep
-            attackRate = LUFFY_RATE_1
+            attackRate = LUFFY_RATE_1 * (if (g2T > 0f) LUFFY_G2_ATK else 1f)
         }
         if (classe == Classe.EXPLORADOR) {
             // combo de 3: estalo de direita, estalo de revés e chicotada por cima
@@ -631,6 +641,7 @@ class Player(
             return k in 1..5 && alive && skillK == 0 && ichiT <= 0f && !rolling && (grounded || sky) && now >= rd[k] && mp >= ichiCost(k)
         }
         if (classe == Classe.LUFFY) {
+            if (k == 2) return alive && skillK == 0 && !rolling && grounded && luffyPh == 0 && !heli && !heliCharging && !swinging && g2T <= 0f && now >= luffyG2ReadyAt
             return k == 1 && alive && skillK == 0 && !rolling && grounded && luffyPh == 0 && !heli && !heliCharging && !swinging && now >= luffyGatReadyAt
         }
         if (classe == Classe.PIKACHU) {
@@ -649,7 +660,7 @@ class Player(
             val rd = if (hollow) ichiReadyH else ichiReadyN
             return if (k in 1..5) ((rd[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         }
-        if (classe == Classe.LUFFY) return if (k == 1) ((luffyGatReadyAt - now) / 1000f).coerceAtLeast(0f) else 0f
+        if (classe == Classe.LUFFY) return if (k == 1) ((luffyGatReadyAt - now) / 1000f).coerceAtLeast(0f) else if (k == 2) ((luffyG2ReadyAt - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.PIKACHU) return if (k in 1..4) ((pikaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         if (classe == Classe.NINJA) return if (k in 1..4) ((ninjaReadyAt[k] - now) / 1000f).coerceAtLeast(0f) else 0f
         return (((if (k == 1) rainReadyAt else thunderReadyAt) - now) / 1000f).coerceAtLeast(0f)
@@ -664,8 +675,13 @@ class Player(
             mp -= ichiCost(k)
             if (hollow) ichiReadyH[k] = now + ICHI_CD_H[k] else ichiReadyN[k] = now + ICHI_CD_N[k]
         } else if (classe == Classe.LUFFY) {
-            skillDur = Luffy3D.GAT_DUR
-            luffyGatReadyAt = now + LUFFY_GAT_CD
+            if (k == 2) {
+                skillDur = Luffy3D.G2_DUR
+                luffyG2ReadyAt = now + ((Luffy3D.G2_DUR + LUFFY_G2_TIME) * 1000f).toLong() + LUFFY_G2_CD
+            } else {
+                skillDur = Luffy3D.GAT_DUR
+                luffyGatReadyAt = now + LUFFY_GAT_CD
+            }
         } else if (classe == Classe.PIKACHU) {
             skillDur = Pikachu3D.DUR[k]
             mp -= PIKA_COST[k]
@@ -1158,7 +1174,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0f else 1f) * (if (classe == Classe.LUFFY && attackAnim > 0f) 0.45f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else if (classe == Classe.LUFFY) 0f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0f else 1f) * (if (classe == Classe.LUFFY && attackAnim > 0f) 0.45f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else if (classe == Classe.LUFFY) 0f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f) * (if (classe == Classe.LUFFY && g2T > 0f) LUFFY_G2_SPD else 1f)
             vx = inX * velH * 60f * slow * spdMul + momX
             vy = inY * velH * 60f * slow * spdMul + momY
             val md = max(0f, 1f - dt * 2.0f)
@@ -1183,7 +1199,14 @@ class Player(
         if (tpT > 0f) tpT = (tpT - dt).coerceAtLeast(0f)
         if (skillK != 0) {
             skillT -= dt
-            if (skillT <= 0f) { skillT = 0f; skillK = 0 }
+            if (skillT <= 0f) {
+                if (classe == Classe.LUFFY && skillK == 2) g2T = LUFFY_G2_TIME   // terminou de bombear: o buff começa
+                skillT = 0f
+                skillK = 0
+            }
+        }
+        if (g2T > 0f) {
+            g2T = if (alive) max(0f, g2T - dt) else 0f
         }
         if (classe == Classe.MAGO) {
             if (flying) {
@@ -1360,6 +1383,8 @@ class Player(
             Luffy3D.gatPtF[gi] = gatPtF[gi]
             Luffy3D.gatPtU[gi] = gatPtU[gi]
         }
+        Luffy3D.g2P = if (classe == Classe.LUFFY && skillK == 2) 1f - skillT / skillDur else -1f
+        Luffy3D.g2Act = if (classe == Classe.LUFFY && g2T > 0f) min(1f, g2T) else 0f   // apaga devagar no último segundo
         Luffy3D.rollP = if (classe == Classe.LUFFY && luffyPh != 0) 0.5f else -1f
         Luffy3D.dashPh = if (classe == Classe.LUFFY) luffyPh else 0
         Luffy3D.dashU = when (luffyPh) {

@@ -1433,6 +1433,21 @@ class GameView @JvmOverloads constructor(
 
     /** Começa o Gatling: vira para o alvo (marcado ou mais perto), cancela o soco em andamento e fica plantado no chão. */
     private fun luffySkill(p: Player, k: Int) {
+        if (k == 2) {
+            // Gear Second: não mira em ninguém, só se prepara e bombeia o sangue
+            if (!p.startSkill(2, System.currentTimeMillis())) {
+                snd("ui_error", 0.5f)
+                return
+            }
+            pendingLuffyT = -1f
+            luffyHitTarget = null
+            luffyAimT = null
+            p.luffyTgtOn = false
+            queuedAt = 0L
+            g2PumpIdx = 0
+            snd("spell_charge", 0.8f, 0.7f)
+            return
+        }
         if (k != 1) return
         val tgt = luffyPickTarget(p)
         if (!p.startSkill(k, System.currentTimeMillis())) {
@@ -1457,7 +1472,32 @@ class GameView @JvmOverloads constructor(
     }
 
     /** Todo quadro: marca quem está no retângulo (os punhos miram neles) e aplica os socos que já chegaram na hora de acertar. */
+    private var g2PumpIdx = 0
+    private var g2Was = false
+
+    private fun luffyG2Update(p: Player) {
+        // cada bombeada da perna faz um "puf"
+        if (p.skillK == 2 && p.alive) {
+            val tg = (1f - p.skillT / p.skillDur) * Luffy3D.G2_DUR
+            val idx = Luffy3D.g2Cyc(kotlin.math.min(tg, Luffy3D.G2_PUMP)).toInt()
+            if (idx > g2PumpIdx) {
+                g2PumpIdx = idx
+                snd("dash", 0.4f, 0.7f + 0.06f * idx)
+                shake = max(shake, 0.015f + 0.004f * idx)
+            }
+        }
+        val on = p.g2T > 0f
+        if (on && !g2Was) {
+            snd("thunder_cast", 0.9f, 0.75f)
+            snd("hit_heavy", 0.6f, 0.6f)
+            shake = max(shake, 0.12f)
+            texts.add(DmgText(p.x, p.y - 84f - p.alt, "GEAR SECOND!", 1.3f, 0xFFFF7C86.toInt()))
+        }
+        g2Was = on
+    }
+
     private fun luffyGatUpdate(p: Player) {
+        luffyG2Update(p)
         if (p.skillK != 1 || !p.alive) {
             p.gatPtN = 0
             if (p.skillK == 0) gatIdx = 0

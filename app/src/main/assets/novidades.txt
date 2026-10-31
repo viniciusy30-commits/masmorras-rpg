@@ -1,3 +1,10 @@
+#id 2026-10-31-luffy-gear-second
+#titulo Luffy: Gomu Gomu no Gear Second
+- Skill nova (botão de skill 2): o Luffy se agacha e bombeia o sangue com o braço como um pistão, o corpo treme e a pele vai esquentando até ficar rosa-avermelhada, soltando vapor. No fim, explosão de vapor com anel de choque e o peito estufa, como no anime
+- Buff de 16 s: velocidade de movimento +40%, socos 50% mais rápidos e +30% de dano (vale também para o Gatling, que vira um Jet Gatling cercado de vapor)
+- Durante o Gear Second: pele rosa, aura vermelha pulsando, vapor constante saindo do corpo, riscos de velocidade ao correr e vapor extra a cada soco
+- O botão mostra os segundos restantes do buff e, depois, a recarga (12 s depois que o buff acaba)
+
 #id 2026-10-31-luffy-gatling-2
 #titulo Luffy: Gatling bem mais longo, rápido e cobrindo o retângulo todo
 - A barragem agora dura 3 s (antes 1,6 s): são 60 socos em vez de 16, e a skill inteira dura cerca de 4 s
