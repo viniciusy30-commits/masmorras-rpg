@@ -772,17 +772,6 @@ object Luffy3D {
     }
 
     /** Perna: coxa (bermuda azul em cima), joelho, canela e pé de sandália. Ângulo positivo = para trás. */
-    /**
-     * Gira o resto da perna em torno do eixo vertical do corpo (o ponto entre as duas pernas).
-     * Aplicado no joelho e no pé com ângulos crescentes, as duas pernas se enrolam uma na outra como uma corda torcida.
-     */
-    private fun twistAround(side: Float, ang: Float) {
-        val x0 = -side * 3.2f / 0.9f   // o eixo do corpo, na escala local da perna
-        translate(x0, 0f, 0f)
-        rotY(ang)
-        translate(-x0, 0f, 0f)
-    }
-
     private fun leg(side: Float, a: Float, knee: Float, foot: Float, hipY: Float) {
         push()
         translate(side * 3.2f, hipY, 0f)
@@ -795,7 +784,6 @@ object Luffy3D {
         cube(0f, -6.9f, 0f, 2.9f, 0.95f, 3.0f, SHORT)
         cube(side * 0.9f, -6.9f, 3.02f, 1.4f, 0.8f, 0.05f, SHORT_L)
         translate(0f, -7.6f, 0f)
-        if (gTwK != 0f) twistAround(side, gTwK)
         rotX(knee)
         // barra de pelo branco da bermuda
         cube(0f, -0.3f, 0f, 2.75f, 0.75f, 2.85f, FUR)
@@ -809,7 +797,6 @@ object Luffy3D {
         cube(0f, -2.9f, 0f, 1.8f, 3.0f, 1.9f, SKIN)
         cube(0f, -1.8f, 1.95f, 1.1f, 1.4f, 0.05f, SKIN_L)
         translate(0f, -5.9f, 0f)
-        if (gTwF != 0f) twistAround(side, gTwF)
         rotX(foot)
         cube(0f, -0.2f, 1.0f, 1.65f, 0.4f, 2.4f, SKIN)
         cube(0f, 0.0f, 0.5f, 1.75f, 0.55f, 1.0f, SKIN_D)
@@ -889,7 +876,8 @@ object Luffy3D {
     var inAir = false
     var airVz = 0f
     var airH = 0f
-    var swing = 0          // 0 soco direito, 1 soco esquerdo, 2+ soco duplo
+    var swing = 0          // 0 soco direito, 1 soco esquerdo
+    var punchLen = 150f    // distância (px) do herói até o alvo: o braço estica exatamente até lá
     var alphaV = 1f
     var heli = false       // pulo duplo: helicóptero ativo
     var heliT = 0f         // segundos desde a soltura do pulo carregado
@@ -901,11 +889,13 @@ object Luffy3D {
     private var gLegSpin = 0f
     private var gLegSplay = 0f
     private var gLegLen = 1f
-    private var gTwK = 0f      // torção extra (rad) do joelho para baixo, em volta do eixo do corpo
-    private var gTwF = 0f      // torção extra (rad) do pé
 
     /** Instante (0..1 da animação) em que o punho esticado chega ao alvo. */
-    const val T_HIT = 0.28f
+    const val T_HIT = 0.44f
+
+    /** Fim da preparação do soco e início da volta do braço (0..1 da animação). */
+    private const val PW = 0.32f
+    private const val PR = 0.64f
 
     /** Pitch do corpo no fim do voo (um pouco de mergulho de cabeça), de onde a rolagem continua. */
     private const val DIVE_PITCH = 1.7907964f
@@ -921,8 +911,9 @@ object Luffy3D {
 
     /** Rad. de passo por unidade de modelo puxada (um passo ≈ 12 unidades: o pé acompanha o corpo). */
     private const val STEP_K = 0.26f
-    private const val HELI_WIND_MAX = 3.0f   // torção máxima nos pés (rad): as pernas chegam a trocar de lado
-    private const val HELI_REL_T = 0.30f    // segundos depois de soltar o botão em que as pernas se soltam no ar
+    private const val HELI_WIND_MAX = 2.7f   // quanto o quadril enrola (rad) enquanto sobe, antes de soltar
+    private const val HELI_WIND_T = 0.17f   // segundos que o quadril leva para enrolar (rápido)
+    private const val HELI_REL_T = 0.20f    // segundos depois de soltar o botão em que o quadril se solta no ar
     private const val HELI_OMEGA = 25f      // rad/s das pernas girando
 
     fun impactAt(@Suppress("UNUSED_PARAMETER") sw: Int): Float = T_HIT
@@ -971,7 +962,7 @@ object Luffy3D {
     private var heliAirW = 0f   // peso da pose "no ar" das pernas/pés (esticadas)
     private var heliArmW = 0f   // peso dos braços abertos
     private var heliArcA = 0f   // intensidade dos arcos de vento
-    private var heliTw = 0f     // quanto as pernas estavam torcidas ao soltar (rad)
+    private var heliReleased = false  // o quadril já se soltou (começou a hélice)
     private var wasHeli = false
     private var landSoft = false  // pouso do helicóptero: afunda e levanta devagar
     private val heliRect = RectF()
@@ -1016,12 +1007,18 @@ object Luffy3D {
         spZ[i] = size
     }
 
-    /** Interpola o ciclo do soco: repouso → preparação (0.18) → golpe (0.30) → extensão (0.55) → volta ao repouso. */
+    /**
+     * Interpola o ciclo do soco: repouso → preparação suave (até PW) → golpe estalado (até T_HIT, começa rápido e
+     * freia no alvo) → segura estendido (até PR) → volta elástica ao repouso.
+     */
     private fun k5(t: Float, a: Float, b: Float, c: Float, d: Float, e: Float): Float {
-        return if (t < 0.18f) lerp(a, b, ease(t / 0.18f))
-        else if (t < 0.30f) lerp(b, c, ease((t - 0.18f) / 0.12f))
-        else if (t < 0.55f) lerp(c, d, (t - 0.30f) / 0.25f)
-        else lerp(d, e, ease((t - 0.55f) / 0.45f))
+        return if (t < PW) lerp(a, b, ease(t / PW))
+        else if (t < T_HIT) {
+            val q = (t - PW) / (T_HIT - PW)
+            lerp(b, c, 1f - (1f - q) * (1f - q))
+        }
+        else if (t < PR) lerp(c, d, (t - T_HIT) / (PR - T_HIT))
+        else lerp(d, e, ease((t - PR) / (1f - PR)))
     }
 
     // pontos do corpo (z para frente, y para cima) relativos ao pivô: em pé e encolhido (bola da rolagem)
@@ -1069,7 +1066,7 @@ object Luffy3D {
                 var d = target - yaw
                 while (d > PI.toFloat()) d -= TWO_PI
                 while (d < -PI.toFloat()) d += TWO_PI
-                yaw += d * min(1f, dt * 16f)
+                yaw += d * min(1f, dt * (if (attack > 0.001f) 30f else 16f))
             }
         }
         blend += ((if (moving) 1f else 0f) - blend) * min(1f, dt * 12f)
@@ -1300,52 +1297,58 @@ object Luffy3D {
         val lgR = rollW * legW
 
         // ── pulo carregado: Gomu Gomu no Helicóptero ──
-        // segurar (chão): agacha e as pernas se enrolam uma na outra como uma corda (torção cresce do quadril para o pé)
-        // soltar: pula alto com as pernas ainda enroladas; no ar a corda desenrola de uma vez e vira hélice
+        // segurar (chão): agacha fundo, braços para trás, parado (não anda)
+        // soltar: salta alto; enquanto sobe, SÓ o quadril enrola rápido para um lado (pernas juntas, peito de frente)
+        // e então solta de uma vez: as pernas abrem na horizontal e giram como hélice
         // descendo: perto do chão a hélice desacelera, fecha, e os joelhos amortecem o pouso
         var hDown = 0f
         var hSpin = 0f
         var hSplay = 0f
         var hLen = 1f
-        var hTw = 0f
+        var hHipTw = 0f
         var hAirTgt = 0f
         var hArmTgt = 0f
+        var hCompact = 0f
         if (!rolling && heliCharge >= 0f) {
-            val u = ease(heliCharge / 0.5f)
-            hTw = HELI_WIND_MAX * u + 0.15f * ease((heliCharge - 0.5f) / 0.3f) + sin(clock * 44f) * 0.03f * u
-            heliTw = hTw
+            val u = ease(heliCharge / 0.35f)
+            val hold = ease((heliCharge - 0.35f) / 0.3f)
             heliAng = 0f
             heliOmega = 0f
-            val cu = ease(heliCharge / 0.3f)
-            crouch = max(crouch, 0.55f * cu)
-            lean = lerp(lean, 0.14f, cu)
-            rsh = lerp(rsh, -0.4f, cu)
-            lsh = lerp(lsh, -0.4f, cu)
-            rshZ = lerp(rshZ, 0.38f, cu)
-            lshZ = lerp(lshZ, 0.38f, cu)
-            rel = lerp(rel, -0.8f, cu)
-            lel = lerp(lel, -0.8f, cu)
-            shout = max(shout, 0.35f * cu)
+            heliReleased = false
+            crouch = max(crouch, 1.15f * u) + sin(clock * 42f) * 0.025f * hold   // treme de força quando carregado
+            lean = lerp(lean, 0.34f, u)
+            rsh = lerp(rsh, 0.75f, u)       // braços puxados para trás, tomando impulso
+            lsh = lerp(lsh, 0.75f, u)
+            rshZ = lerp(rshZ, 0.3f, u)
+            lshZ = lerp(lshZ, 0.3f, u)
+            rel = lerp(rel, -0.9f, u)
+            lel = lerp(lel, -0.9f, u)
+            tilt = lerp(tilt, -0.15f, u)
+            shout = max(shout, 0.35f * u)
         } else if (!rolling && heli) {
             val ht = heliT
             if (ht < HELI_REL_T) {
-                // sobe com as pernas ainda enroladas, esticando um pouco
-                val q = ease(ht / HELI_REL_T)
-                heliAng = 0f
+                // sobe com as pernas juntas: só o quadril enrola, rápido (o peito continua de frente)
+                heliReleased = false
+                val w = ease(ht / HELI_WIND_T)
+                heliAng = -HELI_WIND_MAX * w
                 heliOmega = 0f
-                hTw = heliTw
-                hLen = 1f + 0.08f * q
-                hAirTgt = 0.5f * q
-                hArmTgt = 0.55f * q
+                hSpin = heliAng
+                hHipTw = 0.6f * heliAng
+                hAirTgt = 0.65f
+                hCompact = ease(ht / 0.08f)
             } else {
-                // solta: a torção desenrola rápido enquanto a hélice acelera e abre
+                // solta de uma vez: o quadril desenrola e a hélice já sai rápida, abrindo as pernas
                 val rt = ht - HELI_REL_T
+                if (!heliReleased) {
+                    heliReleased = true
+                    heliOmega = HELI_OMEGA * 1.8f
+                }
                 hDown = if (airVz < 0f) 1f - ease(airH / 60f) else 0f
                 val dn = ease(hDown)
                 val open = 1f - dn
-                hTw = heliTw * (1f - ease(rt / 0.24f))
                 val tgtW = HELI_OMEGA * (1f - 0.85f * dn)
-                heliOmega += (tgtW - heliOmega) * min(1f, dt * 9f)
+                heliOmega += (tgtW - heliOmega) * min(1f, dt * (if (rt < 0.3f) 5f else 9f))
                 var sp = heliOmega
                 if (hDown > 0.02f) {
                     // perto do chão: para exatamente de frente (múltiplo de 2π), de forma suave
@@ -1355,31 +1358,39 @@ object Luffy3D {
                 }
                 heliAng += sp * dt
                 hSpin = heliAng
-                hSplay = 1.42f * ease((rt - 0.04f) / 0.22f) * open
+                hHipTw = 0.6f * -HELI_WIND_MAX * (1f - ease(rt / 0.14f))
+                hSplay = 1.42f * ease((rt - 0.02f) / 0.2f) * open
                 hLen = lerp(1f, lerp(1.08f, 1.38f, ease(rt / 0.26f)), open)
                 hAirTgt = open
                 hArmTgt = open
+                hCompact = 1f - ease(rt / 0.1f)
                 // joelhos se preparam para amortecer antes de tocar o chão
                 crouch = max(crouch, 0.45f * dn)
             }
         } else {
             heliAng = 0f
             heliOmega = 0f
+            heliReleased = false
         }
         heliAirW += (hAirTgt - heliAirW) * min(1f, dt * 14f)
         heliArmW += (hArmTgt - heliArmW) * min(1f, dt * 14f)
         val arcTgt = if (!rolling && heli && heliT >= HELI_REL_T) min(1f, heliOmega / HELI_OMEGA) * (1f - ease(hDown)) else 0f
         heliArcA += (arcTgt - heliArcA) * min(1f, dt * 16f)
-        // a torção cresce do quadril (pouco) ao pé (tudo): as duas pernas se enrolam uma na outra
-        gLegSpin = hSpin - 0.2f * hTw
-        gTwK = -0.4f * hTw
-        gTwF = -0.4f * hTw
+        gLegSpin = hSpin
         gLegSplay = hSplay
         gLegLen = hLen
-        // cintura acompanha um pouco a torção, mas o peito continua de frente
-        val hHip = -0.12f * hTw
-        hipTw += hHip
-        chestTw -= hHip
+        // o quadril gira, mas o peito continua de frente (contra-giro)
+        hipTw += hHipTw
+        chestTw -= hHipTw
+        if (hCompact > 0.001f) {
+            // enquanto só o quadril gira: braços recolhidos junto do corpo
+            rshZ = lerp(rshZ, 0.5f, hCompact)
+            lshZ = lerp(lshZ, 0.5f, hCompact)
+            rsh = lerp(rsh, -0.3f, hCompact)
+            lsh = lerp(lsh, -0.3f, hCompact)
+            rel = lerp(rel, -0.7f, hCompact)
+            lel = lerp(lel, -0.7f, hCompact)
+        }
         if (heliArmW > 0.001f) {
             // braços abertos para o alto, boca aberta (grita o golpe)
             rshZ = lerp(rshZ, 1.45f, heliArmW)
@@ -1399,68 +1410,50 @@ object Luffy3D {
         }
         wasHeli = heliNow
 
-        // ── socos ──
-        val extReach = extFor(Player.LUFFY_REACH / rsNow)
-        val extReach2 = extFor(Player.LUFFY_REACH_2 / rsNow)
-        var punchSide = 0 // 1 direito, 2 esquerdo, 3 os dois
-        if (attacking && rollW < 0.5f) {
-            if (swing == 0) {
-                // soco direto de direita
-                punchSide = 1
-                rsh = k5(t, rsh, 0.9f, -1.58f, -1.45f, rsh)
-                rshZ = k5(t, rshZ, 0.25f, 0.0f, 0.02f, rshZ)
-                extR = k5(t, 1f, 1f, extReach, extReach * 0.96f, 1f)
-                rel = k5(t, rel, -2.4f, -0.05f, -0.2f, rel)
-                lsh = k5(t, lsh, -0.9f, -0.75f, -0.85f, lsh)
-                lel = k5(t, lel, -2.0f, -2.1f, -2.0f, lel)
-                lshZ = k5(t, lshZ, 0.2f, 0.25f, 0.25f, lshZ)
-                chestTw = k5(t, chestTw, -0.5f, 0.6f, 0.5f, chestTw)
-                hipTw = k5(t, hipTw, -0.25f, 0.3f, 0.25f, hipTw)
-                lean = k5(t, lean, -0.02f, 0.28f, 0.22f, lean)
-                legB = k5(t, 0f, 0.4f, 1f, 0.9f, 0f)
-                shout = k5(t, shout, 0.3f, 1f, 0.7f, shout)
-            } else if (swing == 1) {
-                // soco direto de esquerda
-                punchSide = 2
-                lsh = k5(t, lsh, 0.9f, -1.58f, -1.45f, lsh)
-                lshZ = k5(t, lshZ, 0.25f, 0.0f, 0.02f, lshZ)
-                extL = k5(t, 1f, 1f, extReach, extReach * 0.96f, 1f)
-                lel = k5(t, lel, -2.4f, -0.05f, -0.2f, lel)
-                rsh = k5(t, rsh, -0.9f, -0.75f, -0.85f, rsh)
-                rel = k5(t, rel, -2.0f, -2.1f, -2.0f, rel)
-                rshZ = k5(t, rshZ, 0.2f, 0.25f, 0.25f, rshZ)
-                chestTw = k5(t, chestTw, 0.5f, -0.6f, -0.5f, chestTw)
-                hipTw = k5(t, hipTw, 0.25f, -0.3f, -0.25f, hipTw)
-                lean = k5(t, lean, -0.02f, 0.28f, 0.22f, lean)
-                legB = k5(t, 0f, -0.4f, -1f, -0.9f, 0f)
-                shout = k5(t, shout, 0.3f, 1f, 0.7f, shout)
+        // ── soco: Gomu Gomu no Pistol direto no alvo ──
+        // preparação: o corpo enrola para trás, afunda, o braço dobra junto ao peito e o outro protege o rosto
+        // golpe: quadril, peito e ombro desenrolam em sequência e o braço dispara até a distância exata do alvo
+        // volta: o braço segura estendido um instante e encolhe como elástico
+        val extReach = extFor(punchLen / rsNow)
+        var punchSide = 0 // 1 direito, 2 esquerdo
+        if (attacking && rollW < 0.5f && heliCharge < 0f && !heli) {
+            val sdp = if (swing == 0) 1f else -1f
+            punchSide = if (swing == 0) 1 else 2
+            val m0 = if (sdp > 0f) rsh else lsh
+            val g0 = if (sdp > 0f) lsh else rsh
+            val mZ0 = if (sdp > 0f) rshZ else lshZ
+            val gZ0 = if (sdp > 0f) lshZ else rshZ
+            val mE0 = if (sdp > 0f) rel else lel
+            val gE0 = if (sdp > 0f) lel else rel
+            val mSh = k5(t, m0, 1.1f, -1.55f, -1.5f, m0)
+            val mZ = k5(t, mZ0, 0.55f, 0.0f, 0.02f, mZ0)
+            val mEl = k5(t, mE0, -2.5f, -0.05f, -0.15f, mE0)
+            val gSh = k5(t, g0, -1.0f, -0.5f, -0.6f, g0)
+            val gZ = k5(t, gZ0, 0.25f, 0.3f, 0.3f, gZ0)
+            val gEl = k5(t, gE0, -2.1f, -2.2f, -2.1f, gE0)
+            val mExt = k5(t, 1f, 1f, extReach, extReach * 0.97f, 1f)
+            if (sdp > 0f) {
+                rsh = mSh; rshZ = mZ; rel = mEl; extR = mExt
+                lsh = gSh; lshZ = gZ; lel = gEl
             } else {
-                // finalização: os dois punhos juntos, com o corpo inteiro
-                punchSide = 3
-                rsh = k5(t, rsh, 0.9f, -1.58f, -1.5f, rsh)
-                lsh = k5(t, lsh, 0.9f, -1.58f, -1.5f, lsh)
-                extR = k5(t, 1f, 1f, extReach2, extReach2 * 0.96f, 1f)
-                extL = extR
-                rshZ = k5(t, rshZ, 0.5f, 0.1f, 0.1f, rshZ)
-                lshZ = k5(t, lshZ, 0.5f, 0.1f, 0.1f, lshZ)
-                rel = k5(t, rel, -2.6f, -0.05f, -0.15f, rel)
-                lel = k5(t, lel, -2.6f, -0.05f, -0.15f, lel)
-                chestTw = k5(t, chestTw, 0f, 0f, 0f, chestTw)
-                lean = k5(t, lean, -0.12f, 0.42f, 0.34f, lean)
-                crouch = k5(t, 0f, 0.5f, 0.3f, 0.25f, 0f)
-                tilt = k5(t, tilt, 0.1f, -0.1f, -0.05f, tilt)
-                shout = k5(t, shout, 0.5f, 1f, 0.85f, shout)
+                lsh = mSh; lshZ = mZ; lel = mEl; extL = mExt
+                rsh = gSh; rshZ = gZ; rel = gEl
             }
+            chestTw = k5(t, chestTw, -0.75f * sdp, 0.7f * sdp, 0.6f * sdp, chestTw)
+            hipTw = k5(t, hipTw, -0.4f * sdp, 0.42f * sdp, 0.34f * sdp, hipTw)
+            lean = k5(t, lean, -0.1f, 0.36f, 0.3f, lean)
+            crouch = k5(t, crouch, 0.5f, 0.3f, 0.25f, crouch)
+            tilt = k5(t, tilt, 0.12f, -0.12f, -0.08f, tilt)
+            legB = k5(t, 0f, 0.55f * sdp, 1f * sdp, 0.9f * sdp, 0f)
+            bodyZ = k5(t, bodyZ, -2f, 4f, 3f, bodyZ)
+            shout = k5(t, shout, 0.25f, 1f, 0.8f, shout)
             if (t >= T_HIT && !released) {
                 released = true
-                for (k in 0..1) {
-                    if ((k == 0 && (punchSide and 1) != 0) || (k == 1 && (punchSide and 2) != 0)) {
-                        for (i in 0..6) {
-                            val ang = rnd.nextFloat() * TWO_PI
-                            val sp0 = (14f + rnd.nextFloat() * 30f) * rs
-                            emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0, 0.28f, rs * 40f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
-                        }
-                    }
+                val k = punchSide - 1
+                for (i in 0..8) {
+                    val ang = rnd.nextFloat() * TWO_PI
+                    val sp0 = (14f + rnd.nextFloat() * 34f) * rs
+                    emitSpark(mkX[k], mkY[k], cos(ang) * sp0, sin(ang) * sp0, 0.3f, rs * 40f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
                 }
             }
         } else {
@@ -1680,41 +1673,50 @@ object Luffy3D {
 
         // ── efeitos do soco: rastro de velocidade e explosão no ponto de impacto ──
         if (attacking && punchSide != 0 && rollW < 0.5f) {
-            val g = if (t < 0.18f) 0f else if (t < 0.30f) ease((t - 0.18f) / 0.12f) else max(0f, 1f - (t - 0.30f) / 0.28f)
+            val g = if (t < PW) 0f else if (t < T_HIT) ease((t - PW) / (T_HIT - PW)) else max(0f, 1f - (t - T_HIT) / 0.28f)
             if (g > 0.02f) {
+                val k = punchSide - 1
+                val fxk = mkX[k]
+                val fyk = mkY[k]
+                var dx = mkX[k + 4] - fxk
+                var dy = mkY[k + 4] - fyk
+                val dl = sqrt(dx * dx + dy * dy)
+                if (dl > 0.001f) {
+                    dx /= dl
+                    dy /= dl
+                }
                 p.strokeCap = Paint.Cap.ROUND
-                for (k in 0..1) {
-                    if (!((k == 0 && (punchSide and 1) != 0) || (k == 1 && (punchSide and 2) != 0))) continue
-                    val fxk = mkX[k]
-                    val fyk = mkY[k]
-                    var dx = mkX[k + 4] - fxk
-                    var dy = mkY[k + 4] - fyk
-                    val dl = sqrt(dx * dx + dy * dy)
-                    if (dl > 0.001f) {
-                        dx /= dl
-                        dy /= dl
-                    }
-                    p.style = Paint.Style.STROKE
-                    for (i in 0..2) {
-                        val off = (i - 1f) * 2.2f * rs
-                        val len = (12f + 10f * (1f - abs(i - 1f) * 0.4f)) * rs * g
-                        val x0 = fxk - dy * off
-                        val y0 = fyk + dx * off
-                        p.strokeWidth = max(1.4f, rs * 1.3f)
-                        p.color = VoxelArt.alpha(if (i == 1) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.75f * g)
-                        c.drawLine(x0, y0, x0 + dx * len, y0 + dy * len, p)
-                    }
-                    p.strokeCap = Paint.Cap.BUTT
+                p.style = Paint.Style.STROKE
+                for (i in 0..2) {
+                    val off = (i - 1f) * 2.2f * rs
+                    val len = (12f + 10f * (1f - abs(i - 1f) * 0.4f)) * rs * g
+                    val x0 = fxk - dy * off
+                    val y0 = fyk + dx * off
+                    p.strokeWidth = max(1.4f, rs * 1.3f)
+                    p.color = VoxelArt.alpha(if (i == 1) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.75f * g)
+                    c.drawLine(x0, y0, x0 + dx * len, y0 + dy * len, p)
+                }
+                // explosão no impacto: núcleo, anel e raios
+                val imp = if (t >= T_HIT && t < T_HIT + 0.17f) 1f - (t - T_HIT) / 0.17f else 0f
+                if (imp > 0.02f) {
+                    val cx = fxk - dx * 2f * rs
+                    val cy = fyk - dy * 2f * rs
+                    val grow = 1f - imp
                     p.style = Paint.Style.FILL
-                    // explosão no impacto
-                    val imp = if (t >= T_HIT && t < 0.45f) 1f - (t - T_HIT) / (0.45f - T_HIT) else 0f
-                    if (imp > 0.02f) {
-                        p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.55f * imp)
-                        c.drawCircle(fxk - dx * 2f * rs, fyk - dy * 2f * rs, rs * (3f + 8f * (1f - imp)), p)
-                        p.color = VoxelArt.alpha(0xFFFFB02E.toInt(), 0.38f * imp)
-                        c.drawCircle(fxk - dx * 2f * rs, fyk - dy * 2f * rs, rs * (5f + 12f * (1f - imp)), p)
+                    p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.6f * imp)
+                    c.drawCircle(cx, cy, rs * (3f + 7f * grow), p)
+                    p.color = VoxelArt.alpha(0xFFFFB02E.toInt(), 0.38f * imp)
+                    c.drawCircle(cx, cy, rs * (5f + 11f * grow), p)
+                    p.style = Paint.Style.STROKE
+                    p.strokeWidth = max(1.2f, rs * 1.2f)
+                    p.color = VoxelArt.alpha(0xFFFFE08A.toInt(), 0.8f * imp)
+                    c.drawCircle(cx, cy, rs * (8f + 16f * grow), p)
+                    for (i in 0..5) {
+                        val ang = i * 1.0472f + 0.4f
+                        val r0 = rs * (9f + 8f * grow)
+                        val r1 = rs * (14f + 14f * grow)
+                        c.drawLine(cx + cos(ang) * r0, cy + sin(ang) * r0, cx + cos(ang) * r1, cy + sin(ang) * r1, p)
                     }
-                    p.strokeCap = Paint.Cap.ROUND
                 }
                 p.strokeCap = Paint.Cap.BUTT
                 p.style = Paint.Style.FILL

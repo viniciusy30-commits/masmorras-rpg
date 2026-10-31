@@ -1,3 +1,12 @@
+#id 2026-10-31-luffy-alvo
+#titulo Luffy: soco no alvo, bonecos de treino e super pulo novo
+- Ataque do Luffy agora é por alvo: toque num inimigo para marcá-lo (anel vermelho no chão) ou deixe sem alvo e ele pega o mais perto
+- O soco vai direto no alvo e nunca erra, com 1 segundo de recarga; segurando o botão de ataque ele soca sozinho a cada segundo
+- Animação do soco refeita: corpo enrola para trás, quadril, peito e ombro desenrolam em sequência e o braço dispara até a distância exata do alvo, segura e volta como elástico
+- 3 bonecos de treino perto do início (um além do alcance do soco): não morrem, balançam ao apanhar e recuperam a vida sozinhos
+- Super pulo: sem a animação das pernas entrelaçadas. Ele agacha, salta alto e, enquanto sobe, só o quadril gira rápido e solta de uma vez para formar a hélice
+- Enquanto carrega o super pulo o Luffy não anda (só no pulo normal)
+
 #id 2026-10-30-ichigo-hd3
 #titulo Ichigo: casaco longo e espada nova
 - Casaco longo e aberto com abas na frente e nos lados, forro vermelho e pontas rasgadas, deixando a faixa branca com laço à mostra

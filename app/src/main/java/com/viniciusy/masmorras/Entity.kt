@@ -29,6 +29,9 @@ abstract class Entity(
     var shield = 0f  // escudo: absorve o dano antes da vida (Sylvarion)
     var reviveHook: (() -> Boolean)? = null // devolve true se reviveu (revive, se algum talento usar)
 
+    /** Boneco de treino: nunca morre (a vida enche de novo quando o golpe seria fatal). */
+    open val immortal: Boolean get() = false
+
     fun takeDamage(dmg0: Float) {
         if (!alive) return
         var dmg = dmg0
@@ -44,6 +47,10 @@ abstract class Entity(
         hp -= dmg
         hitFlash = 1f
         if (hp <= 0f) {
+            if (immortal) {
+                hp = maxHp
+                return
+            }
             if (reviveHook?.invoke() == true) return
             hp = 0f
             alive = false
@@ -104,7 +111,9 @@ class Player(
         val PIKA_CD = longArrayOf(0L, 4500L, 6000L, 9000L, 16000L)     // recarga (ms)
         const val ICHI_RATE_1 = 2.6f       // velocidade dos 2 primeiros golpes do combo do Ichigo
         const val ICHI_RATE_3 = 2.1f       // velocidade do 3º golpe
-        const val LUFFY_RATE_1 = 2.9f      // velocidade dos 2 primeiros socos do combo do Luffy
+        const val LUFFY_RATE_1 = 1.5f      // velocidade do soco do Luffy (1 / duração da animação em s)
+        const val LUFFY_RANGE = 260f       // alcance máximo do soco por alvo (px, da borda do alvo)
+        const val LUFFY_PUNCH_CD = 1000L   // recarga do soco (ms)
         const val LUFFY_RATE_3 = 2.2f      // velocidade do soco duplo
         const val LUFFY_REACH = 150f       // alcance do soco esticado (Gomu Gomu no Pistol)
         const val LUFFY_REACH_2 = 180f     // alcance do soco duplo (Bazooka)
@@ -133,8 +142,8 @@ class Player(
         // pulo carregado do Luffy: segurar = agacha e torce as pernas; soltar = pulo alto, pernas viram hélice e ele plana
         const val LUFFY_HELI_TAP = 0.16f   // abaixo disso (s) é só um toque: pulo normal
         const val LUFFY_HELI_CHARGE_T = 0.45f // tempo extra segurando até a carga máxima
-        const val LUFFY_HELI_VZ_MIN = 500f // impulso com pouca carga (o pulo normal é 340)
-        const val LUFFY_HELI_VZ_MAX = 680f // impulso com carga máxima
+        const val LUFFY_HELI_VZ_MIN = 560f // impulso com pouca carga (o pulo normal é 340)
+        const val LUFFY_HELI_VZ_MAX = 740f // impulso com carga máxima
         const val LUFFY_HELI_G = 1150f     // gravidade enquanto sobe (mais leve = pulo mais alto)
         const val LUFFY_HELI_FALL = -105f  // velocidade máxima de queda planando (px/s)
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
@@ -195,8 +204,9 @@ class Player(
     var luffyFlip = false    // o dash atual é o mortal (toque rápido)
     var luffyLandT = LUFFY_ROLL_T // duração da fase 3 (rolagem ou pouso do mortal)
     var luffyLaunchReq = false // o GameView toca o som / poeira do lançamento quando liga
-    var heliCharging = false // Luffy: segurando o pulo no chão (agacha e torce as pernas)
+    var heliCharging = false // Luffy: segurando o pulo no chão (agacha e fica parado: não anda)
     var heliChargeT = 0f     // segundos segurando
+    var luffyPunchLen = 150f // distância (px) até o alvo do soco atual: o braço estica exatamente até lá
     var heli = false         // Luffy: pulo carregado ativo (da soltura até pousar)
     var heliT = 0f           // segundos desde a soltura
 
@@ -426,11 +436,12 @@ class Player(
 
     fun canAttack(now: Long): Boolean {
         if (rolling || swinging || skillK != 0 || voltT > 0f || ichiT > 0f || now < swapUntil || leapCharging || leaping || flipT > 0f || (dashT > 0f && !dashUp)) return false
+        if (classe == Classe.LUFFY && (heliCharging || heli)) return false
         val cd = if (classe == Classe.GUERREIRO) (if (comboStep == 2 || comboStep == -1 && swing == 3) 680L else 380L)
         else if (classe == Classe.BARBARO) (if (comboStep == 2) 720L else 440L)
         else if (classe == Classe.NINJA) (if (comboStep == 2) 520L else 300L)
         else if (classe == Classe.ICHIGO) (if (comboStep == 2) 560L else 320L)
-        else if (classe == Classe.LUFFY) (if (comboStep == 2) 520L else 280L)
+        else if (classe == Classe.LUFFY) LUFFY_PUNCH_CD
         else if (classe == Classe.EXPLORADOR) (if (comboStep == 2) 760L else 560L)
         else classe.cooldownAtaque
         return now - lastAttack >= cd
@@ -477,11 +488,10 @@ class Player(
             attackRate = if (swing == 2) ICHI_RATE_3 else ICHI_RATE_1
         }
         if (classe == Classe.LUFFY) {
-            // combo de 3: soco de direita, soco de esquerda e os dois punhos juntos
-            val inWindow = comboStep >= 0 && now - lastAttack < 900L
-            comboStep = if (inWindow) (comboStep + 1) % 3 else 0
+            // soco direto no alvo: alterna a mão direita e a esquerda
+            comboStep = if (comboStep == 0) 1 else 0
             swing = comboStep
-            attackRate = if (swing == 2) LUFFY_RATE_3 else LUFFY_RATE_1
+            attackRate = LUFFY_RATE_1
         }
         if (classe == Classe.EXPLORADOR) {
             // combo de 3: estalo de direita, estalo de revés e chicotada por cima
@@ -1102,7 +1112,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0.35f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0f else 1f) * (if (classe == Classe.LUFFY && attackAnim > 0f) 0.45f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
             vx = inX * velH * 60f * slow * spdMul + momX
             vy = inY * velH * 60f * slow * spdMul + momY
             val md = max(0f, 1f - dt * 2.0f)
@@ -1309,6 +1319,7 @@ class Player(
         Luffy3D.airH = up
         Luffy3D.airVz = vz
         Luffy3D.swing = swing
+        Luffy3D.punchLen = luffyPunchLen
         Luffy3D.alphaV = 1f
         Explorer3D.rollP = if (classe == Classe.EXPLORADOR && rollT > 0f) 1f - rollT / rollDur else -1f
         Explorer3D.inAir = up > 1f
@@ -1368,6 +1379,20 @@ class Enemy(
     var yaw = 0f
     private var yawInit = false
 
+    // boneco de treino: parado, não ataca, não morre e recupera a vida sozinho
+    var dummy = false
+    var wobble = 0f          // balanço depois de levar um golpe (1 = máximo)
+    var wobbleSide = 1f
+    private var regenT = 0f
+    override val immortal: Boolean get() = dummy
+
+    /** O GameView chama quando o boneco leva um golpe: balança para o lado oposto ao do golpe. */
+    fun dummyHit(fromX: Float) {
+        wobble = 1f
+        wobbleSide = if (fromX < x) 1f else -1f
+        regenT = 3f
+    }
+
     // mundo aberto: fica parado/vagando até o jogador chegar perto
     val homeX = x
     val homeY = y
@@ -1387,6 +1412,11 @@ class Enemy(
         hitFlash = (hitFlash - dt * 4f).coerceAtLeast(0f)
         if (attackAnim > 0f) attackAnim = (attackAnim - dt * 2.8f).coerceAtLeast(0f)
         if (!alive) return
+        if (dummy) {
+            wobble = (wobble - dt * 1.7f).coerceAtLeast(0f)
+            if (regenT > 0f) regenT -= dt else hp = min(maxHp, hp + maxHp * 0.6f * dt)
+            return
+        }
         if (slowT > 0f) slowT = (slowT - dt).coerceAtLeast(0f)
         if (stunT > 0f) {
             stunT = (stunT - dt).coerceAtLeast(0f)
@@ -1458,6 +1488,11 @@ class Enemy(
         val s = if (tipo == 2) 1.55f else 1f
         val feet = sy + radius * 0.55f - alt
 
+        if (dummy) {
+            drawDummy(canvas, paint, sx, feet)
+            return
+        }
+
         paint.style = Paint.Style.FILL
         paint.color = 0x33000000
         canvas.drawOval(sx - radius * 1.1f, feet - radius * 0.3f, sx + radius * 1.1f, feet + radius * 0.36f, paint)
@@ -1471,6 +1506,72 @@ class Enemy(
         val barW = if (tipo == 2) radius * 2.4f else radius * 2f
         drawBar(canvas, paint, sx, feet - 50f * s - 8f, barW, hp / maxHp, 0xFFE53935.toInt())
         if (stunT > 0f) drawStunStars(canvas, paint, sx, feet - 50f * s - 20f, s, VoxelArt.time)
+    }
+
+    /** Boneco de treino de madeira e palha: poste, travessa, tronco de palha com alvo e cabeça de saco. */
+    private fun drawDummy(canvas: Canvas, paint: Paint, sx: Float, feet: Float) {
+        val u = 0.82f
+        paint.style = Paint.Style.FILL
+        paint.color = 0x33000000
+        canvas.drawOval(sx - 24f * u, feet - 7f * u, sx + 24f * u, feet + 7f * u, paint)
+        canvas.save()
+        val ang = sin(VoxelArt.time * 24f) * 9f * wobble * wobble * wobbleSide
+        canvas.rotate(ang, sx, feet)
+        val fl = hitFlash
+        fun mix(c: Int): Int {
+            val k = fl * 0.7f
+            val r = ((c shr 16 and 255) * (1f - k) + 255f * k).toInt()
+            val g = ((c shr 8 and 255) * (1f - k) + 255f * k).toInt()
+            val b = ((c and 255) * (1f - k) + 255f * k).toInt()
+            return (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+        }
+        // base
+        paint.color = mix(0xFF5D4037.toInt())
+        canvas.drawRoundRect(sx - 20f * u, feet - 8f * u, sx + 20f * u, feet + 3f * u, 4f, 4f, paint)
+        paint.color = mix(0xFF795548.toInt())
+        canvas.drawRoundRect(sx - 20f * u, feet - 8f * u, sx + 20f * u, feet - 4f * u, 4f, 4f, paint)
+        // poste
+        paint.color = mix(0xFF8D6E63.toInt())
+        canvas.drawRect(sx - 5f * u, feet - 66f * u, sx + 5f * u, feet - 6f * u, paint)
+        paint.color = mix(0xFF6D4C41.toInt())
+        canvas.drawRect(sx + 1.5f * u, feet - 66f * u, sx + 5f * u, feet - 6f * u, paint)
+        // travessa dos braços
+        paint.color = mix(0xFF7B5A48.toInt())
+        canvas.drawRoundRect(sx - 30f * u, feet - 56f * u, sx + 30f * u, feet - 47f * u, 3f, 3f, paint)
+        paint.color = mix(0xFFA1887F.toInt())
+        canvas.drawRect(sx - 30f * u, feet - 56f * u, sx + 30f * u, feet - 53f * u, paint)
+        // tronco de palha
+        paint.color = mix(0xFFD9B66A.toInt())
+        canvas.drawRoundRect(sx - 15f * u, feet - 64f * u, sx + 15f * u, feet - 26f * u, 6f, 6f, paint)
+        paint.color = mix(0xFFB8924A.toInt())
+        canvas.drawRoundRect(sx + 6f * u, feet - 64f * u, sx + 15f * u, feet - 26f * u, 6f, 6f, paint)
+        paint.color = mix(0xFF8B6B3E.toInt())
+        canvas.drawRect(sx - 15f * u, feet - 58f * u, sx + 15f * u, feet - 55f * u, paint)
+        canvas.drawRect(sx - 15f * u, feet - 34f * u, sx + 15f * u, feet - 31f * u, paint)
+        // alvo no peito
+        val cy = feet - 45f * u
+        paint.color = mix(0xFFC62828.toInt())
+        canvas.drawCircle(sx, cy, 10f * u, paint)
+        paint.color = mix(0xFFF5F0E1.toInt())
+        canvas.drawCircle(sx, cy, 6.5f * u, paint)
+        paint.color = mix(0xFFC62828.toInt())
+        canvas.drawCircle(sx, cy, 3f * u, paint)
+        // cabeça de saco
+        paint.color = mix(0xFFE6D3A3.toInt())
+        canvas.drawCircle(sx, feet - 76f * u, 11f * u, paint)
+        paint.color = mix(0xFFCDB887.toInt())
+        canvas.drawArc(sx - 11f * u, feet - 87f * u, sx + 11f * u, feet - 65f * u, -40f, 120f, true, paint)
+        paint.color = mix(0xFF4E342E.toInt())
+        paint.strokeWidth = 1.6f
+        paint.style = Paint.Style.STROKE
+        canvas.drawLine(sx - 6f * u, feet - 80f * u, sx - 2f * u, feet - 76f * u, paint)
+        canvas.drawLine(sx - 2f * u, feet - 80f * u, sx - 6f * u, feet - 76f * u, paint)
+        canvas.drawLine(sx + 2f * u, feet - 80f * u, sx + 6f * u, feet - 76f * u, paint)
+        canvas.drawLine(sx + 6f * u, feet - 80f * u, sx + 2f * u, feet - 76f * u, paint)
+        canvas.drawLine(sx - 4f * u, feet - 70f * u, sx + 4f * u, feet - 70f * u, paint)
+        paint.style = Paint.Style.FILL
+        canvas.restore()
+        drawBar(canvas, paint, sx, feet - 96f * u - 8f, 44f, hp / maxHp, 0xFFE53935.toInt())
     }
 }
 

@@ -119,6 +119,13 @@ class GameView @JvmOverloads constructor(
     private var heldT = 0f
     private var queuedAt = 0L
 
+    // ── Luffy: ataque por alvo. Tocar num inimigo marca o alvo; o botão de ataque (segurar = ataque automático)
+    //    solta o soco direto nele, sem errar, a cada 1 segundo. Sem alvo marcado, pega o inimigo mais perto. ──
+    private var luffyTarget: Enemy? = null
+    private var luffyHitTarget: Enemy? = null
+    private var luffyAutoAtk = false
+    private var luffyMsgAt = 0L
+
     // ── Sylvarion (Arqueiro do Vendaval): combate por alvo, árvore de talentos e skills de vento ──
     private val sylv = SylvEngine(object : SylvHost {
         override val jogador: Player? get() = player
@@ -190,13 +197,125 @@ class GameView @JvmOverloads constructor(
     /** Toque na tela do jogo: o Sylvarion marca o alvo (ou mira a área da skill). */
     private fun tocarMundo(sx: Float, sy: Float) {
         val p = player ?: return
-        if (p.classe != Classe.ARQUEIRO || !p.alive || gameOver) return
+        if ((p.classe != Classe.ARQUEIRO && p.classe != Classe.LUFFY) || !p.alive || gameOver) return
         val w = width.toFloat()
         val h = height.toFloat()
         val z = if (camZoom == 0f) 1f else camZoom
         val wx = (sx - w * 0.5f) / z + w * 0.5f + camX
         val wy = (sy - h * 0.5f) / z + h * 0.5f + camY
-        sylv.tocar(wx, wy)
+        if (p.classe == Classe.LUFFY) luffyTocar(wx, wy) else sylv.tocar(wx, wy)
+    }
+
+    /** Luffy: toque no mundo marca o inimigo mais perto do dedo como alvo; toque no vazio tira o alvo. */
+    private fun luffyTocar(wx: Float, wy: Float) {
+        var best: Enemy? = null
+        var bd = 1e9f
+        for (e in enemies) {
+            if (!e.alive) continue
+            val d = hypot(e.x - wx, e.y - 22f - e.alt - wy)
+            if (d < e.radius + 34f && d < bd) {
+                bd = d
+                best = e
+            }
+        }
+        luffyTarget = best
+        if (best != null) snd("ui_ping", 0.4f)
+    }
+
+    /** Escolhe o alvo do soco: o marcado (se vivo) ou, sem marca, o inimigo vivo mais perto dentro do alcance. */
+    private fun luffyPickTarget(p: Player): Enemy? {
+        val cur = luffyTarget
+        if (cur != null && cur.alive) return cur
+        luffyTarget = null
+        var best: Enemy? = null
+        var bd = 1e9f
+        for (e in enemies) {
+            if (!e.alive) continue
+            val d = hypot(e.x - p.x, e.y - p.y) - e.radius
+            if (d <= Player.LUFFY_RANGE && d < bd) {
+                bd = d
+                best = e
+            }
+        }
+        luffyTarget = best
+        return best
+    }
+
+    private fun luffyMsg(p: Player, txt: String) {
+        val now = System.currentTimeMillis()
+        if (now - luffyMsgAt < 900L) return
+        luffyMsgAt = now
+        texts.add(DmgText(p.x, p.y - p.radius - 52f - p.alt, txt, 0.7f, 0xFFB0BEC5.toInt()))
+        snd("ui_error", 0.4f)
+    }
+
+    /** Soco direto no alvo: vira o corpo para ele, o braço estica até a distância exata e o golpe não erra. */
+    private fun luffyAttack(p: Player, now: Long) {
+        val tgt = luffyPickTarget(p)
+        if (tgt == null) {
+            luffyMsg(p, "Sem alvo")
+            return
+        }
+        val dx = tgt.x - p.x
+        val dy = tgt.y - p.y
+        val d = hypot(dx, dy).coerceAtLeast(1f)
+        if (d - tgt.radius > Player.LUFFY_RANGE) {
+            luffyMsg(p, "Alvo longe")
+            return
+        }
+        p.facingX = dx / d
+        p.facingY = dy / d
+        p.luffyPunchLen = (d - tgt.radius * 0.3f).coerceIn(46f, Player.LUFFY_RANGE + tgt.radius)
+        p.doAttack(now)
+        swingSound(p)
+        luffyHitTarget = tgt
+        pendingLuffyT = p.luffyDelay()
+        pendingLuffySwing = p.swing
+    }
+
+    /** Anel vermelho no chão em volta do alvo do Luffy (e um traço fino do herói até ele). */
+    private fun drawLuffyTarget(canvas: Canvas, p: Player) {
+        val t = luffyTarget ?: return
+        if (!t.alive) return
+        val sx = t.x - camX
+        val feet = t.y - camY + t.radius * 0.55f - t.alt
+        val pulso = 1f + 0.06f * sin(time * 6f)
+        val r = t.radius * 1.35f * pulso
+        paint.style = Paint.Style.FILL
+        paint.color = 0x22FF5252
+        canvas.drawOval(sx - r, feet - r * 0.72f, sx + r, feet + r * 0.72f, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        paint.color = 0xFFFF5252.toInt()
+        canvas.drawOval(sx - r, feet - r * 0.72f, sx + r, feet + r * 0.72f, paint)
+        val inRange = hypot(t.x - p.x, t.y - p.y) - t.radius <= Player.LUFFY_RANGE
+        paint.strokeWidth = 2f
+        paint.color = if (inRange) 0xAAFFE08A.toInt() else 0x66B0BEC5
+        canvas.drawLine(p.x - camX, p.y - camY + p.radius * 0.55f - p.alt, sx, feet, paint)
+        paint.style = Paint.Style.FILL
+    }
+
+    /** Bonecos de treino ao redor do herói: perto, no alcance e um além do alcance do soco. */
+    private fun spawnDummies(sx: Float, sy: Float) {
+        val dists = floatArrayOf(120f, 215f, 330f)
+        val angs = floatArrayOf(0f, 0.55f, -0.55f, 1.1f, -1.1f, 1.7f, -1.7f, 2.4f, -2.4f, 3.1416f)
+        for ((i, d) in dists.withIndex()) {
+            for (a0 in angs) {
+                val a = a0 + (i - 1) * 0.5f
+                val x = sx + cos(a) * d
+                val y = sy + sin(a) * d
+                if (blockedAt(x, y, 14f) || blockedAt(x + 16f, y, 6f) || blockedAt(x - 16f, y, 6f)) continue
+                if (enemies.any { it.dummy && hypot(it.x - x, it.y - y) < 60f }) continue
+                val en = Enemy(x, y, 0)
+                en.dummy = true
+                en.maxHp = 1000f
+                en.hp = 1000f
+                en.ground = map.heightAt(x, y)
+                en.alt = en.ground
+                enemies.add(en)
+                break
+            }
+        }
     }
     private var time = 0f
     private var shake = 0f
@@ -333,7 +452,11 @@ class GameView @JvmOverloads constructor(
         particles.clear()
         texts.clear()
         enemies.addAll(map.createEnemies())
-        hadEnemies = enemies.isNotEmpty()
+        luffyTarget = null
+        luffyHitTarget = null
+        luffyAutoAtk = false
+        if (classe == Classe.LUFFY) spawnDummies(sx, sy)
+        hadEnemies = enemies.any { !it.dummy }
         gameOver = false
         victory = false
         running = true
@@ -378,7 +501,7 @@ class GameView @JvmOverloads constructor(
             val ny = dy / len
             p.inX = nx
             p.inY = ny
-            if (!p.rolling && !p.skilling && !pendingThrow && !(aimOn && (attackHeld || bowHeld))) {
+            if (!p.rolling && !p.skilling && !pendingThrow && !(aimOn && (attackHeld || bowHeld)) && !(p.classe == Classe.LUFFY && p.attackAnim > 0.05f)) {
                 p.facingX = nx
                 p.facingY = ny
             }
@@ -918,6 +1041,11 @@ class GameView @JvmOverloads constructor(
             return
         }
 
+        if (p.classe == Classe.LUFFY) {
+            luffyAttack(p, now)
+            return
+        }
+
         if (p.classe.isRanged) {
             if (p.classe == Classe.MAGO && p.mp < 12f) {
                 snd("ui_error", 0.6f)
@@ -962,12 +1090,6 @@ class GameView @JvmOverloads constructor(
                 // a corda só estala no alcance máximo (sincronizado com Explorer3D.T_HIT)
                 pendingExplT = p.explorerDelay()
                 pendingExplSwing = p.swing
-                return
-            }
-            if (p.classe == Classe.LUFFY) {
-                // o punho esticado só acerta quando o braço chega ao alvo (sincronizado com Luffy3D.T_HIT)
-                pendingLuffyT = p.luffyDelay()
-                pendingLuffySwing = p.swing
                 return
             }
             if (p.classe == Classe.ICHIGO) {
@@ -1299,28 +1421,17 @@ class GameView @JvmOverloads constructor(
     private val ICHI_BONE = 0xFFEDE6D6.toInt()
 
     /** Golpe do combo; chamado no instante do impacto. O 3º golpe (cruzado) é mais largo, mais forte e solta um Getsuga pequeno. */
-    /** Gomu Gomu no Pistol / Bazooka: o braço estica e acerta todo mundo numa faixa reta à frente. */
-    private fun luffyStrike(sw: Int) {
+    /** Gomu Gomu no Pistol: o punho esticado chega ao alvo marcado e sempre acerta (o alvo pode ter se mexido). */
+    private fun luffyStrike(@Suppress("UNUSED_PARAMETER") sw: Int) {
         val p = player ?: return
-        val dbl = sw == 2
-        val reach = if (dbl) Player.LUFFY_REACH_2 else Player.LUFFY_REACH
-        val half = if (dbl) 36f else 24f
-        val dmg = p.danoH * (if (dbl) 1.5f else 1f)
-        var hits = 0
-        enemies.forEach { e ->
-            if (!e.alive) return@forEach
-            if (e.alt - p.alt > 30f) return@forEach
-            val dx = e.x - p.x
-            val dy = e.y - p.y
-            val along = dx * p.facingX + dy * p.facingY
-            val side = abs(dx * p.facingY - dy * p.facingX)
-            if (along > -10f && along < reach + e.radius && side < half + e.radius) {
-                damageEnemy(e, dmg, p.x, p.y, if (dbl) 1.8f else 1.1f)
-                burst(e.x, e.y + e.radius * 0.55f - e.alt - 14f, 4, 0xFFFFE08A.toInt())
-                hits++
-            }
-        }
-        shake = max(shake, if (dbl) 0.12f else if (hits > 0) 0.05f else 0.02f)
+        val e = luffyHitTarget ?: return
+        luffyHitTarget = null
+        if (!e.alive) return
+        damageEnemy(e, p.danoH, p.x, p.y, 1.2f)
+        val hy = e.y + e.radius * 0.55f - e.alt - 26f
+        burst(e.x, hy, 6, 0xFFFFE08A.toInt())
+        burst(e.x, hy, 3, 0xFFFFFFFF.toInt())
+        shake = max(shake, 0.07f)
     }
 
     /** Chicote: a corda estala numa faixa reta à frente; a chicotada por cima (3º golpe) vai mais longe, abre mais e bate mais forte. */
@@ -2008,6 +2119,11 @@ class GameView @JvmOverloads constructor(
             bowBegin(p)
             return
         }
+        if (p.classe == Classe.LUFFY) {
+            luffyAutoAtk = true   // segurar o botão = ataque automático no alvo
+            tryAttack()
+            return
+        }
         if (p.classe == Classe.GUERREIRO) {
             if (p.weapon == 1 && p.spearOut) {
                 spearHint(p)
@@ -2051,6 +2167,7 @@ class GameView @JvmOverloads constructor(
     fun attackUp() {
         val p = player ?: return
         pikaHeld = false
+        luffyAutoAtk = false
         if (p.classe == Classe.ARQUEIRO) {
             if (bowHeld) bowRelease(p)
             return
@@ -2349,7 +2466,8 @@ class GameView @JvmOverloads constructor(
         val dx = e.x - fromX
         val dy = e.y - fromY
         val d = hypot(dx, dy).coerceAtLeast(1f)
-        val kb = (if (e.tipo == 2) 6f else 16f) * kbMul
+        if (e.dummy) e.dummyHit(fromX)
+        val kb = (if (e.dummy) 0f else if (e.tipo == 2) 6f else 16f) * kbMul
         val nx = e.x + dx / d * kb
         val ny = e.y + dy / d * kb
         if (!blockedAt(nx, ny, e.radius * 0.55f)) {
@@ -2541,6 +2659,10 @@ class GameView @JvmOverloads constructor(
             lastChargeSent = chargeNow
             onCharge?.invoke(chargeNow)
         }
+        // Luffy: botão segurado = soco automático no alvo assim que a recarga de 1 s acabar
+        if (luffyAutoAtk && p.classe == Classe.LUFFY && !gameOver) {
+            if (p.canAttack(System.currentTimeMillis())) tryAttack()
+        }
         // buffer de input: aperta um pouco antes de poder atacar e o golpe sai assim que liberar
         if (queuedAt != 0L) {
             val nowQ = System.currentTimeMillis()
@@ -2675,7 +2797,7 @@ class GameView @JvmOverloads constructor(
             e.ground = map.heightAt(e.x, e.y)
             e.alt += (e.ground - e.alt) * (dt * 10f).coerceAtMost(1f)
             val dist = hypot(e.x - p.x, e.y - p.y)
-            if (e.stunT <= 0f && !p.invuln && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
+            if (!e.dummy && e.stunT <= 0f && !p.invuln && !p.phased && p.alt - e.alt < 20f && dist < e.radius + p.radius && now - e.lastHit > e.hitCooldown) {
                 p.takeDamage(e.damage * (1f - p.defesaH))
                 snd("player_hurt", 1f, vary())
                 e.lastHit = now
@@ -2735,7 +2857,7 @@ class GameView @JvmOverloads constructor(
         projectiles.removeAll { !it.alive }
         enemies.removeAll { !it.alive }
 
-        if (hadEnemies && enemies.isEmpty() && !gameOver) {
+        if (hadEnemies && enemies.none { !it.dummy } && !gameOver) {
             gameOver = true
             victory = true
             Sfx.stopLoops()
@@ -2797,6 +2919,7 @@ class GameView @JvmOverloads constructor(
         traps.forEach { it.draw(canvas, paint, camX, camY, time) }
         rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
         if (player?.classe == Classe.ARQUEIRO) sylv.drawGround(canvas, paint, camX, camY, time)
+        player?.let { if (it.classe == Classe.LUFFY) drawLuffyTarget(canvas, it) }
 
         drawList.clear()
         for (e in enemies) {
@@ -2880,7 +3003,7 @@ class GameView @JvmOverloads constructor(
         }
     }
 
-    fun aliveEnemies(): Int = enemies.count { it.alive }
+    fun aliveEnemies(): Int = enemies.count { it.alive && !it.dummy }
 
     /** Ninja: a Sombra Viva está no ar e dá para trocar de lugar com ela. */
     fun swapReady(): Boolean = ninjaShadow?.canSwap == true
