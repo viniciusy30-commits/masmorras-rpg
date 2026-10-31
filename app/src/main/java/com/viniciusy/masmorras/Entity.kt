@@ -126,6 +126,10 @@ class Player(
         const val LUFFY_H_MIN = 46f        // altura do arco sem carga (px)
         const val LUFFY_H_MAX = 84f        // altura do arco com carga máxima (px)
         const val LUFFY_ROLL_T = 0.60f     // rolagem no chão + levantar (s)
+        // pulo duplo do Luffy: Gomu Gomu no Helicóptero (gira as pernas e plana até tocar o chão)
+        const val LUFFY_HELI_VZ = 610f     // impulso do 2º pulo (o 1º é 340): sobe bem mais alto
+        const val LUFFY_HELI_G = 1150f     // gravidade enquanto sobe (mais leve = pulo mais alto)
+        const val LUFFY_HELI_FALL = -105f  // velocidade máxima de queda planando (px/s)
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
         const val ICHI_DASH_T = 0.24f      // duração do Shunpo / Sonído (botão de rolar)
         const val ICHI_DASH_DIST = 250f    // distância do Shunpo / Sonído
@@ -182,6 +186,8 @@ class Player(
     var luffyVl = 0f         // velocidade horizontal ao pousar (decai na rolagem)
     var luffyG = 1000f       // gravidade do arco
     var luffyLaunchReq = false // o GameView toca o som / poeira do lançamento quando liga
+    var heli = false         // Luffy: helicóptero ativo (do 2º pulo até pousar)
+    var heliT = 0f           // segundos desde o 2º pulo
 
     // bárbaro: salto carregado (segurar pular) e pouso destruidor
     var leapCharging = false
@@ -670,6 +676,7 @@ class Player(
     /** Segundo pulo do arqueiro, no ar: impulso novo e mortal para a frente que termina de pé antes de pousar. */
     private fun airJump(): Boolean {
         if (classe == Classe.NINJA) return ninjaDash()
+        if (classe == Classe.LUFFY) return luffyHeli()
         if (classe != Classe.ARQUEIRO || airJumped || flying) return false
         val up = (alt - ground).coerceAtLeast(0f)
         if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
@@ -679,6 +686,21 @@ class Player(
         val land = (vz + sqrt(vz * vz + 3000f * up)) / 1500f
         flipDur = (land * 0.88f).coerceIn(0.45f, 1.05f)
         flipT = flipDur
+        attackAnim = 0f
+        charging = false
+        chargeT = 0f
+        return true
+    }
+
+    /** Segundo pulo do Luffy, no ar: gira as pernas como hélice e plana (cai devagar) até tocar o chão. */
+    private fun luffyHeli(): Boolean {
+        if (airJumped || heli || flying || luffyPh != 0) return false
+        val up = (alt - ground).coerceAtLeast(0f)
+        if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
+        airJumped = true
+        heli = true
+        heliT = 0f
+        vz = LUFFY_HELI_VZ
         attackAnim = 0f
         charging = false
         chargeT = 0f
@@ -753,6 +775,7 @@ class Player(
     private fun lfLerp(a: Float, b: Float, t: Float): Float = a + (b - a) * t
 
     private fun luffyBegin() {
+        heli = false
         luffyPh = 1
         luffyT = 0f
         luffyCharge = 0f
@@ -929,7 +952,11 @@ class Player(
             return
         }
         if (alt > groundPx + 0.01f || vz > 0f) {
-            vz -= (if (classe == Classe.LUFFY && luffyPh == 2) luffyG else if (dashT > 0f && !dashUp) 380f else 1500f) * dt
+            val grav = if (classe == Classe.LUFFY && luffyPh == 2) luffyG
+                else if (classe == Classe.LUFFY && heli && vz > 0f) LUFFY_HELI_G
+                else if (dashT > 0f && !dashUp) 380f else 1500f
+            vz -= grav * dt
+            if (classe == Classe.LUFFY && heli && vz < LUFFY_HELI_FALL) vz = LUFFY_HELI_FALL // planando
             if (glide && vz < -170f) vz = -170f // desce flutuando depois do voo
             alt += vz * dt
             if (alt <= groundPx) {
@@ -943,11 +970,13 @@ class Player(
                 alt = groundPx
                 vz = 0f
                 airJumped = false
+                heli = false
                 flipT = 0f
                 dashT = 0f
             }
         } else {
             airJumped = false
+            heli = false
             alt += (groundPx - alt) * min(1f, dt * 30f)
             if (abs(groundPx - alt) < 0.3f) alt = groundPx
             vz = 0f
@@ -959,6 +988,7 @@ class Player(
         if (!alive && luffyPh != 0) luffyEnd()
         if (swinging) swingStep(dt)
         if (flipT > 0f) flipT = max(0f, flipT - dt)
+        if (heli) heliT += dt else heliT = 0f
         if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
         if (dashT > 0f) dashT = max(0f, dashT - dt)
         if (voltT > 0f) voltT = max(0f, voltT - dt)
@@ -1215,6 +1245,10 @@ class Player(
             else -> 0f
         }
         Luffy3D.dashCharge = luffyCharge
+        Luffy3D.heli = classe == Classe.LUFFY && heli
+        Luffy3D.heliT = heliT
+        Luffy3D.wx = x                 // posição no mundo (o rastro do voo é guardado em coordenadas do mundo)
+        Luffy3D.wy = y - alt
         Luffy3D.inAir = up > 1f
         Luffy3D.airH = up
         Luffy3D.airVz = vz
