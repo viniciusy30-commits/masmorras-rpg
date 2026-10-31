@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+    <path
+        android:fillColor="#33D42A2E"
+        android:pathData="M4,50 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0 Z"/>
+    <!-- linhas de velocidade -->
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M8,38 L30,38 M4,52 L26,52 M10,66 L30,66"/>
+    <!-- punhos-fantasma atrás -->
+    <path
+        android:fillColor="#66F2BF8C"
+        android:pathData="M30,28 L52,28 Q58,28 58,34 L58,46 Q58,52 52,52 L34,52 Q28,52 28,46 L28,34 Q28,28 30,28 Z"/>
+    <path
+        android:fillColor="#66F2BF8C"
+        android:pathData="M30,52 L52,52 Q58,52 58,58 L58,70 Q58,76 52,76 L34,76 Q28,76 28,70 L28,58 Q28,52 30,52 Z"/>
+    <!-- punho principal -->
+    <path
+        android:fillColor="#FFF2BF8C"
+        android:strokeColor="#FF7A3F1E"
+        android:strokeWidth="4"
+        android:strokeLineJoin="round"
+        android:pathData="M44,34 L74,34 Q86,34 86,46 L86,58 Q86,70 74,70 L48,70 Q38,70 38,60 L38,44 Q38,34 44,34 Z"/>
+    <path
+        android:strokeColor="#FF7A3F1E"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:pathData="M60,36 L60,52 M72,36 L72,52 M48,52 L84,52"/>
+    <path
+        android:fillColor="#FFFFE08A"
+        android:pathData="M82,18 L86,28 L96,30 L88,36 L90,46 L82,40 L74,46 L76,36 L68,30 L78,28 Z"/>
+</vector>

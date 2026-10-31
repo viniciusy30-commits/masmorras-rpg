@@ -409,6 +409,12 @@ object Luffy3D {
         return x * x * (3f - 2f * x)
     }
 
+    /** Suavização de 5ª ordem: arranca e chega com velocidade e aceleração zero (volta de elástico sem tranco). */
+    private fun smoother(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return x * x * x * (x * (x * 6f - 15f) + 10f)
+    }
+
     /**
      * Valor de um ajuste de pose numa skill: vai do repouso ao valor de preparação até o instante [rel],
      * estala para o valor do golpe e depois relaxa de volta ao repouso.
@@ -895,6 +901,18 @@ object Luffy3D {
     var dashVX = 0f        // velocidade do herói no mundo (px/s): move o corpo para os lados com as mãos presas
     var dashVY = 0f
     var alphaV = 1f
+    // Gomu Gomu no Gatling (preenchido pelo Player): progresso 0..1 da skill (<0 = fora dela) e o retângulo na frente
+    var skillP = -1f
+    var gatActive = false
+    var gatDX = 0f         // direção do retângulo (unitária, no mundo)
+    var gatDY = 1f
+    var gatLen = 240f      // comprimento do retângulo (px)
+    var gatHalfW = 64f     // meia largura (px)
+    var gatSqX = 1f        // squash do canvas (para converter px do mundo em px do desenho)
+    var gatSqY = 1f
+    var gatPtN = 0         // inimigos dentro do retângulo (frente, lado) em px: os punhos miram neles
+    val gatPtF = FloatArray(6)
+    val gatPtU = FloatArray(6)
     var heli = false       // pulo duplo: helicóptero ativo
     var heliT = 0f         // segundos desde a soltura do pulo carregado
     var heliCharge = -1f   // segundos segurando o pulo no chão (<0 = não está carregando)
@@ -909,11 +927,11 @@ object Luffy3D {
     private var gLatR = 0f
 
     /** Instante (0..1 da animação) em que o punho esticado chega ao alvo. */
-    const val T_HIT = 0.44f
+    const val T_HIT = 0.42f
 
-    /** Fim da preparação do soco e início da volta do braço (0..1 da animação). */
-    private const val PW = 0.32f
-    private const val PR = 0.64f
+    /** Fim da preparação do soco (PW) e fim da segurada no alvo = início da volta do braço (PR), 0..1 da animação. */
+    private const val PW = 0.30f
+    private const val PR = 0.50f
 
     /** Pitch do corpo no fim do voo (um pouco de mergulho de cabeça), de onde a rolagem continua. */
     private const val DIVE_PITCH = 1.7907964f
@@ -940,6 +958,11 @@ object Luffy3D {
     private const val HAND_SEP = 5.0f     // meia distância entre os dois punhos presos no chão
     private const val LAT_K = 0.22f       // rad de passo lateral por unidade de modelo andada para o lado
 
+    private var pmOk = false      // alvo do soco guardado (travado depois do impacto)
+    private var pmX = 0f
+    private var pmY = 0f
+    private var pmZ = 0f
+    private var gatSplay = 0f
     private var ikSh = 0f
     private var ikShZ = 0f
     private var ikExt = 1f
@@ -985,8 +1008,202 @@ object Luffy3D {
         ikExt = extCenter(len)
     }
 
+    /**
+     * Igual ao solveArm, mas com a torção do peito [chestTw] (o quadril fica sem torção). Também escolhe a ramificação
+     * contínua dos ângulos: com o tronco inclinado, um soco quase horizontal fica "acima" do horizonte do tronco e a
+     * solução comum vira o ombro ~165 graus e dá a volta em +-pi quando o alvo cruza o eixo central (pulo no braço).
+     */
+    private fun solveArmT(side: Float, tx: Float, ty: Float, tz: Float, hipH: Float, leanE: Float, zOff: Float, a: Float, chestTw: Float) {
+        val ca = cos(a)
+        val sa = sin(a)
+        val cl = cos(leanE)
+        val sl = sin(leanE)
+        val ct = cos(chestTw)
+        val st = sin(chestTw)
+        val xs = side * 8.1f
+        val xsE = xs * ct
+        val ysE = hipH + 12.3f * cl + xs * st * sl
+        val zsE = 12.3f * sl - xs * st * cl + zOff
+        val shx = xsE * ca + zsE * sa
+        val shz = -xsE * sa + zsE * ca
+        val vx = tx - shx
+        val vy = ty - ysE
+        val vz = tz - shz
+        val u = vx * ca - vz * sa
+        val f = vx * sa + vz * ca
+        val len = max(0.001f, sqrt(u * u + vy * vy + f * f))
+        val ux = u / len
+        val uy = vy / len
+        val uz = f / len
+        val dcy = cl * uy + sl * uz
+        val dcz = -sl * uy + cl * uz
+        val uxc = ux * ct - dcz * st
+        val dczc = ux * st + dcz * ct
+        var sh = -asin(dczc.coerceIn(-1f, 1f))
+        var ang = atan2(uxc, -dcy)
+        val pi = PI.toFloat()
+        if (ang > pi / 2f) {
+            ang -= pi
+            sh = if (sh < 0f) -pi - sh else pi - sh
+        } else if (ang < -pi / 2f) {
+            ang += pi
+            sh = if (sh < 0f) -pi - sh else pi - sh
+        }
+        ikSh = sh
+        ikShZ = side * ang - 0.1f
+        ikExt = extCenter(len)
+    }
+
     /** Quanto o braço precisa esticar para o punho alcançar [len] unidades do modelo a partir do ombro. */
     private fun extFor(len: Float): Float = max(1f, (len - 2.8f) / 10.8f)
+
+    // ───────────── Gomu Gomu no Gatling ─────────────
+    // Linha do tempo (s): preparação até GAT_WIND; socos alternados, um impacto a cada GAT_DT a partir de GAT_T0
+    // (cada braço soca a cada GAT_CYC = 2 * GAT_DT); o último soco de cada braço volta direto ao repouso (GAT_RET),
+    // em etapas (comprimento primeiro, ombro depois), enquanto o corpo relaxa: nada corta de repente.
+    const val GAT_DUR = 2.58f
+    const val GAT_T0 = 0.50f
+    const val GAT_DT = 0.10f
+    const val GAT_N = 16
+    private const val GAT_CYC = 0.20f
+    private const val GAT_HF = 0.34f     // fração do ciclo até o punho chegar ao alvo
+    private const val GAT_HOLD = 0.08f   // fração do ciclo segurando no alvo
+    private const val GAT_WIND = 0.36f
+    private const val GAT_RET = 0.55f
+    private const val G_SH = 0.8f        // braço armado (guarda) entre um soco e outro
+    private const val G_Z = 0.4f
+    private const val G_EL = -2.3f
+
+    /** Instante (s) em que o soco [i] acerta; o GameView aplica o dano do soco [i] nesse instante. */
+    fun gatHit(i: Int): Float = GAT_T0 + i * GAT_DT
+
+    private fun gatStart(i: Int): Float = GAT_T0 + i * GAT_DT - GAT_HF * GAT_CYC
+
+    private fun frac(x: Float): Float = x - floor(x)
+
+    /** Px por unidade do modelo com a escala [s] do desenho. */
+    private fun rs0(s: Float): Float = s * PX * MS
+
+    private fun rn(i: Int): Float {
+        val v = sin(i * 12.9898f + 78.233f) * 43758.547f
+        return v - floor(v)
+    }
+
+    private val gatTI = intArrayOf(-1, -1)      // soco atual de cada braço (alvo travado durante o soco)
+    private val gatTX = FloatArray(2)
+    private val gatTY = FloatArray(2)
+    private val gatTZ = FloatArray(2)
+    private val gatTF = FloatArray(2)
+    private val gatTU = FloatArray(2)
+    private val gatFxD = intArrayOf(-1, -1)     // último soco de cada braço que já soltou o efeito de impacto
+    private val gatR = FloatArray(2)            // 0..1: quanto o punho já saiu (rastro de velocidade)
+    private var gaSh = 0f
+    private var gaZ = 0f
+    private var gaEl = 0f
+    private var gaExt = 1f
+
+    // efeitos 2D: estrela de impacto (0) e punho-fantasma (1), em px relativos ao pé
+    private const val NG = 48
+    private val gfX = FloatArray(NG)
+    private val gfY = FloatArray(NG)
+    private val gfL = FloatArray(NG)
+    private val gfM = FloatArray(NG)
+    private val gfK = IntArray(NG)
+    private val gfR = FloatArray(NG)
+    private var gfNext = 0
+
+    private fun emitG(kind: Int, x: Float, y: Float, life: Float, rot: Float) {
+        val i = gfNext
+        gfNext = (gfNext + 1) % NG
+        gfX[i] = x
+        gfY[i] = y
+        gfL[i] = life
+        gfM[i] = life
+        gfK[i] = kind
+        gfR[i] = rot
+    }
+
+    /** Escolhe e trava o alvo do soco [i]: um inimigo dentro do retângulo (se houver) ou um ponto que varre a área. */
+    private fun gatLock(a: Int, i: Int, rsE: Float) {
+        val f: Float
+        var u: Float
+        if (gatPtN > 0) {
+            val j = i % gatPtN
+            f = gatPtF[j] + (rn(3 * i + 4) - 0.5f) * 10f
+            u = gatPtU[j] + (rn(3 * i + 5) - 0.5f) * 10f
+        } else {
+            f = gatLen * (0.34f + 0.66f * frac(0.5f + i * 0.7548777f))
+            u = gatHalfW * 0.92f * (2f * frac(0.3f + i * 0.5698403f) - 1f)
+            u += (if (a == 0) -0.15f else 0.15f) * gatHalfW
+            u = u.coerceIn(-0.92f * gatHalfW, 0.92f * gatHalfW)
+        }
+        gatTI[a] = i
+        gatTF[a] = f
+        gatTU[a] = u
+        val wxo = gatDX * f + gatDY * u          // esquerda do Luffy = (dy, -dx)
+        val wyo = gatDY * f - gatDX * u
+        gatTX[a] = wxo / gatSqX / rsE
+        gatTY[a] = 17f + 4f * rn(3 * i + 3)      // sempre abaixo do ombro: IK contínua
+        gatTZ[a] = wyo / gatSqY / (rsE * SINP)
+    }
+
+    /**
+     * Pose de um braço no Gatling (a = 0 direito, 1 esquerdo). Resultado em gaSh/gaZ/gaEl/gaExt.
+     * Ciclo: braço armado -> o punho sai (comprimento estala, ombro gira com ease no tempo) -> segura -> encolhe pela
+     * linha do soco e só depois gira o ombro de volta. O último soco volta direto ao repouso.
+     */
+    private fun gatArm(a: Int, tg: Float, hipG: Float, leanG: Float, zG: Float, chest: Float, rSh: Float, rZ: Float, rEl: Float, rsE: Float) {
+        val side = if (a == 0) -1f else 1f
+        val wA = ease(tg / GAT_WIND)
+        val s0 = gatStart(a)
+        val last = a + 2 * ((GAT_N - 1 - a) / 2)
+        gatR[a] = 0f
+        if (tg < s0) {
+            gaSh = lerp(rSh, G_SH, wA)
+            gaZ = lerp(rZ, G_Z, wA)
+            gaEl = lerp(rEl, G_EL, wA)
+            gaExt = 1f
+            return
+        }
+        val k = floor((tg - s0) / GAT_CYC).toInt()
+        val i = min(a + 2 * k, last)
+        val tau = (tg - gatStart(i)) / GAT_CYC
+        if (gatTI[a] != i) gatLock(a, i, rsE)
+        solveArmT(side, gatTX[a], gatTY[a], gatTZ[a], hipG, leanG, zG, yaw, chest)
+        val shI = ikSh
+        val zI = ikShZ
+        val e = ikExt
+        if (i < last || tau < GAT_HF + GAT_HOLD) {
+            val out = tau < GAT_HF + GAT_HOLD
+            val r = if (tau < GAT_HF) {
+                val x = (tau / GAT_HF).coerceIn(0f, 1f)
+                1f - (1f - x) * (1f - x)
+            } else if (out) 1f
+            else 1f - smoother((tau - GAT_HF - GAT_HOLD) / (1f - GAT_HF - GAT_HOLD))
+            val ra: Float
+            val rb: Float
+            if (out) {
+                ra = ease(tau / (GAT_HF * 0.75f))
+                rb = ease(tau / (GAT_HF * 0.9f))
+            } else {
+                ra = ease(min(1f, r * 1.9f))
+                rb = ease(min(1f, r * 1.5f))
+            }
+            gaExt = 1f + (e - 1f) * r * r
+            gaSh = lerp(G_SH, shI, ra)
+            gaZ = lerp(G_Z, zI, ra)
+            gaEl = lerp(G_EL, 0f, rb)
+            if (out) gatR[a] = r
+        } else {
+            val q = ((tg - (gatStart(i) + (GAT_HF + GAT_HOLD) * GAT_CYC)) / GAT_RET).coerceIn(0f, 1f)
+            val we = smoother(q / 0.75f)
+            val wa = smoother((q - 0.2f) / 0.8f)
+            gaSh = lerp(shI, rSh, wa)
+            gaZ = lerp(zI, rZ, wa)
+            gaEl = lerp(0f, rEl, wa)
+            gaExt = lerp(e, 1f, we)
+        }
+    }
 
     // ───────────── estado de animação ─────────────
     private const val MS = 0.8f   // escala do modelo (altura parecida com a dos outros heróis)
@@ -1079,7 +1296,7 @@ object Luffy3D {
 
     /**
      * Interpola o ciclo do soco: repouso → preparação suave (até PW) → golpe estalado (até T_HIT, começa rápido e
-     * freia no alvo) → segura estendido (até PR) → volta elástica ao repouso.
+     * freia no alvo) → segura no alvo (até PR, sem parar de repente) → volta suave ao repouso (smoother: sem tranco).
      */
     private fun k5(t: Float, a: Float, b: Float, c: Float, d: Float, e: Float): Float {
         return if (t < PW) lerp(a, b, ease(t / PW))
@@ -1087,8 +1304,13 @@ object Luffy3D {
             val q = (t - PW) / (T_HIT - PW)
             lerp(b, c, 1f - (1f - q) * (1f - q))
         }
-        else if (t < PR) lerp(c, d, (t - T_HIT) / (PR - T_HIT))
-        else lerp(d, e, ease((t - PR) / (1f - PR)))
+        else if (t < PR) lerp(c, d, ease((t - T_HIT) / (PR - T_HIT)))
+        else lerp(d, e, smoother((t - PR) / (1f - PR)))
+    }
+
+    /** Igual ao k5, mas a volta usa o peso [w] dado (o braço volta em etapas: primeiro o comprimento, depois o ombro). */
+    private fun k5x(t: Float, a: Float, b: Float, c: Float, d: Float, e: Float, w: Float): Float {
+        return if (t < PR) k5(t, a, b, c, d, e) else lerp(d, e, w)
     }
 
     // pontos do corpo (z para frente, y para cima) relativos ao pivô: em pé e encolhido (bola da rolagem)
@@ -1132,6 +1354,8 @@ object Luffy3D {
         // convertido de volta: assim o punho (ou a mão presa no chão) cai exatamente no ponto da tela.
         val rsE = s * PX * MS
         val tAtk = if (attack > 0.001f) 1f - attack else -1f
+        if (tAtk < 0.03f) pmOk = false
+        val gatOn = skillP >= 0f && gatActive && rollP < 0f && !heli && heliCharge < 0f
         var aimOn = false
         var aimPunch = false
         var aimX = 0f
@@ -1144,17 +1368,36 @@ object Luffy3D {
                 aimY = HAND_Y
                 aimZ = (anchorTY / rsE + aimY * COSP) / SINP
             }
-        } else if (tAtk >= 0f && punchOn && !heli && heliCharge < 0f) {
+        } else if (gatOn) {
+            // Gatling: o corpo se vira para o meio do retângulo (mesma conversão tela -> modelo do soco)
             aimOn = true
-            aimPunch = true
-            aimY = ((punchGY - punchTY) / (rsE * COSP)).coerceIn(16f, 46f)   // altura do peito do alvo
-            aimX = punchTX / rsE
-            aimZ = (punchTY / rsE + aimY * COSP) / SINP
-            val dist0 = hypot(aimX, aimZ)
-            if (dist0 > 1f) {
-                val kk = max(0.2f, (dist0 - punchInset / rsE) / dist0)   // para na superfície do corpo
-                aimX *= kk
-                aimZ *= kk
+            aimX = gatDX * 0.6f * gatLen / gatSqX / rsE
+            aimZ = gatDY * 0.6f * gatLen / gatSqY / (rsE * SINP)
+        } else if (tAtk >= 0f && !heli && heliCharge < 0f) {
+            if (tAtk < T_HIT && punchOn) {
+                // até o impacto o punho persegue o alvo; guarda o ponto a cada quadro
+                var py = ((punchGY - punchTY) / (rsE * COSP)).coerceIn(16f, 46f)   // altura do peito do alvo
+                var px = punchTX / rsE
+                var pz = (punchTY / rsE + py * COSP) / SINP
+                val dist0 = hypot(px, pz)
+                if (dist0 > 1f) {
+                    val kk = max(0.2f, (dist0 - punchInset / rsE) / dist0)   // para na superfície do corpo
+                    px *= kk
+                    pz *= kk
+                }
+                pmX = px
+                pmY = py
+                pmZ = pz
+                pmOk = true
+            }
+            if (pmOk) {
+                // depois do impacto o alvo fica TRAVADO onde o punho bateu: o inimigo ser empurrado ou morrer
+                // não arrasta nem teleporta mais o braço (era isso que dava o tranco na volta)
+                aimOn = true
+                aimPunch = true
+                aimX = pmX
+                aimY = pmY
+                aimZ = pmZ
             }
         }
         val hasAimYaw = aimOn && hypot(aimX, aimZ) > 4f
@@ -1505,7 +1748,7 @@ object Luffy3D {
         val arcTgt = if (!rolling && heli && heliT >= HELI_REL_T) min(1f, heliOmega / HELI_OMEGA) * (1f - ease(hDown)) else 0f
         heliArcA += (arcTgt - heliArcA) * min(1f, dt * 16f)
         gLegSpin = hSpin
-        gLegSplay = hSplay
+        gLegSplay = hSplay + gatSplay
         gLegLen = hLen
         // o quadril gira, mas o peito continua de frente (contra-giro)
         hipTw += hHipTw
@@ -1570,21 +1813,26 @@ object Luffy3D {
                 // ... com alvo: IK com a pose exata do impacto (inclinação 0,36 / agachado 0,3 / corpo +4) e da segurada.
                 // Peito e quadril não torcem no golpe, então o braço sai reto do ombro até o peito do inimigo.
                 val side = -sdp
-                solveArm(side, aimX, aimY, aimZ, 14.8f + bob - 0.3f * 3f - hitKick * 0.4f, 0.36f - hitKick * 0.3f, 4f - hitKick * 1.2f, yaw)
+                solveArmT(side, aimX, aimY, aimZ, 14.8f + bob - 0.3f * 3f - hitKick * 0.4f, 0.36f - hitKick * 0.3f, 4f - hitKick * 1.2f, yaw, 0f)
                 cSh = ikSh; cZ = ikShZ; cExt = ikExt
-                solveArm(side, aimX, aimY, aimZ, 14.8f + bob - 0.25f * 3f - hitKick * 0.4f, 0.30f - hitKick * 0.3f, 3f - hitKick * 1.2f, yaw)
+                solveArmT(side, aimX, aimY, aimZ, 14.8f + bob - 0.25f * 3f - hitKick * 0.4f, 0.30f - hitKick * 0.3f, 3f - hitKick * 1.2f, yaw, 0f)
                 dSh = ikSh; dZ = ikShZ; dExtP = ikExt
                 cEl = 0f; dEl = 0f
                 cCh = 0f; dCh = 0f; cHp = 0f; dHp = 0f
                 punchIK = true
             }
-            val mSh = k5(t, m0, 1.1f, cSh, dSh, m0)
-            val mZ = k5(t, mZ0, 0.55f, cZ, dZ, mZ0)
-            val mEl = k5(t, mE0, -2.5f, cEl, dEl, mE0)
+            // volta em etapas: o braço encolhe primeiro pela linha do soco (retE) e só então o ombro relaxa (retA),
+            // senão o braço ainda comprido varreria um arco enorme (efeito chicote)
+            val qR = ((t - PR) / (1f - PR)).coerceIn(0f, 1f)
+            val retE = smoother(qR / 0.75f)
+            val retA = smoother((qR - 0.2f) / 0.8f)
+            val mSh = k5x(t, m0, 1.1f, cSh, dSh, m0, retA)
+            val mZ = k5x(t, mZ0, 0.55f, cZ, dZ, mZ0, retA)
+            val mEl = k5x(t, mE0, -2.5f, cEl, dEl, mE0, retA)
             val gSh = k5(t, g0, -1.0f, -0.5f, -0.6f, g0)
             val gZ = k5(t, gZ0, 0.25f, 0.3f, 0.3f, gZ0)
             val gEl = k5(t, gE0, -2.1f, -2.2f, -2.1f, gE0)
-            val mExt = k5(t, 1f, 1f, cExt, dExtP, 1f)
+            val mExt = k5x(t, 1f, 1f, cExt, dExtP, 1f, retE)
             if (sdp > 0f) {
                 rsh = mSh; rshZ = mZ; rel = mEl; extR = mExt
                 lsh = gSh; lshZ = gZ; lel = gEl
@@ -1614,6 +1862,67 @@ object Luffy3D {
             released = false
         }
 
+        // ── Gomu Gomu no Gatling ──
+        // preparação: agacha de pernas abertas, os dois braços armados | barragem: socos alternados em pontos do retângulo,
+        // o peito torce para o lado do braço que soca e o corpo "bombeia" a cada impacto | fim: o último soco de cada braço
+        // volta ao repouso em etapas enquanto o corpo relaxa. Tudo é função contínua do tempo (peso wB): começa e termina na pose de repouso.
+        var gatIK = false
+        gatSplay = 0f
+        if (gatOn && rollW < 0.5f) {
+            gatIK = true
+            val tg = skillP * GAT_DUR
+            val tb = gatHit(GAT_N - 1)
+            val wB = ease(tg / GAT_WIND) * (1f - smoother((tg - tb) / (GAT_DUR - tb)))
+            val env = ease((tg - (GAT_T0 - 0.12f)) / 0.12f) * (1f - ease((tg - tb) / 0.28f))
+            val wave = cos(PI.toFloat() * (tg - GAT_T0) / GAT_DT)                     // +1 impacto direito, -1 esquerdo
+            val pump = 0.5f + 0.5f * cos(TWO_PI * (tg - GAT_T0) / GAT_DT)             // 1 em cada impacto
+            val ant = if (tg < GAT_WIND) sin(PI.toFloat() * ease(tg / GAT_WIND)) else 0f
+            val rSh0 = rsh
+            val rZ0 = rshZ
+            val rEl0 = rel
+            val lSh0 = lsh
+            val lZ0 = lshZ
+            val lEl0 = lel
+            lean = lerp(lean, 0.26f + 0.04f * pump * env, wB) - 0.14f * ant
+            crouch = lerp(crouch, 0.55f + 0.05f * pump * env, wB) + 0.18f * ant
+            bodyZ = lerp(bodyZ, 1.5f + 1.2f * pump * env, wB) - 1.5f * ant
+            chestTw = chestTw * (1f - wB) + wB * env * 0.30f * wave
+            hipTw *= (1f - wB)
+            tilt = lerp(tilt, 0.1f, wB)
+            shout = max(shout, 0.95f * wB)
+            legB = 0f
+            gatSplay = 0.20f * wB
+            // pose exata do corpo neste quadro (a mesma que o esqueleto vai usar): a IK acerta o punho no ponto
+            val crG = max(crouch, ease(landDip) * 0.5f * (if (landSoft) 1.7f else 1f))
+            val hipG = 14.8f + bob - crG * 3f - hitKick * 0.4f
+            val leanG = lean - hitKick * 0.3f
+            val zG = bodyZ - hitKick * 1.2f
+            gatArm(0, tg, hipG, leanG, zG, chestTw, rSh0, rZ0, rEl0, rsE)
+            rsh = gaSh; rshZ = gaZ; rel = gaEl; extR = gaExt
+            gatArm(1, tg, hipG, leanG, zG, chestTw, lSh0, lZ0, lEl0, rsE)
+            lsh = gaSh; lshZ = gaZ; lel = gaEl; extL = gaExt
+            // impacto de cada soco: estrela no ponto + punhos-fantasma (só efeito visual)
+            for (a in 0..1) {
+                val ti = gatTI[a]
+                if (ti >= 0 && gatFxD[a] != ti && tg >= gatHit(ti)) {
+                    gatFxD[a] = ti
+                    val rx = (gatDX * gatTF[a] + gatDY * gatTU[a]) / gatSqX
+                    val ry = (gatDY * gatTF[a] - gatDX * gatTU[a]) / gatSqY - 15f * rs0(s)
+                    emitG(0, rx, ry, 0.24f, rnd.nextFloat() * 1.0472f)
+                    for (q in 0..1) emitG(1, rx + (rnd.nextFloat() - 0.5f) * 22f * rs0(s), ry + (rnd.nextFloat() - 0.5f) * 14f * rs0(s), 0.2f, 0f)
+                    for (q in 0..3) {
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (14f + rnd.nextFloat() * 30f) * rs0(s)
+                        emitSpark(fx + rx, fy + ry, cos(ang) * sp0, sin(ang) * sp0, 0.26f, rs0(s) * 36f, if (q % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+                    }
+                }
+            }
+        } else {
+            gatTI[0] = -1; gatTI[1] = -1
+            gatFxD[0] = -1; gatFxD[1] = -1
+            gatR[0] = 0f; gatR[1] = 0f
+        }
+
         // suaviza a pose (o golpe mantém o ritmo; transições entre estados não dão tranco)
         pt[0] = lean; pt[1] = hipTw; pt[2] = chestTw; pt[3] = rsh; pt[4] = rshZ; pt[5] = rel
         pt[6] = 0f; pt[7] = lsh; pt[8] = lshZ; pt[9] = lel; pt[10] = 0f; pt[11] = hd
@@ -1624,7 +1933,7 @@ object Luffy3D {
         } else {
             var k = min(1f, dt * (if (attacking) 34f else 18f))
             // soco por IK e mãos presas no chão usam a pose exata (qualquer atraso faria o punho / as mãos escorregarem)
-            if (punchIK) k = 1f
+            if (punchIK || gatIK) k = 1f
             else if (plant && aimOn) k = lerp(k, 1f, ((rollW - 0.5f) * 2f).coerceIn(0f, 1f))
             for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
             // o esticar do braço não pode atrasar: o punho tem que chegar junto com o golpe
@@ -1892,6 +2201,73 @@ object Luffy3D {
                         val r1 = rs * (14f + 14f * grow)
                         c.drawLine(cx + cos(ang) * r0, cy + sin(ang) * r0, cx + cos(ang) * r1, cy + sin(ang) * r1, p)
                     }
+                }
+                p.strokeCap = Paint.Cap.BUTT
+                p.style = Paint.Style.FILL
+            }
+        }
+
+        // ── Gatling: rastro de velocidade nos punhos que saem + estrelas de impacto e punhos-fantasma ──
+        if (gatIK) {
+            p.strokeCap = Paint.Cap.ROUND
+            p.style = Paint.Style.STROKE
+            for (a in 0..1) {
+                val g = gatR[a]
+                if (g < 0.05f) continue
+                val fxk = mkX[a]
+                val fyk = mkY[a]
+                var dx = mkX[a + 4] - fxk
+                var dy = mkY[a + 4] - fyk
+                val dl = sqrt(dx * dx + dy * dy)
+                if (dl < 0.001f) continue
+                dx /= dl
+                dy /= dl
+                for (i in 0..2) {
+                    val off = (i - 1f) * 2.6f * rs
+                    val len = (16f + 14f * (1f - abs(i - 1f) * 0.4f)) * rs * g
+                    val x0 = fxk - dy * off
+                    val y0 = fyk + dx * off
+                    p.strokeWidth = max(1.4f, rs * 1.4f)
+                    p.color = VoxelArt.alpha(if (i == 1) 0xFFFFFFFF.toInt() else 0xFFFFE08A.toInt(), 0.7f * g)
+                    c.drawLine(x0, y0, x0 + dx * len, y0 + dy * len, p)
+                }
+            }
+            p.strokeCap = Paint.Cap.BUTT
+            p.style = Paint.Style.FILL
+        }
+        for (i in 0 until NG) {
+            if (gfL[i] <= 0f) continue
+            gfL[i] -= dt
+            val a = (gfL[i] / gfM[i]).coerceIn(0f, 1f)
+            val cx = fx + gfX[i]
+            val cy = fy + gfY[i]
+            if (gfK[i] == 1) {
+                // punho-fantasma: quadradinho de pele com contorno que some rápido
+                val h = rs * 4.2f
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFF2BF8C.toInt(), 0.75f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(1f, rs * 0.9f)
+                p.color = VoxelArt.alpha(0xFF8A4A2A.toInt(), 0.8f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.FILL
+            } else {
+                val grow = 1f - a
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.65f * a)
+                c.drawCircle(cx, cy, rs * (2.5f + 5f * grow), p)
+                p.color = VoxelArt.alpha(0xFFFFB02E.toInt(), 0.35f * a)
+                c.drawCircle(cx, cy, rs * (4f + 9f * grow), p)
+                p.style = Paint.Style.STROKE
+                p.strokeCap = Paint.Cap.ROUND
+                p.strokeWidth = max(1.2f, rs * 1.2f)
+                p.color = VoxelArt.alpha(0xFFFFE08A.toInt(), 0.85f * a)
+                for (k in 0..5) {
+                    val ang = k * 1.0472f + gfR[i]
+                    val r0 = rs * (5f + 6f * grow)
+                    val r1 = rs * (10f + 12f * grow)
+                    c.drawLine(cx + cos(ang) * r0, cy + sin(ang) * r0, cx + cos(ang) * r1, cy + sin(ang) * r1, p)
                 }
                 p.strokeCap = Paint.Cap.BUTT
                 p.style = Paint.Style.FILL

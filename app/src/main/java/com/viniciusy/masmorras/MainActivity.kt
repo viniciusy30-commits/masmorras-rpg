@@ -443,6 +443,15 @@ class MainActivity : AppCompatActivity() {
                         }
                         if (ping) Sfx.play("ui_ping", 0.6f)
                     }
+                    if (p.classe == Classe.LUFFY) {
+                        // Gomu Gomu no Gatling: número da recarga em cima do botão, apagado enquanto não está pronto
+                        val c = p.skillCd(1, System.currentTimeMillis())
+                        val pronto = c <= 0f && !p.skilling
+                        if (prevCd[0] > 0f && c <= 0f) Sfx.play("ui_ping", 0.6f)
+                        prevCd[0] = c
+                        tvSkill1Cd.text = if (c > 0f) Math.ceil(c.toDouble()).toInt().toString() else ""
+                        btnSkill1.alpha = if (pronto) 1f else 0.45f
+                    }
                     if (p.classe == Classe.PIKACHU) {
                         val nowMs = System.currentTimeMillis()
                         val btns = arrayOf(btnSkill1, btnSkill2, btnSkill3, btnSkill4)
@@ -633,7 +642,7 @@ class MainActivity : AppCompatActivity() {
         )
         btnAttack.setImageResource(if (classe == Classe.PIKACHU) R.drawable.hd_ic_pika_shock else R.drawable.hd_ic_sword)
         btnWeapon.visibility = if (classe == Classe.GUERREIRO) View.VISIBLE else View.GONE
-        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
+        val skillVis = if (classe == Classe.ARQUEIRO || classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.LUFFY) View.VISIBLE else View.GONE
         val skill2Vis = if (classe == Classe.ARQUEIRO || classe == Classe.PIKACHU || classe == Classe.ICHIGO) View.VISIBLE else View.GONE
         val skill3Vis = if (classe == Classe.NINJA || classe == Classe.PIKACHU || classe == Classe.ICHIGO || classe == Classe.ARQUEIRO) View.VISIBLE else View.GONE
         // ninja: Sombra Viva toma o lugar do rolamento
@@ -658,6 +667,9 @@ class MainActivity : AppCompatActivity() {
         } else if (classe == Classe.ICHIGO) {
             ichiHolShown = false
             applyIchiForm(false)
+        } else if (classe == Classe.LUFFY) {
+            btnSkill1.setImageResource(R.drawable.hd_ic_luffy_gatling)
+            btnSkill1.contentDescription = "Gomu Gomu no Gatling"
         } else if (classe == Classe.PIKACHU) {
             btnSkill1.setImageResource(R.drawable.hd_ic_pika_bolt)
             btnSkill2.setImageResource(R.drawable.hd_ic_pika_tail)

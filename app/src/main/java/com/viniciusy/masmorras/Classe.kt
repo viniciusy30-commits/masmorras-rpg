@@ -56,7 +56,7 @@ enum class Classe(
     ),
     LUFFY(
         "Luffy",
-        "Capitão dos Chapéus de Palha depois do salto de tempo. Combo de socos de borracha que esticam o braço (direita, esquerda e os dois punhos juntos) e dash estilingue.",
+        "Capitão dos Chapéus de Palha depois do salto de tempo. Socos de borracha que esticam o braço até o alvo, dash estilingue e o Gomu Gomu no Gatling: uma chuva de socos num retângulo à frente.",
         0xFFD42A2E.toInt(),
         190f, 0f, 3.5f, 26f, 62f, 300L, false
     ),

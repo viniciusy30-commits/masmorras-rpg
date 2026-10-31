@@ -1,3 +1,11 @@
+#id 2026-10-31-luffy-gatling
+#titulo Luffy: Gomu Gomu no Gatling e soco mais fluido
+- Skill nova: Gomu Gomu no Gatling (botão de skill, recarga de 8 s). O Luffy se planta no chão e despeja 16 socos com os dois braços, alternando, numa área retangular à frente dele; o retângulo aparece no chão e quem estiver dentro leva todos os socos e fica atordoado. O último soco joga os inimigos para longe
+- Os punhos miram nos inimigos dentro do retângulo; sem inimigos eles varrem a área toda. O peito torce para o lado do braço que soca e o corpo bombeia a cada impacto
+- Final fluido: depois do último soco cada braço volta como elástico (primeiro encolhe, depois o ombro relaxa) enquanto o corpo se levanta, sem corte brusco e sem atacar
+- Soco básico: o braço agora volta ao normal de forma suave. Antes ele dava um tranco quando o inimigo era empurrado ou morria; agora o punho fica travado onde bateu e o braço recolhe em etapas
+- Soco um pouco mais lento (0,77 s) para a volta do braço não ficar apressada
+
 #id 2026-10-31-luffy-alvo
 #titulo Luffy: soco no alvo, bonecos de treino e super pulo novo
 - Ataque do Luffy agora é por alvo: toque num inimigo para marcá-lo (anel vermelho no chão) ou deixe sem alvo e ele pega o mais perto

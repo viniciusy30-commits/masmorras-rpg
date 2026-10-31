@@ -3,6 +3,7 @@ package com.viniciusy.masmorras
 import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import android.graphics.Typeface
@@ -453,6 +454,8 @@ class GameView @JvmOverloads constructor(
         luffyTarget = null
         luffyHitTarget = null
         luffyAutoAtk = false
+        gatIdx = 0
+        gatAcc.clear()
         if (classe == Classe.LUFFY) spawnDummies(sx, sy)
         hadEnemies = enemies.any { !it.dummy }
         gameOver = false
@@ -799,6 +802,10 @@ class GameView @JvmOverloads constructor(
         }
         if (p.classe == Classe.ICHIGO) {
             ichiSkill(p, k)
+            return
+        }
+        if (p.classe == Classe.LUFFY) {
+            luffySkill(p, k)
             return
         }
         if (p.classe != Classe.ARQUEIRO) return
@@ -1419,6 +1426,144 @@ class GameView @JvmOverloads constructor(
     private val ICHI_BONE = 0xFFEDE6D6.toInt()
 
     /** Golpe do combo; chamado no instante do impacto. O 3º golpe (cruzado) é mais largo, mais forte e solta um Getsuga pequeno. */
+    // ───────────── Gomu Gomu no Gatling ─────────────
+    private var gatIdx = 0
+    private val gatAcc = HashMap<Enemy, Float>()
+    private val gatPath = Path()
+
+    /** Começa o Gatling: vira para o alvo (marcado ou mais perto), cancela o soco em andamento e fica plantado no chão. */
+    private fun luffySkill(p: Player, k: Int) {
+        if (k != 1) return
+        val tgt = luffyPickTarget(p)
+        if (!p.startSkill(k, System.currentTimeMillis())) {
+            snd("ui_error", 0.5f)
+            return
+        }
+        if (tgt != null) {
+            val dx = tgt.x - p.x
+            val dy = tgt.y - p.y
+            val d = hypot(dx, dy).coerceAtLeast(1f)
+            p.facingX = dx / d
+            p.facingY = dy / d
+        }
+        pendingLuffyT = -1f
+        luffyHitTarget = null
+        luffyAimT = null
+        p.luffyTgtOn = false
+        queuedAt = 0L
+        gatIdx = 0
+        gatAcc.clear()
+        snd("leap_charge", 0.75f, 1.25f)
+    }
+
+    /** Todo quadro: marca quem está no retângulo (os punhos miram neles) e aplica os socos que já chegaram na hora de acertar. */
+    private fun luffyGatUpdate(p: Player) {
+        if (p.skillK != 1 || !p.alive) {
+            p.gatPtN = 0
+            if (p.skillK == 0) gatIdx = 0
+            return
+        }
+        val fx = p.facingX
+        val fy = p.facingY
+        var n = 0
+        for (e in enemies) {
+            if (!e.alive || n >= 6) continue
+            if (e.alt - p.alt > 30f) continue
+            val ex = e.x - p.x
+            val ey = e.y - p.y
+            val along = ex * fx + ey * fy
+            val side = ex * fy - ey * fx      // + = esquerda do Luffy
+            if (along > -10f && along < Player.LUFFY_GAT_LEN + e.radius && abs(side) < Player.LUFFY_GAT_HALFW + e.radius * 0.6f) {
+                p.gatPtF[n] = (along - e.radius * 0.5f).coerceIn(30f, Player.LUFFY_GAT_LEN)
+                p.gatPtU[n] = side.coerceIn(-Player.LUFFY_GAT_HALFW * 0.92f, Player.LUFFY_GAT_HALFW * 0.92f)
+                n++
+            }
+        }
+        p.gatPtN = n
+        val el = p.skillDur - p.skillT
+        while (gatIdx < Luffy3D.GAT_N && el >= Luffy3D.gatHit(gatIdx)) {
+            gatTick(p, gatIdx)
+            gatIdx++
+        }
+    }
+
+    /** Um soco do Gatling: acerta todos que estão dentro do retângulo à frente. O último empurra para longe. */
+    private fun gatTick(p: Player, idx: Int) {
+        val last = idx == Luffy3D.GAT_N - 1
+        val fx = p.facingX
+        val fy = p.facingY
+        for (e in enemies) {
+            if (!e.alive) continue
+            if (e.alt - p.alt > 30f) continue
+            val ex = e.x - p.x
+            val ey = e.y - p.y
+            val along = ex * fx + ey * fy
+            val side = abs(ex * fy - ey * fx)
+            if (along > -10f && along < Player.LUFFY_GAT_LEN + e.radius && side < Player.LUFFY_GAT_HALFW + e.radius * 0.6f) {
+                val hp0 = e.hp
+                damageEnemy(e, p.danoH * Player.LUFFY_GAT_DMG, p.x, p.y, if (last) 2.2f else 0.12f, "", true)
+                gatAcc[e] = (gatAcc[e] ?: 0f) + (hp0 - e.hp)
+                e.stunT = max(e.stunT, 0.35f)
+                if (idx % 2 == 0) sndAt("hit_heavy", e.x, e.y, 0.5f, vary() * 1.1f)
+            }
+        }
+        snd("heavy_swing", 0.3f, (1.5f + 0.4f * (idx % 2)) * vary())
+        shake = max(shake, if (last) 0.14f else 0.035f)
+        if (idx % 4 == 3 || last) {
+            for ((e, v) in gatAcc) {
+                if (v > 0.5f) texts.add(DmgText(e.x, e.y - e.radius - 30f - e.alt, v.toInt().toString(), 0.9f, 0xFFFFD54F.toInt()))
+            }
+            gatAcc.clear()
+        }
+    }
+
+    private fun sm01(t: Float): Float {
+        val x = t.coerceIn(0f, 1f)
+        return x * x * (3f - 2f * x)
+    }
+
+    /** O retângulo do Gatling no chão: aparece na preparação, pulsa na barragem e some junto com a volta dos braços. */
+    private fun drawGatArea(canvas: Canvas, p: Player) {
+        if (!p.alive || p.skillK != 1) return
+        val el = p.skillDur - p.skillT
+        val tb = Luffy3D.gatHit(Luffy3D.GAT_N - 1)
+        val a = (sm01(el / 0.3f) * (1f - sm01((el - tb) / (Luffy3D.GAT_DUR - tb)))).coerceIn(0f, 1f)
+        if (a <= 0.01f) return
+        val barrage = el >= Luffy3D.GAT_T0 - 0.1f && el <= tb + 0.1f
+        val pulse = if (barrage) 0.8f + 0.2f * sin(time * 20f) else 0.6f
+        val fx = p.facingX
+        val fy = p.facingY
+        val lx = fy
+        val ly = -fx
+        val cx = p.x - camX
+        val cy = p.y - camY + p.radius * 0.55f - p.ground
+        val len = Player.LUFFY_GAT_LEN
+        val w = Player.LUFFY_GAT_HALFW
+        val b = -12f
+        gatPath.reset()
+        gatPath.moveTo(cx + fx * b - lx * w, cy + fy * b - ly * w)
+        gatPath.lineTo(cx + fx * len - lx * w, cy + fy * len - ly * w)
+        gatPath.lineTo(cx + fx * len + lx * w, cy + fy * len + ly * w)
+        gatPath.lineTo(cx + fx * b + lx * w, cy + fy * b + ly * w)
+        gatPath.close()
+        paint.style = Paint.Style.FILL
+        paint.color = ((0x34 * a * pulse).toInt() shl 24) or 0xFFC23A
+        canvas.drawPath(gatPath, paint)
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = 3f
+        paint.color = ((0xE0 * a).toInt() shl 24) or 0xFF5252
+        canvas.drawPath(gatPath, paint)
+        // faixas que correm para a frente (sensação de velocidade)
+        paint.strokeWidth = 2f
+        for (i in 0..3) {
+            val f = ((time * (if (barrage) 340f else 120f) + i * len / 4f) % len)
+            val fade = kotlin.math.sin(3.14159f * f / len)
+            paint.color = (((0x66 * a * fade).toInt()) shl 24) or 0xFFFFFF
+            canvas.drawLine(cx + fx * f - lx * w * 0.9f, cy + fy * f - ly * w * 0.9f, cx + fx * f + lx * w * 0.9f, cy + fy * f + ly * w * 0.9f, paint)
+        }
+        paint.style = Paint.Style.FILL
+    }
+
     /** Gomu Gomu no Pistol: o punho esticado chega ao alvo marcado e sempre acerta (o alvo pode ter se mexido). */
     private fun luffyStrike(@Suppress("UNUSED_PARAMETER") sw: Int) {
         val p = player ?: return
@@ -2431,7 +2576,7 @@ class GameView @JvmOverloads constructor(
     }
 
     /** hitSnd: null = som do golpe pela classe; "" = sem som (quem chamou toca o seu). */
-    private fun damageEnemy(e: Enemy, dmg0: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null) {
+    private fun damageEnemy(e: Enemy, dmg0: Float, fromX: Float, fromY: Float, kbMul: Float = 1f, hitSnd: String? = null, noText: Boolean = false) {
         val pl = player
         val crit = pl != null && pl.critH > 0f && Math.random() < pl.critH.toDouble()
         if (crit && pl != null && pl.classe == Classe.ARQUEIRO) sylv.aoCritar()
@@ -2455,12 +2600,14 @@ class GameView @JvmOverloads constructor(
         }
         if (!e.alive) sndAt("enemy_die", e.x, e.y, 0.95f, vary())
         if (estavaVivo && !e.alive && pl != null && pl.classe == Classe.ARQUEIRO) sylv.onKill(e)
-        texts.add(
-            DmgText(
-                e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
-                if (big) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt()
+        if (!noText) {
+            texts.add(
+                DmgText(
+                    e.x, e.y - e.radius - 30f - e.alt, dmg.toInt().toString(), 0.8f,
+                    if (big) 0xFFFFD54F.toInt() else 0xFFFFFFFF.toInt()
+                )
             )
-        )
+        }
         val dx = e.x - fromX
         val dy = e.y - fromY
         val d = hypot(dx, dy).coerceAtLeast(1f)
@@ -2552,6 +2699,7 @@ class GameView @JvmOverloads constructor(
             p.luffyTgtOn = false
             if (aimE != null && (!aimE.alive || p.attackAnim <= 0.001f)) luffyAimT = null
         }
+        if (p.classe == Classe.LUFFY) luffyGatUpdate(p)
         if (pendingLuffyT >= 0f) {
             pendingLuffyT -= dt
             if (pendingLuffyT <= 0f) {
@@ -2930,7 +3078,7 @@ class GameView @JvmOverloads constructor(
         traps.forEach { it.draw(canvas, paint, camX, camY, time) }
         rains.forEach { it.drawGround(canvas, paint, camX, camY, time) }
         if (player?.classe == Classe.ARQUEIRO) sylv.drawGround(canvas, paint, camX, camY, time)
-        player?.let { if (it.classe == Classe.LUFFY) drawLuffyTarget(canvas, it) }
+        player?.let { if (it.classe == Classe.LUFFY) { drawLuffyTarget(canvas, it); drawGatArea(canvas, it) } }
 
         drawList.clear()
         for (e in enemies) {
