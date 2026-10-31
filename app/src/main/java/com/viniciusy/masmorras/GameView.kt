@@ -457,6 +457,11 @@ class GameView @JvmOverloads constructor(
             if (p.startLeapCharge()) snd("leap_charge", 0.85f)
             return
         }
+        if (p.classe == Classe.LUFFY) {
+            // segurar: agacha e torce as pernas (Gomu Gomu no Helicóptero); soltar rápido vira pulo normal
+            if (p.startHeliCharge()) snd("leap_charge", 0.55f, 1.35f)
+            return
+        }
         if (p.classe == Classe.MAGO && p.flying) return
         if (p.classe == Classe.ICHIGO && p.sky) return
         if (p.classe == Classe.EXPLORADOR) {
@@ -498,6 +503,18 @@ class GameView @JvmOverloads constructor(
             if (p.releaseLeap()) {
                 snd("leap_launch", 0.95f)
                 groundSmash(p, 62f, 0.6f, 1.2f, 6)
+            }
+            return
+        }
+        if (p.heliCharging) {
+            if (p.releaseHeli()) {
+                if (p.heli) {
+                    burst(p.x, p.y + p.radius * 0.55f - p.ground, 8, 0xFFB8B0A8.toInt())
+                    snd("jump_air", 0.9f, 0.85f * vary())
+                } else {
+                    burst(p.x, p.y + p.radius * 0.55f - p.ground, 5, 0xFFB8B0A8.toInt())
+                    snd("jump", 0.75f, vary())
+                }
             }
             return
         }

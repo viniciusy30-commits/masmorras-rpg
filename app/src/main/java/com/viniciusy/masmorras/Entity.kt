@@ -126,8 +126,15 @@ class Player(
         const val LUFFY_H_MIN = 46f        // altura do arco sem carga (px)
         const val LUFFY_H_MAX = 84f        // altura do arco com carga máxima (px)
         const val LUFFY_ROLL_T = 0.60f     // rolagem no chão + levantar (s)
-        // pulo duplo do Luffy: Gomu Gomu no Helicóptero (gira as pernas e plana até tocar o chão)
-        const val LUFFY_HELI_VZ = 610f     // impulso do 2º pulo (o 1º é 340): sobe bem mais alto
+        // toque rápido no dash = mortal para a frente que cai de pé (sem rolar)
+        const val LUFFY_FLIP_C = 0.12f     // carga abaixo disso conta como toque
+        const val LUFFY_FLIP_H = 62f       // altura do arco do mortal (px)
+        const val LUFFY_FLIP_AIR = 0.56f   // duração do mortal no ar (s)
+        // pulo carregado do Luffy: segurar = agacha e torce as pernas; soltar = pulo alto, pernas viram hélice e ele plana
+        const val LUFFY_HELI_TAP = 0.16f   // abaixo disso (s) é só um toque: pulo normal
+        const val LUFFY_HELI_CHARGE_T = 0.45f // tempo extra segurando até a carga máxima
+        const val LUFFY_HELI_VZ_MIN = 500f // impulso com pouca carga (o pulo normal é 340)
+        const val LUFFY_HELI_VZ_MAX = 680f // impulso com carga máxima
         const val LUFFY_HELI_G = 1150f     // gravidade enquanto sobe (mais leve = pulo mais alto)
         const val LUFFY_HELI_FALL = -105f  // velocidade máxima de queda planando (px/s)
         const val ICHI_HOLLOW_T = 32f      // duração da forma Vasto Lorde (s)
@@ -185,9 +192,13 @@ class Player(
     var luffyVh = 0f         // velocidade horizontal do voo
     var luffyVl = 0f         // velocidade horizontal ao pousar (decai na rolagem)
     var luffyG = 1000f       // gravidade do arco
+    var luffyFlip = false    // o dash atual é o mortal (toque rápido)
+    var luffyLandT = LUFFY_ROLL_T // duração da fase 3 (rolagem ou pouso do mortal)
     var luffyLaunchReq = false // o GameView toca o som / poeira do lançamento quando liga
-    var heli = false         // Luffy: helicóptero ativo (do 2º pulo até pousar)
-    var heliT = 0f           // segundos desde o 2º pulo
+    var heliCharging = false // Luffy: segurando o pulo no chão (agacha e torce as pernas)
+    var heliChargeT = 0f     // segundos segurando
+    var heli = false         // Luffy: pulo carregado ativo (da soltura até pousar)
+    var heliT = 0f           // segundos desde a soltura
 
     // bárbaro: salto carregado (segurar pular) e pouso destruidor
     var leapCharging = false
@@ -676,7 +687,6 @@ class Player(
     /** Segundo pulo do arqueiro, no ar: impulso novo e mortal para a frente que termina de pé antes de pousar. */
     private fun airJump(): Boolean {
         if (classe == Classe.NINJA) return ninjaDash()
-        if (classe == Classe.LUFFY) return luffyHeli()
         if (classe != Classe.ARQUEIRO || airJumped || flying) return false
         val up = (alt - ground).coerceAtLeast(0f)
         if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
@@ -692,15 +702,33 @@ class Player(
         return true
     }
 
-    /** Segundo pulo do Luffy, no ar: gira as pernas como hélice e plana (cai devagar) até tocar o chão. */
-    private fun luffyHeli(): Boolean {
-        if (airJumped || heli || flying || luffyPh != 0) return false
-        val up = (alt - ground).coerceAtLeast(0f)
-        if (up < 5f && vz > 0f) return false // acabou de decolar: ignora o toque duplicado
+    /** Luffy: botão de pular apertado no chão. Se segurar, agacha e torce as pernas; se soltar rápido, é um pulo normal. */
+    fun startHeliCharge(): Boolean {
+        if (!alive || classe != Classe.LUFFY || rolling || !grounded || heliCharging || luffyPh != 0 || skillK != 0) return false
+        heliCharging = true
+        heliChargeT = 0f
+        return true
+    }
+
+    /**
+     * Luffy: soltou o botão. Toque rápido = pulo normal. Segurou = pula mais alto (quanto mais carga, mais alto)
+     * com as pernas torcidas; no ar elas soltam e giram como hélice, e ele plana até o chão.
+     * Devolve true se saiu do chão.
+     */
+    fun releaseHeli(): Boolean {
+        if (!heliCharging) return false
+        heliCharging = false
+        val t = heliChargeT
+        heliChargeT = 0f
+        if (!alive || !grounded) return false
+        if (t < LUFFY_HELI_TAP) return jump()
+        val c = lfSmooth((t - LUFFY_HELI_TAP) / LUFFY_HELI_CHARGE_T)
+        vz = lfLerp(LUFFY_HELI_VZ_MIN, LUFFY_HELI_VZ_MAX, c)
+        alt = ground + 0.7f
         airJumped = true
+        flipT = 0f
         heli = true
         heliT = 0f
-        vz = LUFFY_HELI_VZ
         attackAnim = 0f
         charging = false
         chargeT = 0f
@@ -742,7 +770,7 @@ class Player(
     }
 
     fun startRoll(now: Long): Boolean {
-        if (!alive || rolling || swinging || skillK != 0 || voltT > 0f || !grounded || now - lastRoll < (if (classe == Classe.PIKACHU) 900L else 700L)) return false
+        if (!alive || rolling || swinging || skillK != 0 || voltT > 0f || !grounded || heliCharging || now - lastRoll < (if (classe == Classe.PIKACHU) 900L else 700L)) return false
         var dx = inX
         var dy = inY
         if (hypot(dx, dy) < 0.1f) {
@@ -776,6 +804,7 @@ class Player(
 
     private fun luffyBegin() {
         heli = false
+        luffyFlip = false
         luffyPh = 1
         luffyT = 0f
         luffyCharge = 0f
@@ -789,9 +818,10 @@ class Player(
     /** Solta o estilingue: sobe em arco para a frente. Quanto mais carga, mais longe, mais alto e mais demorado. */
     private fun luffyLaunch() {
         val c = luffyCharge
-        val dist = lfLerp(LUFFY_DIST_MIN, LUFFY_DIST_MAX, c)
-        val h = lfLerp(LUFFY_H_MIN, LUFFY_H_MAX, c)
-        luffyAirT = lfLerp(LUFFY_AIR_MIN, LUFFY_AIR_MAX, c)
+        luffyFlip = c < LUFFY_FLIP_C
+        val dist = if (luffyFlip) LUFFY_DIST_MIN else lfLerp(LUFFY_DIST_MIN, LUFFY_DIST_MAX, c)
+        val h = if (luffyFlip) LUFFY_FLIP_H else lfLerp(LUFFY_H_MIN, LUFFY_H_MAX, c)
+        luffyAirT = if (luffyFlip) LUFFY_FLIP_AIR else lfLerp(LUFFY_AIR_MIN, LUFFY_AIR_MAX, c)
         luffyVh = dist / luffyAirT
         luffyG = 8f * h / (luffyAirT * luffyAirT)   // parábola: sobe h e volta ao chão em luffyAirT
         vz = 4f * h / luffyAirT
@@ -806,8 +836,16 @@ class Player(
     private fun luffyTouch() {
         luffyPh = 3
         luffyT = 0f
-        luffyVl = luffyVh * 0.8f
-        landed = max(landed, 0.85f)   // poeira + som de pouso do GameView
+        if (luffyFlip) {
+            // cai de pé: se está andando, o pouso é curto e já emenda no passo; parado, assenta um pouco
+            luffyLandT = if (hypot(inX, inY) > 0.3f) 0.2f else 0.32f
+            luffyVl = luffyVh * 0.9f
+            landed = max(landed, 0.6f)
+        } else {
+            luffyLandT = LUFFY_ROLL_T
+            luffyVl = luffyVh * 0.8f
+            landed = max(landed, 0.85f)   // poeira + som de pouso do GameView
+        }
     }
 
     private fun luffyEnd() {
@@ -818,9 +856,12 @@ class Player(
         luffyVl = 0f
         rollT = 0f
         dashing = false
-        vx = 0f
-        vy = 0f
-        lastRoll = System.currentTimeMillis() - 350L   // recarga curta depois de levantar
+        if (!luffyFlip) {
+            vx = 0f
+            vy = 0f
+        }   // no mortal a velocidade continua: o jogo assume o passo sem parada
+        lastRoll = System.currentTimeMillis() - (if (luffyFlip) 450L else 350L)   // recarga curta depois de levantar
+        luffyFlip = false
     }
 
     /** Bateu na parede durante o dash: perde velocidade (o jogo ainda desliza pela parede). */
@@ -859,12 +900,19 @@ class Player(
                 vy = rollDY * luffyVh * acc
             }
             else -> {
-                // rolagem: o avanço vai morrendo até ele estar de pé
-                val k = 1f - min(1f, luffyT / (LUFFY_ROLL_T * 0.8f))
-                val spd = luffyVl * k * k
-                vx = rollDX * spd
-                vy = rollDY * spd
-                if (luffyT >= LUFFY_ROLL_T) luffyEnd()
+                if (luffyFlip) {
+                    // pouso do mortal: a velocidade do voo vira a velocidade de caminhada (sem freada seca)
+                    val k = lfSmooth(luffyT / (luffyLandT * 0.7f))
+                    vx = rollDX * luffyVl * (1f - k) + inX * velH * 60f * spdMul * k
+                    vy = rollDY * luffyVl * (1f - k) + inY * velH * 60f * spdMul * k
+                } else {
+                    // rolagem: o avanço vai morrendo até ele estar de pé
+                    val k = 1f - min(1f, luffyT / (LUFFY_ROLL_T * 0.8f))
+                    val spd = luffyVl * k * k
+                    vx = rollDX * spd
+                    vy = rollDY * spd
+                }
+                if (luffyT >= luffyLandT) luffyEnd()
             }
         }
     }
@@ -989,6 +1037,10 @@ class Player(
         if (swinging) swingStep(dt)
         if (flipT > 0f) flipT = max(0f, flipT - dt)
         if (heli) heliT += dt else heliT = 0f
+        if (heliCharging) {
+            heliChargeT += dt
+            if (!alive || !grounded || rolling) { heliCharging = false; heliChargeT = 0f }
+        }
         if (phaseT > 0f) phaseT = max(0f, phaseT - dt)
         if (dashT > 0f) dashT = max(0f, dashT - dt)
         if (voltT > 0f) voltT = max(0f, voltT - dt)
@@ -1048,7 +1100,7 @@ class Player(
             vy = leapDY * leapSpd
         } else {
             if (leapCharging) leapChargeT = (leapChargeT + dt / 0.7f).coerceAtMost(1f)
-            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
+            val slow = (if (charging) (if (weapon == 1) 0.28f else 0.45f) else 1f) * (if (flying) 1.25f else if (sky) 1.15f else 1f) * (if (leapCharging) 0.3f else 1f) * (if (heliCharging) 0.35f else 1f) * (if (skillK != 0) (if (classe == Classe.NINJA) 0.9f else if (classe == Classe.PIKACHU) 0.45f else 0.3f) else 1f) * (if (bowHold) 0.5f else 1f) * (if (classe == Classe.ICHIGO && hollow) 1.12f else 1f)
             vx = inX * velH * 60f * slow * spdMul + momX
             vy = inY * velH * 60f * slow * spdMul + momY
             val md = max(0f, 1f - dt * 2.0f)
@@ -1241,11 +1293,13 @@ class Player(
         Luffy3D.dashU = when (luffyPh) {
             1 -> luffyT                                           // segundos de preparação
             2 -> (luffyT / luffyAirT).coerceIn(0f, 1f)             // progresso do voo
-            3 -> (luffyT / LUFFY_ROLL_T).coerceIn(0f, 1f)          // progresso da rolagem
+            3 -> (luffyT / luffyLandT).coerceIn(0f, 1f)            // progresso da rolagem / pouso
             else -> 0f
         }
         Luffy3D.dashCharge = luffyCharge
+        Luffy3D.dashFlip = classe == Classe.LUFFY && luffyFlip
         Luffy3D.heli = classe == Classe.LUFFY && heli
+        Luffy3D.heliCharge = if (classe == Classe.LUFFY && heliCharging) heliChargeT else -1f
         Luffy3D.heliT = heliT
         Luffy3D.wx = x                 // posição no mundo (o rastro do voo é guardado em coordenadas do mundo)
         Luffy3D.wy = y - alt
