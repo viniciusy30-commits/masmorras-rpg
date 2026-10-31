@@ -518,6 +518,7 @@ object Ichigo3D {
     private val EDGE_BL = 0xFFDDF6FF.toInt()
     private val AMBER = 0xFFB5651D.toInt()
     private val LIP = 0xFF9A4A44.toInt()
+    private val ITO = 0xFF3E3948.toInt()
 
     // ───────────── skills ─────────────
     // Bankai: 1 Getsuga Tenshou, 2 Getsuga Jujisho (cruz), 3 Redemoinho de Getsuga, 4 Golpe Lunar (salto), 5 Vasto Lorde (transformação)
@@ -839,13 +840,15 @@ object Ichigo3D {
             cube(0f, 0.9f, 0f, 4.95f, 1.1f, 3.2f, BLK)
             cube(0f, 0.2f, 0f, 5.0f, 0.18f, 3.25f, BLK_L)
             cube(0f, 1.9f, -3.3f, 2.2f, 1.6f, 0.2f, BLK_L)
+            cube(0f, 3.4f, -2.95f, 4.9f, 2.4f, 0.12f, BLK)
             // corpo do casaco (kosode preto)
             cube(0f, 4.2f, 0f, 4.5f, 2.1f, 2.9f, BLK)
             cube(0f, 4.2f, 2.95f, 3.6f, 2.0f, 0.1f, BLK_L)
             // faixa branca enrolada, com dobras
-            cube(0f, 2.9f, 0f, 4.8f, 0.95f, 3.2f, TABI)
-            cube(0f, 4.15f, 0f, 4.7f, 0.5f, 3.12f, BONE_D)
-            cube(0f, 2.1f, 0f, 4.78f, 0.22f, 3.17f, BONE_D)
+            // (só da frente até os lados: as costas ficam cobertas pelo preto do casaco)
+            cube(0f, 2.9f, 1.0f, 4.8f, 0.95f, 2.2f, TABI)
+            cube(0f, 4.15f, 1.0f, 4.7f, 0.5f, 2.12f, BONE_D)
+            cube(0f, 2.1f, 1.0f, 4.78f, 0.22f, 2.17f, BONE_D)
             for (i in -3..3) cube(i * 1.35f, 3.0f, 3.22f, 0.07f, 0.85f, 0.05f, BONE_D)
             // laço vermelho no meio e as pontas caindo
             cube(0f, 3.1f, 3.3f, 0.85f, 0.8f, 0.14f, RED)
@@ -885,14 +888,14 @@ object Ichigo3D {
                     cube(0f, -12.4f, 0f, 0.38f, 0.20f, 3.1f, RED_D)
                     translate(0f, -12.4f, 0f)
                     rotX(cw0 * 0.5f)
-                    for (k in -2..2) {
-                        val tl = 2.4f - 0.35f * kotlin.math.abs(k) + 0.25f * (k % 2)
+                    for (k in -3..3) {
+                        val tl = 2.6f - 0.30f * kotlin.math.abs(k) + 0.9f * ((k + 3) % 2)
                         push()
-                            translate(0f, 0f, k * 1.15f)
+                            translate(0f, 0f, k * 0.85f)
                             rotZ(sd * (0.10f + 0.06f * k))
                             rotX(0.08f * k + cw1 * 0.4f)
-                            prism(0f, -tl, 0f, 0.14f, tl, 0.62f, 1.0f, 0.15f, 0f, 0f, if (k % 2 == 0) BLK else BLK_L)
-                            cube(-sd * 0.12f, -tl * 1.1f, 0f, 0.05f, tl * 0.9f, 0.3f, RED_D)
+                            prism(0f, -tl, 0f, 0.06f, tl, 0.10f, 2.2f, 6.2f, 0f, 0f, if (k % 2 == 0) BLK else BLK_L)
+                            cube(-sd * 0.10f, -tl * 1.75f, 0f, 0.05f, tl * 0.28f, 0.24f, RED_D)
                         pop()
                     }
                 pop()
@@ -904,7 +907,7 @@ object Ichigo3D {
                     rotX(-cw2 * 0.5f - 0.06f)
                     rotZ(sd * 0.05f)
                     prism(0f, -6.6f, 0f, 1.8f, 6.6f, 0.22f, 0.8f, 1.0f, 0f, 0f, BLK)
-                    cube(sd * -1.7f, -6.6f, 0.12f, 0.10f, 6.5f, 0.06f, TABI)
+                    cube(sd * -1.7f, -6.6f, 0.12f, 0.10f, 6.5f, 0.06f, BLK_L)
                     cube(sd * 0.5f, -6.6f, 0.14f, 0.08f, 6.3f, 0.05f, BLK_L)
                     cube(0f, -13.2f, 0f, 1.95f, 0.14f, 0.26f, RED_D)
                 pop()
@@ -1029,84 +1032,94 @@ object Ichigo3D {
         pop()
     }
 
-    /** Espada na mão, ponta para -Y: katana negra de gume azul-claro, empunhadura enrolada, tsuba redonda e fio que acende com a energia. */
+    /**
+     * Katana (Tensa Zangetsu) na mão, ponta para -Y e gume (fio azul) para +Z:
+     * tsuka oval enrolada em ito preto com losangos, kashira com correntinha, fuchi, tsuba octogonal escura,
+     * habaki de aço, lâmina negra com sori (curva) para o lado do gume, linha do shinogi, fio azul-claro e kissaki em ponta.
+     */
     private fun sword() {
         val e = VoxelArt.mix(EDGE_B, EDGE_BL, glow)
-        // empunhadura (tsuka) enrolada em losangos, com a trança preta e cinza
-        cube(0f, -1.3f, 0f, 0.46f, 2.8f, 0.52f, BLK_D)
-        for (i in 0..5) {
-            cube(0f, 1.0f - i * 0.92f, 0f, 0.54f, 0.13f, 0.60f, BLK_L)
-            cube(0f, 0.55f - i * 0.92f, 0.54f, 0.22f, 0.26f, 0.05f, STEEL)
-            cube(0f, 0.55f - i * 0.92f, -0.54f, 0.22f, 0.26f, 0.05f, STEEL)
-            cube(0.5f, 0.55f - i * 0.92f, 0f, 0.05f, 0.26f, 0.22f, STEEL)
-            cube(-0.5f, 0.55f - i * 0.92f, 0f, 0.05f, 0.26f, 0.22f, STEEL)
-        }
-        // pomo (kashira) em aço escuro
-        prism(0f, 1.25f, 0f, 0.66f, 0.45f, 0.66f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-        cube(0f, 1.75f, 0f, 0.50f, 0.14f, 0.50f, STEEL)
-        cube(0f, 1.0f, 0.68f, 0.2f, 0.2f, 0.05f, RED, true)
-        // guarda (tsuba) redonda, com borda dourada e furos
-        cube(0f, -4.0f, 0f, 0.20f, 0.30f, 1.75f, BLK_L)
-        cube(0f, -4.0f, 0f, 1.75f, 0.30f, 0.20f, BLK_L)
-        push()
-            translate(0f, -4.0f, 0f)
-            rotY(0.785f)
-            cube(0f, 0f, 0f, 1.25f, 0.30f, 1.25f, BLK_L)
-            cube(0f, 0f, 0f, 1.4f, 0.12f, 1.4f, GOLD)
-        pop()
-        cube(0f, -4.0f, 0f, 1.45f, 0.32f, 1.45f, BLK_D)
-        cube(0f, -4.0f, 0f, 1.7f, 0.10f, 0.12f, GOLD)
-        cube(0f, -4.0f, 0f, 0.12f, 0.10f, 1.7f, GOLD)
-        // colar da lâmina (habaki)
-        cube(0f, -4.75f, 0f, 0.46f, 0.40f, 0.95f, GOLD)
-        cube(0f, -5.15f, 0f, 0.40f, 0.08f, 0.9f, BLK_L)
 
-        // lâmina: 6 segmentos afunilados e levemente curvos, dorso preto e gume claro
+        // empunhadura (tsuka): oval, com envolvimento de ito e losangos
+        cube(0f, -1.15f, 0f, 0.46f, 2.75f, 0.56f, BLK_D)
+        for (i in 0..4) {
+            val y = 1.15f - i * 0.92f
+            cube(0f, y, 0f, 0.50f, 0.10f, 0.60f, ITO)
+            cube(0f, y - 0.46f, 0.58f, 0.20f, 0.30f, 0.04f, ITO)
+            cube(0f, y - 0.46f, -0.58f, 0.20f, 0.30f, 0.04f, ITO)
+            cube(0.50f, y - 0.46f, 0f, 0.04f, 0.30f, 0.20f, ITO)
+            cube(-0.50f, y - 0.46f, 0f, 0.04f, 0.30f, 0.20f, ITO)
+        }
+        // pomo (kashira) e colar (fuchi)
+        prism(0f, 1.62f, 0f, 0.58f, 0.22f, 0.68f, 1.0f, 1.0f, 0f, 0f, BLK_L)
+        cube(0f, 1.86f, 0f, 0.40f, 0.06f, 0.50f, STEEL)
+        cube(0f, -3.62f, 0f, 0.56f, 0.22f, 0.68f, BLK_L)
+        cube(0f, -3.62f, 0f, 0.60f, 0.06f, 0.72f, STEEL)
+        // correntinha presa ao pomo (balança com o movimento)
         push()
-            translate(0f, -5.0f, 0f)
-            for (i in 0 until 6) {
-                val len = 4.0f
-                val w0 = 1.55f - i * 0.15f
-                val w1 = 1.55f - (i + 1) * 0.15f
-                val avg = (w0 + w1) * 0.5f
-                prism(0f, -len * 0.5f, 0f, 0.27f - i * 0.014f, len * 0.5f, w1, 1.0f, w0 / w1, 0f, 0f, BLK)
-                // dorso e linha do shinogi, polidos
-                cube(0f, -len * 0.5f, -avg * 0.78f, 0.12f, len * 0.5f, 0.12f, BLK_L)
-                cube(0f, -len * 0.5f, avg * 0.10f, 0.29f - i * 0.014f, len * 0.5f, 0.05f, BLK_D)
-                // reflexo longo no plano da lâmina
-                cube(0f, -len * 0.5f, avg * 0.30f, 0.30f - i * 0.014f, len * 0.46f, 0.045f, BLK_L)
-                // fio (gume) azul-claro, que acende com a energia
-                cube(0f, -len * 0.5f, avg + 0.02f, 0.16f, len * 0.5f, 0.14f, e, true)
-                cube(0f, -len * 0.5f, avg - 0.12f, 0.12f, len * 0.5f, 0.10f, EDGE_B, true)
-                cube(0f, -len * 0.5f, avg - 0.16f, 0.07f, len * 0.5f, 0.05f, STEEL)
-                // hamon
-                if (i % 2 == 0) cube(0f, -len * 0.5f, avg * 0.62f, 0.31f, len * 0.20f, 0.04f, VoxelArt.mix(STEEL, EDGE_B, 0.3f + 0.7f * glow), true)
-                translate(0f, -len, 0f)
-                rotX(0.040f)
+            translate(0f, 1.95f, 0f)
+            rotZ(0.45f + chn * 0.5f)
+            for (i in 0..4) {
+                if (i % 2 == 0) cube(0f, 0.32f, 0f, 0.10f, 0.34f, 0.26f, CHAIN) else cube(0f, 0.32f, 0f, 0.26f, 0.34f, 0.10f, CHAIN)
+                translate(0f, 0.55f, 0f)
+                rotZ(0.22f + 0.12f * chn)
             }
-            // ponta (kissaki) afiada
-            prism(0f, -1.7f, 0.05f, 0.05f, 1.7f, 0.12f, 6.0f, 6.0f, 0f, 0f, BLK)
-            cube(0f, -1.6f, 0.40f, 0.07f, 1.3f, 0.05f, EDGE_BL, true)
-            mark(0f, -3.2f, 0.1f, 2)
         pop()
-        mark(0f, -4.0f, 0f, 3)
+
+        // guarda (tsuba): pequena, octogonal, escura, com friso de aço na borda
+        cube(0f, -3.95f, 0f, 1.35f, 0.14f, 1.35f, BLK_L)
+        cube(0f, -3.95f, 0f, 1.45f, 0.05f, 1.45f, STEEL)
+        push()
+            translate(0f, -3.95f, 0f)
+            rotY(0.785f)
+            cube(0f, 0f, 0f, 1.35f, 0.14f, 1.35f, BLK_L)
+            cube(0f, 0f, 0f, 1.45f, 0.05f, 1.45f, STEEL)
+        pop()
+        // colar da lâmina (habaki)
+        cube(0f, -4.35f, 0f, 0.30f, 0.38f, 0.76f, STEEL)
+
+        // lâmina: 5 segmentos finos que se afunilam, curvando de leve para o lado do gume (sori)
+        push()
+            translate(0f, -4.6f, 0f)
+            for (i in 0 until 5) {
+                val len = 3.7f
+                val wa = 0.66f - i * 0.034f
+                val wb = 0.66f - (i + 1) * 0.034f
+                val avg = (wa + wb) * 0.5f
+                // corpo negro, fino
+                prism(0f, -len * 0.5f, 0f, 0.20f, len * 0.5f, wb, 1.0f, wa / wb, 0f, 0f, BLK)
+                // dorso (mune) e linha do shinogi, um pouco mais claros
+                cube(0f, -len * 0.5f, -avg + 0.07f, 0.24f, len * 0.5f, 0.09f, BLK_L)
+                cube(0f, -len * 0.5f, avg * 0.15f, 0.23f, len * 0.5f, 0.04f, BLK_L)
+                // fio azul-claro bem visível dos dois lados, com miolo mais brilhante
+                cube(0f, -len * 0.5f, avg - 0.17f, 0.225f, len * 0.5f, 0.17f, e, true)
+                cube(0f, -len * 0.5f, avg - 0.05f, 0.235f, len * 0.5f, 0.05f, EDGE_BL, true)
+                translate(0f, -len, 0f)
+                rotX(-0.05f)
+            }
+            // ponta (kissaki) afiada, com o fio azul subindo em diagonal
+            prism(0f, -0.95f, 0f, 0.06f, 0.95f, 0.05f, 3.3f, 9.8f, 0f, 0f, BLK)
+            prism(0f, -0.95f, 0f, 0.05f, 0.95f, 0.03f, 4.6f, 2.5f, 0f, 0.42f, e, true)
+            mark(0f, -1.8f, 0.05f, 2)
+        pop()
+        mark(0f, -3.95f, 0f, 3)
+
         // reiatsu: chamas rubro-negras escorrendo da lâmina
         if (glow > 0.12f) {
             val g = glow.coerceIn(0f, 1f)
-            for (k in 0..8) {
-
+            for (k in 0..6) {
                 push()
-                    translate(0f, -6.5f - k * 2.2f, -0.9f)
+                    translate(0f, -6.0f - k * 2.7f, -0.8f)
                     rotX(-1.75f - 0.25f * kotlin.math.sin(clock * 13f + k * 1.3f))
                     rotZ(0.20f * kotlin.math.sin(clock * 9f + k))
-                    val fl = (3.2f + 3.6f * g) * (1.0f - k * 0.06f)
+                    val fl = (3.0f + 3.4f * g) * (1.0f - k * 0.07f)
                     prism(0f, fl * 0.5f, 0f, 0.55f, fl * 0.5f, 0.28f, 0.05f, 0.3f, 0f, 0f, if (k % 2 == 0) EDGE else RED, true)
                     prism(0f, fl * 0.4f, 0.04f, 0.28f, fl * 0.4f, 0.14f, 0.05f, 0.2f, 0f, 0f, if (k % 3 == 0) DARKFX else BLK_D, true)
                 pop()
             }
         }
         if (glow > 0.45f) {
-            cube(0f, -13f, 0f, 0.55f, 9.5f, 1.45f, VoxelArt.mix(RED_D, EDGE, glow), true)
+            cube(0f, -14.4f, 0f, 0.42f, 9.2f, 1.0f, VoxelArt.mix(RED_D, EDGE, glow), true)
         }
     }
 

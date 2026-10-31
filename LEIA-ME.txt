@@ -1,16 +1,6 @@
-v81 - Explorador pendurado parado + relevo com mais profundidade
-Inclui tudo da v80 (chicote enrolado, golpe lento, bracos grossos).
-Arquivos: Explorer3D.kt, Entity.kt (v80), CustomMap.kt, MapTiles.kt
-
-PENDURADO NA CORDA
-- Pendurado agora conta como "no ar": nao usa mais a pose de caminhada (mesmo perto do chao ou com o joystick).
-- Parado fica pendurado reto, com as pernas soltas e um balancinho suave.
-
-RELEVO (CustomMap.kt, MapTiles.kt)
-- Parede do penhasco: clara na borda e cada vez mais escura ate o pe, com fendas e blocos claros/escuros.
-- Sombra projetada no chao embaixo da parede (mais longa quanto mais alta).
-- Topo: niveis mais altos ficam mais claros; bordas norte/oeste brilham, leste escurece.
-- Chao atras de um nivel mais alto recebe sombra de oclusao.
-- Rampas: escuras no pe e claras no alto, parecem inclinadas.
-
+Ichigo - katana nova + faixa/casaco corrigidos
+Arquivo: app/src/main/java/com/viniciusy/masmorras/Ichigo3D.kt
+- Katana: lamina fina e curva, fio azul visivel, tsuba octogonal pequena, cabo enrolado com correntinha.
+- Faixa branca so na frente (costas cobertas de preto).
+- Abas do casaco com pontas rasgadas para baixo e borda vinho; sem listra branca na frente.
 NAO FOI COMPILADO. Se o build falhar, mande o log.
