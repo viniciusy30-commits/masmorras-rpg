@@ -1481,13 +1481,14 @@ class GameView @JvmOverloads constructor(
     // Soru: rastro (x0, y0, x1, y1, idade) e impactos instantâneos do soco do Gear Second (x, y, idade, rotação)
     private val soruTr = ArrayList<FloatArray>()
     private val g2Hits = ArrayList<FloatArray>()
+    private val punchTr = ArrayList<FloatArray>()   // rastro de velocidade do soco do Gear Second (x0, y0, x1, y1, idade)
     private var soruWas = false
     private var soruLX = 0f
     private var soruLY = 0f
 
     private fun soruPuff(x: Float, y: Float) {
         burst(x, y, 9, 0xFFFFFFFF.toInt())
-        burst(x, y, 8, 0xFFFF7C86.toInt())
+        burst(x, y, 5, 0xFFD6ECFF.toInt())
         shake = max(shake, 0.06f)
     }
 
@@ -1525,7 +1526,7 @@ class GameView @JvmOverloads constructor(
         val cy = p.y - p.alt - 14f
         if (on) {
             if (hypot(p.x - soruLX, cy - soruLY) > 0.5f) soruTr.add(floatArrayOf(soruLX, soruLY, p.x, cy, 0f))
-            if (Random.nextFloat() < dt * 40f) burst(p.x, cy, 1, if (Random.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFF7C86.toInt())
+            if (Random.nextFloat() < dt * 30f) burst(p.x, cy, 1, 0xFFFFFFFF.toInt())
             shake = max(shake, 0.02f)
         }
         if (soruWas && !on) {
@@ -1541,6 +1542,12 @@ class GameView @JvmOverloads constructor(
             sg[4] += dt
             if (sg[4] > 0.45f) it1.remove()
         }
+        val it3 = punchTr.iterator()
+        while (it3.hasNext()) {
+            val sg = it3.next()
+            sg[4] += dt
+            if (sg[4] > 0.2f) it3.remove()
+        }
         val it2 = g2Hits.iterator()
         while (it2.hasNext()) {
             val h = it2.next()
@@ -1552,14 +1559,39 @@ class GameView @JvmOverloads constructor(
     private fun drawSoruFx(canvas: Canvas, p: Player) {
         paint.style = Paint.Style.STROKE
         paint.strokeCap = Paint.Cap.ROUND
+        // Soru: só linhas finas de velocidade, brancas, paralelas e que somem rápido (nada de fita grossa colorida)
+        val offs = floatArrayOf(-13f, -7f, -2f, 4f, 9f, 14f)
+        val lens = floatArrayOf(1f, 0.7f, 1f, 0.6f, 0.9f, 0.75f)
         for (sg in soruTr) {
             val a = (1f - sg[4] / 0.45f).coerceIn(0f, 1f)
-            paint.strokeWidth = 4f + 16f * a
-            paint.color = (((0.38f * a * 255f).toInt()) shl 24) or 0xFF4D5E
-            canvas.drawLine(sg[0] - camX, sg[1] - camY, sg[2] - camX, sg[3] - camY, paint)
-            paint.strokeWidth = 1.5f + 5f * a
-            paint.color = (((0.9f * a * 255f).toInt()) shl 24) or 0xFFFFFF
-            canvas.drawLine(sg[0] - camX, sg[1] - camY, sg[2] - camX, sg[3] - camY, paint)
+            val ddx = sg[2] - sg[0]
+            val ddy = sg[3] - sg[1]
+            val dl = hypot(ddx, ddy)
+            if (dl < 0.01f) continue
+            val nx = -ddy / dl
+            val ny = ddx / dl
+            for (k in offs.indices) {
+                paint.strokeWidth = 1f + 1.6f * a * (if (k % 2 == 0) 1f else 0.6f)
+                paint.color = (((0.75f * a * lens[k] * 255f).toInt()) shl 24) or 0xFFFFFF
+                canvas.drawLine(sg[0] + nx * offs[k] - camX, sg[1] + ny * offs[k] - camY, sg[2] + nx * offs[k] - camX, sg[3] + ny * offs[k] - camY, paint)
+            }
+        }
+        // soco do Gear Second: riscos de velocidade do punho até o alvo
+        for (sg in punchTr) {
+            val a = (1f - sg[4] / 0.2f).coerceIn(0f, 1f)
+            val ddx = sg[2] - sg[0]
+            val ddy = sg[3] - sg[1]
+            val dl = hypot(ddx, ddy)
+            if (dl < 1f) continue
+            val nx = -ddy / dl
+            val ny = ddx / dl
+            for (k in 0..4) {
+                val o = (k - 2) * 5f
+                val st = 0.15f * k % 0.45f
+                paint.strokeWidth = 1.2f + 1.8f * a * (if (k == 2) 1f else 0.55f)
+                paint.color = (((0.9f * a * 255f).toInt()) shl 24) or 0xFFFFFF
+                canvas.drawLine(sg[0] + ddx * st + nx * o - camX, sg[1] + ddy * st + ny * o - camY, sg[2] + nx * o * 0.4f - camX, sg[3] + ny * o * 0.4f - camY, paint)
+            }
         }
         paint.strokeCap = Paint.Cap.BUTT
         // impactos instantâneos do soco do Gear Second: clarão + estrela no inimigo
@@ -1585,7 +1617,7 @@ class GameView @JvmOverloads constructor(
             val sx = p.x - camX
             val feet = p.y - camY + p.radius * 0.55f - p.alt
             paint.strokeWidth = 2.5f
-            paint.color = 0x99FF7C86.toInt()
+            paint.color = 0x66FFFFFF
             canvas.drawOval(sx - 17f, feet - 11f, sx + 17f, feet + 11f, paint)
         }
         paint.style = Paint.Style.FILL
@@ -1733,6 +1765,8 @@ class GameView @JvmOverloads constructor(
         burst(e.x, hy, 3, 0xFFFFFFFF.toInt())
         shake = max(shake, 0.07f)
         if (p.g2T > 0f) {
+            // rastro de velocidade do punho até o inimigo
+            punchTr.add(floatArrayOf(p.x + p.facingX * 14f, p.y - p.alt - 20f + p.facingY * 6f, e.x, hy, 0f))
             // Gear Second: o braço mal se mexe, mas o impacto estoura direto no inimigo (vários clarões espalhados)
             for (i in 0..2) {
                 val ox = (Random.nextFloat() - 0.5f) * e.radius * 1.1f

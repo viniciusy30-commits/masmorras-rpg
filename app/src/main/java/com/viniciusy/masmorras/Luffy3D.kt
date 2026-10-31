@@ -2084,23 +2084,24 @@ object Luffy3D {
             val sn = sin(ph)
             val sn2 = sin(ph + 1.3f)
             val trem = sin(clock * 70f) * pumpAmt
-            lean = lerp(lean, lerp(0.50f + 0.05f * sn * pumpAmt, -0.14f, flex), wB)
-            crouch = lerp(crouch, lerp(1.0f + 0.07f * abs(sn) * pumpAmt, 0.1f, flex), wB)
-            bodyZ = lerp(bodyZ, lerp(1.2f - 0.7f * pumpAmt * (0.5f + 0.5f * sn), 0.6f, flex), wB)
-            chestTw = lerp(chestTw, 0.12f * sn * pumpAmt, wB)
-            hipTw = lerp(hipTw, 0.04f * trem, wB)
-            tilt = lerp(tilt, 0.05f * sn2 * pumpAmt + 0.02f * trem, wB)
+            // pose do anime: pernas bem abertas, tronco inclinado, braço direito bombeando ao lado da coxa
+            lean = lerp(lean, lerp(0.42f + 0.05f * sn * pumpAmt, -0.10f, flex), wB)
+            crouch = lerp(crouch, lerp(0.95f + 0.09f * abs(sn) * pumpAmt, 0.05f, flex), wB)
+            bodyZ = lerp(bodyZ, lerp(1.2f - 0.9f * pumpAmt * (0.5f + 0.5f * sn), 0.5f, flex), wB)
+            chestTw = lerp(chestTw, 0.10f * sn * pumpAmt, wB)
+            hipTw = lerp(hipTw, 0.05f * trem, wB)
+            tilt = lerp(tilt, 0.04f * sn2 * pumpAmt + 0.02f * trem, wB)
             shout = max(shout, wB * (0.5f * pumpAmt + flex))
-            legB = lerp(legB, 0.3f * pumpAmt, wB)
-            gatSplay = lerp(0.40f, 0.22f, flex) * wB
-            // braço direito: pistão ao lado da coxa
-            rsh = lerp(rsh, lerp(0.15f + 0.7f * sn * pumpAmt, -0.25f, flex), wB)
-            rshZ = lerp(rshZ, lerp(0.2f, 1.0f, flex), wB)
-            rel = lerp(rel, lerp(-0.9f - 0.9f * sn2 * pumpAmt, -0.35f, flex), wB)
-            // braço esquerdo: punho no chão à frente e ao lado (IK), depois abre
-            lsh = lerp(lsh, lerp(-0.4f, -0.25f, flex), wB)
-            lshZ = lerp(lshZ, lerp(0.3f, 1.0f, flex), wB)
-            lel = lerp(lel, lerp(-1.2f, -0.35f, flex), wB)
+            legB = lerp(legB, 0.35f * pumpAmt, wB)
+            gatSplay = lerp(0.42f, 0.20f, flex) * wB
+            // braço direito: pistão curto e rápido (sobe e desce) ao lado da coxa
+            rsh = lerp(rsh, lerp(0.10f + 0.95f * sn * pumpAmt, -0.9f, flex), wB)
+            rshZ = lerp(rshZ, lerp(0.22f, 0.28f, flex), wB)
+            rel = lerp(rel, lerp(-0.7f - 1.1f * sn2 * pumpAmt, -1.55f, flex), wB)
+            // braço esquerdo: punho apoiado no chão, depois sobe em guarda
+            lsh = lerp(lsh, lerp(-0.4f, -0.8f, flex), wB)
+            lshZ = lerp(lshZ, lerp(0.3f, 0.3f, flex), wB)
+            lel = lerp(lel, lerp(-1.2f, -1.6f, flex), wB)
             if (wP > 0.01f) {
                 val crG = max(crouch, ease(landDip) * 0.5f * (if (landSoft) 1.7f else 1f))
                 val hipG = 14.8f + bob - crG * 3f - hitKick * 0.4f

@@ -1,3 +1,9 @@
+#id 2026-10-31-luffy-soru-rastro
+#titulo Luffy: rastro de velocidade, soco com recarga e novo Gear Second
+- Soru: o rastro vermelho saiu. Agora ele deixa só linhas finas de velocidade brancas, paralelas, que somem rápido; o ícone e as explosões também ficaram brancos
+- Soco básico no Gear Second: deixa riscos de velocidade do punho até o inimigo e agora tem recarga de 0,5 s
+- Ativação do Gear Second refeita: pernas abertas, tronco inclinado, braço direito bombeando como pistão ao lado da coxa, punho esquerdo no chão; na explosão ele levanta e fica em guarda com os punhos erguidos, com vapor
+
 #id 2026-10-31-luffy-gear-second-soru
 #titulo Luffy: soco instantâneo e Soru no Gear Second
 - Soco básico no Gear Second: o Luffy só levanta o braço de leve, rapidíssimo (cerca de 0,26 s por soco), e o impacto estoura direto no inimigo com clarões e estrelas, sem o braço esticar até lá. Dá a sensação de velocidade absurda, que nem dá para ver o golpe

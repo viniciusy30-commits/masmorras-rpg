@@ -5,11 +5,11 @@
     android:viewportWidth="100"
     android:viewportHeight="100">
     <path
-        android:fillColor="#33FF4D5E"
+        android:fillColor="#33BFE3FF"
         android:pathData="M4,50 a46,46 0 1,0 92,0 a46,46 0 1,0 -92,0 Z"/>
     <!-- fitas de velocidade -->
     <path
-        android:strokeColor="#FFFF7C86"
+        android:strokeColor="#FFBFE3FF"
         android:strokeWidth="7"
         android:strokeLineCap="round"
         android:pathData="M10,40 L52,40 M4,56 L44,56"/>

@@ -128,7 +128,7 @@ class Player(
         const val LUFFY_G2_ATK = 1.5f      // velocidade dos socos (animação e recarga)
         const val LUFFY_G2_DMG = 1.3f      // dano
         const val LUFFY_G2_RATE = 3.8f     // Gear Second: o soco é só um tranco rápido de braço (animação de 0,26 s)
-        const val LUFFY_G2_PUNCH_CD = 230L // Gear Second: recarga do soco básico (ms)
+        const val LUFFY_G2_PUNCH_CD = 500L // Gear Second: recarga do soco básico (ms)
         // Soru (dash do Gear Second): fica invisível de tão rápido, controlável pelo joystick
         const val LUFFY_SORU_T = 1.0f      // duração (s)
         const val LUFFY_SORU_SPD = 2.8f    // multiplicador de velocidade (além do +40% do Gear Second)
