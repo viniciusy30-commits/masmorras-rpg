@@ -126,9 +126,9 @@ class Player(
         const val SWING_PUMP = 900f        // empurrão do balanço para o lado em que o jogador anda
         const val SWING_MAXV = 620f        // velocidade máxima do balanço
         // dash estilingue do Luffy: segurar o botão puxa o corpo (carga), soltar lança em arco; pousa rolando e levanta
-        const val LUFFY_ANCHOR_D = 90f     // distância das mãos presas no chão (px)
-        const val LUFFY_STRAFE_MAX = 90f   // quanto o corpo pode andar para os lados durante a carga (px)
-        const val LUFFY_STRAFE_SPD = 150f  // velocidade lateral durante a carga (px/s)
+        const val LUFFY_ANCHOR_D = 60f     // distância das mãos presas no chão (px)
+        const val LUFFY_STRAFE_MAX = 34f   // quanto o corpo pode andar para os lados durante a carga (px): só um pouco, para não ficar feio
+        const val LUFFY_STRAFE_SPD = 100f  // velocidade lateral durante a carga (px/s)
         const val LUFFY_WIND_MIN = 0.24f   // preparação mínima (toque rápido no botão)
         const val LUFFY_CHARGE_T = 0.55f   // tempo extra segurando até a carga máxima
         const val LUFFY_DIST_MIN = 200f    // alcance do voo sem carga (px)
@@ -214,7 +214,13 @@ class Player(
     var luffyLaunchReq = false // o GameView toca o som / poeira do lançamento quando liga
     var heliCharging = false // Luffy: segurando o pulo no chão (agacha e fica parado: não anda)
     var heliChargeT = 0f     // segundos segurando
-    var luffyPunchLen = 150f // distância (px) até o alvo do soco atual: o braço estica exatamente até lá
+    var luffyPunchLen = 150f // distância (px) até o alvo do soco atual (reserva, se o alvo sumir)
+    // alvo do soco atual, atualizado a cada quadro pelo GameView (coordenadas do mundo; o desenho converte para a tela)
+    var luffyTgtOn = false
+    var luffyTgtX = 0f       // x do peito do alvo
+    var luffyTgtY = 0f       // y do peito do alvo (já com o deslocamento de pé/altura)
+    var luffyTgtGY = 0f      // y do chão do alvo
+    var luffyTgtR = 0f       // raio do alvo
     var heli = false         // Luffy: pulo carregado ativo (da soltura até pousar)
     var heliT = 0f           // segundos desde a soltura
 
@@ -1344,6 +1350,17 @@ class Player(
         Luffy3D.airVz = vz
         Luffy3D.swing = swing
         Luffy3D.punchLen = luffyPunchLen
+        // alvo do soco e âncora das mãos, em px de tela a partir do pé do herói (desfeito o squash do canvas)
+        Luffy3D.punchOn = classe == Classe.LUFFY && luffyTgtOn && attackAnim > 0.001f
+        Luffy3D.punchTX = (luffyTgtX - camX - drawX) / squashX
+        Luffy3D.punchTY = (luffyTgtY - camY - drawY) / squashY
+        Luffy3D.punchGY = (luffyTgtGY - camY - drawY) / squashY
+        Luffy3D.punchInset = luffyTgtR * 0.5f
+        Luffy3D.anchorOn = classe == Classe.LUFFY && luffyPh == 1
+        Luffy3D.anchorTX = (luffyAX - camX - drawX) / squashX
+        Luffy3D.anchorTY = (luffyAY + radius * 0.55f - alt - camY - drawY) / squashY
+        Luffy3D.dashVX = vx
+        Luffy3D.dashVY = vy
         Luffy3D.alphaV = 1f
         Explorer3D.rollP = if (classe == Classe.EXPLORADOR && rollT > 0f) 1f - rollT / rollDur else -1f
         Explorer3D.inAir = up > 1f

@@ -123,6 +123,7 @@ class GameView @JvmOverloads constructor(
     //    solta o soco direto nele, sem errar, a cada 1 segundo. Sem alvo marcado, pega o inimigo mais perto. ──
     private var luffyTarget: Enemy? = null
     private var luffyHitTarget: Enemy? = null
+    private var luffyAimT: Enemy? = null   // alvo que o braço do Luffy segue durante TODO o soco (inclusive depois do impacto)
     private var luffyAutoAtk = false
     private var luffyMsgAt = 0L
 
@@ -269,6 +270,7 @@ class GameView @JvmOverloads constructor(
         p.doAttack(now)
         swingSound(p)
         luffyHitTarget = tgt
+        luffyAimT = tgt
         pendingLuffyT = p.luffyDelay()
         pendingLuffySwing = p.swing
     }
@@ -2536,6 +2538,19 @@ class GameView @JvmOverloads constructor(
                 pendingExplT = -1f
                 if (p.alive && !p.rolling && !p.skilling) explorerStrike(pendingExplSwing)
             }
+        }
+        // o punho segue o peito do alvo a cada quadro (ele anda durante o soco): é daqui que o desenho tira o ponto exato
+        val aimE = luffyAimT
+        if (aimE != null && p.classe == Classe.LUFFY && p.alive && aimE.alive && p.attackAnim > 0.001f) {
+            val sc = if (aimE.tipo == 2) 1.55f else 1f
+            p.luffyTgtOn = true
+            p.luffyTgtX = aimE.x
+            p.luffyTgtGY = aimE.y + aimE.radius * 0.55f - aimE.alt
+            p.luffyTgtY = p.luffyTgtGY - 26f * sc
+            p.luffyTgtR = aimE.radius
+        } else {
+            p.luffyTgtOn = false
+            if (aimE != null && (!aimE.alive || p.attackAnim <= 0.001f)) luffyAimT = null
         }
         if (pendingLuffyT >= 0f) {
             pendingLuffyT -= dt

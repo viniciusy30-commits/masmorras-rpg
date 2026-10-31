@@ -1,0 +1,2 @@
+#2026-10-31-a
+Luffy: soco corrigido (o corpo gira para o inimigo e o braço sai reto do ombro até o alvo, o punho para na superfície do corpo) e dash segurado corrigido (as duas mãos ficam paradas no chão enquanto o corpo puxa, treme e anda um pouco de lado, com passos nas pernas).

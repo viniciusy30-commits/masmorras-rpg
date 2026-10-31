@@ -8,6 +8,7 @@ import android.graphics.Rect
 import android.graphics.RectF
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.floor
@@ -778,7 +779,7 @@ object Luffy3D {
     private fun leg(side: Float, a: Float, knee: Float, foot: Float, hipY: Float) {
         push()
         translate(side * 3.2f, hipY, 0f)
-        rotZ(side * gLegSplay)
+        rotZ(side * gLegSplay + (if (side < 0f) gLatR else gLatL))
         scale(0.9f, gLegLen, 1f)
         rotX(a)
         cube(0f, -2.9f, 0f, 2.75f, 3.1f, 2.85f, SHORT)
@@ -880,7 +881,19 @@ object Luffy3D {
     var airVz = 0f
     var airH = 0f
     var swing = 0          // 0 soco direito, 1 soco esquerdo
-    var punchLen = 150f    // distância (px) do herói até o alvo: o braço estica exatamente até lá
+    var punchLen = 150f    // (reserva) distância (px) até o alvo, usada só se não houver alvo na tela
+    // alvo do soco, em px de TELA a partir do pé do herói (já sem o squash): o braço é calculado para o punho cair exatamente aí
+    var punchOn = false
+    var punchTX = 0f       // x do peito do alvo
+    var punchTY = 0f       // y do peito do alvo
+    var punchGY = 0f       // y do chão do alvo (dá a altura do peito)
+    var punchInset = 0f    // px: o punho para na superfície do corpo, não no centro
+    // âncora das mãos no chão durante a carga do dash (px de tela a partir do pé do herói)
+    var anchorOn = false
+    var anchorTX = 0f
+    var anchorTY = 0f
+    var dashVX = 0f        // velocidade do herói no mundo (px/s): move o corpo para os lados com as mãos presas
+    var dashVY = 0f
     var alphaV = 1f
     var heli = false       // pulo duplo: helicóptero ativo
     var heliT = 0f         // segundos desde a soltura do pulo carregado
@@ -892,6 +905,8 @@ object Luffy3D {
     private var gLegSpin = 0f
     private var gLegSplay = 0f
     private var gLegLen = 1f
+    private var gLatL = 0f   // passo lateral da perna esquerda (rad, + = para a esquerda do herói)
+    private var gLatR = 0f
 
     /** Instante (0..1 da animação) em que o punho esticado chega ao alvo. */
     const val T_HIT = 0.44f
@@ -920,6 +935,55 @@ object Luffy3D {
     private const val HELI_OMEGA = 25f      // rad/s das pernas girando
 
     fun impactAt(@Suppress("UNUSED_PARAMETER") sw: Int): Float = T_HIT
+
+    private const val HAND_Y = 2.0f      // altura do centro do punho apoiado no chão (unidades do modelo)
+    private const val HAND_SEP = 5.0f     // meia distância entre os dois punhos presos no chão
+    private const val LAT_K = 0.22f       // rad de passo lateral por unidade de modelo andada para o lado
+
+    private var ikSh = 0f
+    private var ikShZ = 0f
+    private var ikExt = 1f
+
+    /** Extensão para o CENTRO do punho ficar a [len] unidades do ombro (o punho incha ao esticar). */
+    private fun extCenter(len: Float): Float {
+        var e = 1f
+        for (i in 0..2) {
+            val fs = 1f + 0.3f * min(1f, (e - 1f) / 3f)
+            e = max(1f, (len + 0.5f - 1.4f * fs) / 10.8f)
+        }
+        return e
+    }
+
+    /**
+     * Cinemática inversa do braço: acha ombro (ikSh), abertura lateral (ikShZ) e extensão (ikExt) para o centro do punho
+     * cair no ponto (tx,ty,tz) do modelo-mundo (relativo ao pé do herói), dada a pose real do corpo naquele instante.
+     * side: +1 esquerdo / -1 direito. a = yaw. O cotovelo fica reto.
+     */
+    private fun solveArm(side: Float, tx: Float, ty: Float, tz: Float, hipH: Float, leanE: Float, zOff: Float, a: Float) {
+        val ca = cos(a)
+        val sa = sin(a)
+        val xs = side * 8.1f
+        val ys = hipH + 12.3f * cos(leanE)
+        val zs = 12.3f * sin(leanE) + zOff
+        val shx = xs * ca + zs * sa
+        val shz = -xs * sa + zs * ca
+        val vx = tx - shx
+        val vy = ty - ys
+        val vz = tz - shz
+        val u = vx * ca - vz * sa
+        val f = vx * sa + vz * ca
+        val len = max(0.001f, sqrt(u * u + vy * vy + f * f))
+        val ux = u / len
+        val uy = vy / len
+        val uz = f / len
+        val cl = cos(leanE)
+        val sl = sin(leanE)
+        val dcy = cl * uy + sl * uz
+        val dcz = -sl * uy + cl * uz
+        ikSh = -asin(dcz.coerceIn(-1f, 1f))
+        ikShZ = side * atan2(ux, -dcy) - 0.1f
+        ikExt = extCenter(len)
+    }
 
     /** Quanto o braço precisa esticar para o punho alcançar [len] unidades do modelo a partir do ombro. */
     private fun extFor(len: Float): Float = max(1f, (len - 2.8f) / 10.8f)
@@ -959,6 +1023,9 @@ object Luffy3D {
     private var lastCrouch1 = 0f
     private var lastTilt1 = 0f
     private var lastPull = 0f
+    private var latS = 0f       // velocidade lateral suavizada (unid. do modelo/s, + = esquerda)
+    private var latW = 0f       // fase do passo lateral
+    private var lastShZ1 = 0.05f
     private var stepW = 0f       // fase do passo ao andar de costas puxando o corpo
     private var heliAng = 0f
     private var heliOmega = 0f
@@ -1060,16 +1127,48 @@ object Luffy3D {
         clock += dt
         val rnd = kotlin.random.Random
 
-        // direção suave
-        if (abs(faceX) + abs(faceY) > 0.01f) {
-            val target = atan2(faceX, faceY)
+        // ── mira em coordenadas do modelo ──
+        // O modelo é achatado na vertical (y da tela = z*SINP - altura*COSP), então um alvo em px de tela precisa ser
+        // convertido de volta: assim o punho (ou a mão presa no chão) cai exatamente no ponto da tela.
+        val rsE = s * PX * MS
+        val tAtk = if (attack > 0.001f) 1f - attack else -1f
+        var aimOn = false
+        var aimPunch = false
+        var aimX = 0f
+        var aimY = 0f
+        var aimZ = 0f
+        if (rollP >= 0f) {
+            if (dashPh == 1 && anchorOn) {
+                aimOn = true
+                aimX = anchorTX / rsE
+                aimY = HAND_Y
+                aimZ = (anchorTY / rsE + aimY * COSP) / SINP
+            }
+        } else if (tAtk >= 0f && punchOn && !heli && heliCharge < 0f) {
+            aimOn = true
+            aimPunch = true
+            aimY = ((punchGY - punchTY) / (rsE * COSP)).coerceIn(16f, 46f)   // altura do peito do alvo
+            aimX = punchTX / rsE
+            aimZ = (punchTY / rsE + aimY * COSP) / SINP
+            val dist0 = hypot(aimX, aimZ)
+            if (dist0 > 1f) {
+                val kk = max(0.2f, (dist0 - punchInset / rsE) / dist0)   // para na superfície do corpo
+                aimX *= kk
+                aimZ *= kk
+            }
+        }
+        val hasAimYaw = aimOn && hypot(aimX, aimZ) > 4f
+
+        // direção suave (com mira: o corpo se vira para o ponto exato)
+        if (hasAimYaw || abs(faceX) + abs(faceY) > 0.01f) {
+            val target = if (hasAimYaw) atan2(aimX, aimZ) else atan2(faceX, faceY)
             if (first) {
                 yaw = target
             } else {
                 var d = target - yaw
                 while (d > PI.toFloat()) d -= TWO_PI
                 while (d < -PI.toFloat()) d += TWO_PI
-                yaw += d * min(1f, dt * (if (attack > 0.001f) 30f else 16f))
+                yaw += d * min(1f, dt * (if (attack > 0.001f || aimOn) 30f else 16f))
             }
         }
         blend += ((if (moving) 1f else 0f) - blend) * min(1f, dt * 12f)
@@ -1111,6 +1210,7 @@ object Luffy3D {
         val vzN = (airVz / 340f).coerceIn(-1.2f, 1f)
         val still = 1f - max(rollW, airW)
         val mvs = still * blend
+        val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
 
         // ── alvos da pose (repouso, caminhada, ar, rolamento) ──
         var lean = 0.05f + 0.12f * spN
@@ -1151,6 +1251,8 @@ object Luffy3D {
         var bSpin = 0f
         var bTuck = 0f
         var stepAmt = 0f
+        var plant = false      // fase 1 do dash: mãos presas no chão (IK)
+        var punchIK = false    // soco calculado por IK (pose exata, sem suavização)
         if (rolling) {
             val du = dashU
             val cc = dashCharge
@@ -1184,14 +1286,8 @@ object Luffy3D {
                         stepW += (tgt - stepW) * min(1f, dt * 7f) * hold
                     }
                     stepAmt = 1f
-                    val sy = 14.8f - dCrouch * 3f + 12.3f * cos(dLean)
-                    val sz = 12.3f * sin(dLean) - pull
-                    val dz = DASH_ANCHOR - sz
-                    dRsh = -atan2(dz, sy) - dLean
-                    dExt = extFor(sqrt(dz * dz + sy * sy))
+                    plant = true       // os braços são resolvidos por IK depois (mãos paradas no chão)
                     dTilt = -0.2f * u
-                    lastExt1 = dExt
-                    lastRsh1 = dRsh
                     lastLean1 = dLean
                     lastCrouch1 = dCrouch
                     lastTilt1 = dTilt
@@ -1209,7 +1305,7 @@ object Luffy3D {
                     dLean = lerp(lastLean1, 0.05f, sn)
                     dCrouch = lerp(lastCrouch1, 0f, sn)
                     dRsh = lerp(lastRsh1, -2.95f, sn)
-                    dRshZ = lerp(0.05f, 0.1f, sn)
+                    dRshZ = lerp(lastShZ1, 0.1f, sn)
                     dRel = -0.05f
                     dExt = lerp(lastExt1, 1f, ease(du / 0.18f))   // as mãos soltam o chão e os braços voltam como elástico
                     dTilt = lerp(lastTilt1, -1.15f, sn)
@@ -1297,6 +1393,35 @@ object Luffy3D {
             bodyZ *= rollW
         }
         prevDashPh = if (rolling) dashPh else 0
+        // mãos presas no chão (fase 1): o corpo se mexe (puxa, treme, anda de lado), as mãos NÃO.
+        // Os braços são resolvidos a cada quadro com a pose real do corpo, esticando/girando para manter o punho no ponto do chão.
+        if (plant && aimOn) {
+            val crT = max(crouch, ease(landDip) * 0.5f * (if (landSoft) 1.7f else 1f))
+            val hipH = 14.8f + bob - crT * 3f - hitKick * 0.4f
+            val leanE = lean - hitKick * 0.3f
+            val zOff = bodyZ - hitKick * 1.2f
+            val lx = cos(yaw)
+            val lz = -sin(yaw)
+            solveArm(-1f, aimX - lx * HAND_SEP, aimY, aimZ - lz * HAND_SEP, hipH, leanE, zOff, yaw)
+            val shR = ikSh
+            val zR = ikShZ
+            val eR = ikExt
+            solveArm(1f, aimX + lx * HAND_SEP, aimY, aimZ + lz * HAND_SEP, hipH, leanE, zOff, yaw)
+            val shL = ikSh
+            val zL = ikShZ
+            val eL = ikExt
+            rsh = lerp(rsh, shR, rollW)
+            lsh = lerp(lsh, shL, rollW)
+            rshZ = lerp(rshZ, zR, rollW)
+            lshZ = lerp(lshZ, zL, rollW)
+            rel = lerp(rel, 0f, rollW)
+            lel = lerp(lel, 0f, rollW)
+            extR = lerp(1f, eR, rollW)
+            extL = lerp(1f, eL, rollW)
+            lastExt1 = (eR + eL) * 0.5f
+            lastRsh1 = (shR + shL) * 0.5f
+            lastShZ1 = (zR + zL) * 0.5f
+        }
         val lgR = rollW * legW
 
         // ── pulo carregado: Gomu Gomu no Helicóptero ──
@@ -1428,13 +1553,38 @@ object Luffy3D {
             val gZ0 = if (sdp > 0f) lshZ else rshZ
             val mE0 = if (sdp > 0f) rel else lel
             val gE0 = if (sdp > 0f) lel else rel
-            val mSh = k5(t, m0, 1.1f, -1.55f, -1.5f, m0)
-            val mZ = k5(t, mZ0, 0.55f, 0.0f, 0.02f, mZ0)
-            val mEl = k5(t, mE0, -2.5f, -0.05f, -0.15f, mE0)
+            // valores do braço no impacto (c) e na segurada (d): por padrão o antigo (sem alvo na tela) ...
+            var cSh = -1.55f
+            var dSh = -1.5f
+            var cZ = 0.0f
+            var dZ = 0.02f
+            var cEl = -0.05f
+            var dEl = -0.15f
+            var cExt = extReach
+            var dExtP = extReach * 0.97f
+            var cCh = -0.3f * sdp
+            var dCh = -0.25f * sdp
+            var cHp = 0.3f * sdp
+            var dHp = 0.25f * sdp
+            if (aimPunch) {
+                // ... com alvo: IK com a pose exata do impacto (inclinação 0,36 / agachado 0,3 / corpo +4) e da segurada.
+                // Peito e quadril não torcem no golpe, então o braço sai reto do ombro até o peito do inimigo.
+                val side = -sdp
+                solveArm(side, aimX, aimY, aimZ, 14.8f + bob - 0.3f * 3f - hitKick * 0.4f, 0.36f - hitKick * 0.3f, 4f - hitKick * 1.2f, yaw)
+                cSh = ikSh; cZ = ikShZ; cExt = ikExt
+                solveArm(side, aimX, aimY, aimZ, 14.8f + bob - 0.25f * 3f - hitKick * 0.4f, 0.30f - hitKick * 0.3f, 3f - hitKick * 1.2f, yaw)
+                dSh = ikSh; dZ = ikShZ; dExtP = ikExt
+                cEl = 0f; dEl = 0f
+                cCh = 0f; dCh = 0f; cHp = 0f; dHp = 0f
+                punchIK = true
+            }
+            val mSh = k5(t, m0, 1.1f, cSh, dSh, m0)
+            val mZ = k5(t, mZ0, 0.55f, cZ, dZ, mZ0)
+            val mEl = k5(t, mE0, -2.5f, cEl, dEl, mE0)
             val gSh = k5(t, g0, -1.0f, -0.5f, -0.6f, g0)
             val gZ = k5(t, gZ0, 0.25f, 0.3f, 0.3f, gZ0)
             val gEl = k5(t, gE0, -2.1f, -2.2f, -2.1f, gE0)
-            val mExt = k5(t, 1f, 1f, extReach, extReach * 0.97f, 1f)
+            val mExt = k5(t, 1f, 1f, cExt, dExtP, 1f)
             if (sdp > 0f) {
                 rsh = mSh; rshZ = mZ; rel = mEl; extR = mExt
                 lsh = gSh; lshZ = gZ; lel = gEl
@@ -1443,8 +1593,8 @@ object Luffy3D {
                 rsh = gSh; rshZ = gZ; rel = gEl
             }
             // peito + quadril somam zero no golpe: o braço aponta exatamente para o alvo (só a preparação gira o corpo)
-            chestTw = k5(t, chestTw, -0.75f * sdp, -0.3f * sdp, -0.25f * sdp, chestTw)
-            hipTw = k5(t, hipTw, -0.4f * sdp, 0.3f * sdp, 0.25f * sdp, hipTw)
+            chestTw = k5(t, chestTw, -0.75f * sdp, cCh, dCh, chestTw)
+            hipTw = k5(t, hipTw, -0.4f * sdp, cHp, dHp, hipTw)
             lean = k5(t, lean, -0.1f, 0.36f, 0.3f, lean)
             crouch = k5(t, crouch, 0.5f, 0.3f, 0.25f, crouch)
             tilt = k5(t, tilt, 0.12f, -0.12f, -0.08f, tilt)
@@ -1472,7 +1622,10 @@ object Luffy3D {
         if (first) {
             for (i in 0 until NP) ps[i] = pt[i]
         } else {
-            val k = min(1f, dt * (if (attacking) 34f else 18f))
+            var k = min(1f, dt * (if (attacking) 34f else 18f))
+            // soco por IK e mãos presas no chão usam a pose exata (qualquer atraso faria o punho / as mãos escorregarem)
+            if (punchIK) k = 1f
+            else if (plant && aimOn) k = lerp(k, 1f, ((rollW - 0.5f) * 2f).coerceIn(0f, 1f))
             for (i in 0 until NP) ps[i] += (pt[i] - ps[i]) * k
             // o esticar do braço não pode atrasar: o punho tem que chegar junto com o golpe
             ps[16] = pt[16]
@@ -1480,7 +1633,6 @@ object Luffy3D {
         }
 
         // ── monta o modelo ──
-        val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.12f * (1f - mvs)
         val crouchT = max(ps[14], ease(landDip) * 0.5f * (if (landSoft) 1.7f else 1f))
         val hip = 14.8f + bob - crouchT * 3.0f - hitKick * 0.4f
         val lb = ps[15]
@@ -1510,6 +1662,17 @@ object Luffy3D {
             liftOn = false
         }
 
+        // passos laterais: com as mãos presas o corpo anda um pouco para os lados, e as pernas dão passos de lado
+        val mvx = dashVX / rsE
+        val mvz = dashVY / (rsE * SINP)
+        val latV = mvx * cos(yaw) - mvz * sin(yaw)   // + = para a esquerda do herói
+        latS += (latV - latS) * min(1f, dt * 10f)
+        val latDir = (latS / max(abs(latS), 5f)).coerceIn(-1f, 1f)
+        val latAmt = (abs(latS) / 14f).coerceIn(0f, 1f) * stepAmt * rollW
+        latW += abs(latS) * dt * LAT_K
+        gLatL = 0f
+        gLatR = 0f
+
         // pernas
         var aL = 0f
         var kL = 0f
@@ -1534,6 +1697,14 @@ object Luffy3D {
                 val kS = 0.1f + crouchT * 1.3f + lift * sqrt(lift) * 0.55f   // passos curtos e rentes ao chão
                 a = lerp(a, aS, stepAmt * rollW)
                 kn = lerp(kn, kS, stepAmt * rollW)
+            }
+            if (latAmt > 0.001f) {
+                // um pé sai para o lado enquanto o outro se apoia; o que sai levanta o joelho (passo curto)
+                val pl = latW + (if (sd > 0f) 0f else PI.toFloat())
+                val latAng = latDir * 0.34f * latAmt * sin(pl)
+                val lf = max(0f, cos(pl)) * latAmt
+                kn += lf * sqrt(lf) * 0.6f
+                if (k == 0) gLatL = latAng else gLatR = latAng
             }
             if (heliAirW > 0.001f) {
                 a = lerp(a, 0f, heliAirW)
