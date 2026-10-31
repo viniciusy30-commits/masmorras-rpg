@@ -1,0 +1,14 @@
+Luffy - correcao do soco e das maos presas no dash segurado
+Arquivos (todos em app/src/main/java/com/viniciusy/masmorras/):
+- Luffy3D.kt : cinematica inversa (IK) dos bracos em coordenadas de TELA.
+    * Soco: o corpo gira para o peito do inimigo e o braco sai reto do ombro ate la; o punho para na superficie do corpo.
+      Antes o braco apontava ~22 graus para baixo no impacto (batia no pe) e o comprimento ignorava o achatamento
+      vertical do modelo (~28% curto de frente/costas). Agora o alvo e seguido a cada quadro.
+    * Dash segurado: as duas maos ficam PARADAS no ponto do chao (mundo). O corpo puxa, treme e anda de lado; os bracos
+      esticam/giram a cada quadro para manter as maos no lugar (inclusive com o tremor). As pernas dao passos de lado.
+- Entity.kt  : o desenho envia ao Luffy3D o alvo do soco e a ancora das maos (em px de tela); constantes do dash:
+      LUFFY_ANCHOR_D 90->60, LUFFY_STRAFE_MAX 90->34 (anda so um pouco para os lados), LUFFY_STRAFE_SPD 150->100.
+- GameView.kt: atualiza o alvo do soco todo quadro (ele continua sendo seguido ate o fim da animacao).
+Ajustes finos (Luffy3D.kt): HAND_SEP (distancia entre as maos), LAT_K / 0.34f (tamanho e ritmo dos passos laterais).
+NAO FOI COMPILADO nem testado no aparelho. A matematica da IK foi validada em simulacao (erro do punho <= 1,2 px).
+Se o build falhar, mande o log.
