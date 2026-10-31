@@ -575,6 +575,15 @@ object Ichigo3D {
     private var colA = 0f
     private var spinA = 0f
     private var kitL = 0f
+    // andar no céu: peso da pose (suave), contagem de passos, marolas dos pés e fagulhas
+    private var skyW = 0f
+    private var lastStep = 0
+    private var skyT = 0f
+    private const val NRP = 6
+    private val rpX = FloatArray(NRP)
+    private val rpY = FloatArray(NRP)
+    private val rpL = FloatArray(NRP)
+    private var rpNext = 0
     private const val NP = 12
     private val ps = FloatArray(NP)
     private val pt = FloatArray(NP)
@@ -946,20 +955,18 @@ object Ichigo3D {
             // gola branca do kosode (por baixo) e lapelas pretas por cima, cruzando no peito
             for (sd in intArrayOf(-1, 1)) {
                 push()
-                    translate(sd * 1.7f, 9.5f, 3.0f)
+                    translate(sd * 1.7f, 8.8f, 3.0f)
                     rotZ(-sd * 0.36f)
-                    cube(0f, 0f, 0f, 0.55f, 3.5f, 0.2f, TABI)
-                    cube(sd * 0.55f, 0f, 0.1f, 0.12f, 3.4f, 0.1f, BONE_D)
+                    cube(0f, 0f, 0f, 0.55f, 2.5f, 0.2f, TABI)
+                    cube(sd * 0.55f, 0f, 0.1f, 0.12f, 2.4f, 0.1f, BONE_D)
                     translate(sd * 0.7f, 0f, 0.14f)
-                    prism(0f, 0f, 0f, 0.62f, 3.45f, 0.26f, 1.0f, 1.0f, 0f, 0f, BLK_L)
-                    cube(sd * 0.5f, 0f, 0.14f, 0.08f, 3.3f, 0.06f, RED_D)
+                    prism(0f, 0f, 0f, 0.62f, 2.55f, 0.26f, 1.0f, 1.0f, 0f, 0f, BLK_L)
+                    cube(sd * 0.5f, 0f, 0.14f, 0.08f, 2.4f, 0.06f, RED_D)
                 pop()
             }
             // gola alta atrás, com o forro branco aparecendo
             cube(0f, 12.7f, -2.4f, 3.6f, 0.9f, 1.0f, BLK_L)
             cube(0f, 12.9f, -2.9f, 3.2f, 0.4f, 0.4f, RED_D)
-            cube(0f, 12.2f, -1.9f, 3.0f, 0.45f, 0.8f, TABI)
-            cube(0f, 12.1f, 2.2f, 2.5f, 0.45f, 0.9f, TABI)
             // ombreiras largas (a manga sai daqui)
             for (sd in intArrayOf(-1, 1)) {
                 push()
@@ -1038,7 +1045,7 @@ object Ichigo3D {
      * habaki de aço, lâmina negra com sori (curva) para o lado do gume, linha do shinogi, fio azul-claro e kissaki em ponta.
      */
     private fun sword() {
-        val e = VoxelArt.mix(EDGE_B, EDGE_BL, glow)
+        val e = VoxelArt.mix(0xFFB8BEC9.toInt(), BONE_L, glow)
 
         // empunhadura (tsuka): oval, com envolvimento de ito e losangos
         cube(0f, -1.15f, 0f, 0.46f, 2.75f, 0.56f, BLK_D)
@@ -1093,7 +1100,7 @@ object Ichigo3D {
                 cube(0f, -len * 0.5f, avg * 0.15f, 0.23f, len * 0.5f, 0.04f, BLK_L)
                 // fio azul-claro bem visível dos dois lados, com miolo mais brilhante
                 cube(0f, -len * 0.5f, avg - 0.17f, 0.225f, len * 0.5f, 0.17f, e, true)
-                cube(0f, -len * 0.5f, avg - 0.05f, 0.235f, len * 0.5f, 0.05f, EDGE_BL, true)
+                cube(0f, -len * 0.5f, avg - 0.05f, 0.235f, len * 0.5f, 0.05f, BONE_L, true)
                 translate(0f, -len, 0f)
                 rotX(-0.05f)
             }
@@ -1401,13 +1408,14 @@ object Ichigo3D {
         for (kk in 0..1) {
             val sd = if (kk == 0) 1f else -1f
             val pp = if (sd > 0f) phase else phase + PI.toFloat()
-            var a = sin(pp) * 0.75f * mvs - crouchT * 0.55f
-            var kn = max(0f, -cos(pp)) * 1.0f * mvs + 0.08f + crouchT * 1.0f
+            // no céu: passada mais longa, joelho bem erguido (pisa no ar) e, parado, uma perna à frente e flutuando
+            var a = sin(pp) * (0.75f + 0.20f * skyW) * mvs - crouchT * 0.55f + sd * 0.12f * skyW * (1f - mvs)
+            var kn = max(0f, -cos(pp)) * (1.0f + 0.7f * skyW) * mvs + 0.08f + crouchT * 1.0f + 0.22f * skyW * (1f - mvs) * (if (sd > 0f) 1f else 0.4f)
             a = lerp(a, -0.5f + sd * 0.3f - 0.2f * max(0f, vzN), airW)
             kn = lerp(kn, 0.9f, airW)
             a = lerp(a, 0.9f + sd * 0.1f, rollW)
             kn = lerp(kn, 0.4f, rollW)
-            leg(sd, a, kn, -(a + kn) * 0.8f, hipNow)
+            leg(sd, a, kn, -(a + kn) * 0.8f - 0.22f * skyW, hipNow)
         }
         push()
         translate(0f, hipNow, 0f)
@@ -1547,6 +1555,23 @@ object Ichigo3D {
         val idle = if (hol) IDLE_H else IDLE_N
         for (i in 0 until NP) pt[i] = idle[i]
         pt[0] += 0.10f * spN
+        // andar no céu: peito levemente à frente ao correr, postura solta e braços um pouco abertos
+        skyW += ((if (sky) 1f else 0f) - skyW) * min(1f, dt * 7f)
+        pt[0] += (0.14f * spN - 0.03f) * skyW
+        pt[7] += 0.12f * skyW
+        pt[3] += 0.08f * skyW
+        val stepIdx = floor(phase / PI.toFloat()).toInt()
+        if (stepIdx != lastStep) {
+            lastStep = stepIdx
+            if (sky && blend > 0.4f && !first) {
+                val sdn = if (stepIdx % 2 == 0) 1f else -1f
+                val lat = sdn * 2.7f * s * PX
+                rpX[rpNext] = fx + cos(yaw) * lat
+                rpY[rpNext] = fy - sin(yaw) * SINP * lat
+                rpL[rpNext] = 0.55f
+                rpNext = (rpNext + 1) % NRP
+            }
+        }
         pt[6] += -sin(phase) * 0.55f * mvs
         pt[2] += sin(phase) * 0.18f * mvs
         pt[3] = lerp(pt[3], 0.85f, airW)
@@ -1663,9 +1688,13 @@ object Ichigo3D {
         cw1 = 0.15f + 0.12f * sin(clock * 2.9f + 1f) + 0.45f * spN + 0.3f * rollW
         cw2 = 0.10f + 0.08f * sin(clock * 2.1f + 2f) + 0.30f * spN
         hsw = 0.10f * sin(clock * 2.0f) + 0.28f * spN + 0.2f * rollW - hitKick * 0.2f
+        cw0 += 0.30f * skyW * (0.4f + spN)
+        cw1 += 0.20f * skyW * (0.4f + spN)
+        hsw += 0.12f * skyW * (0.5f + spN)
         chn = sin(clock * 3.1f) * 0.3f + sin(phase) * 0.4f * mvs
 
-        val bob = abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.14f * (1f - mvs)
+        val bob = (abs(sin(phase)) * 0.9f * mvs + sin(clock * 2.2f) * 0.14f * (1f - mvs)) * (1f - skyW) +
+            (abs(sin(phase)) * 0.5f * mvs + sin(clock * 2.0f) * 0.40f) * skyW
         val crouchT = max(ps[9], landDip * 0.5f)
         hipNow = HIP + bob - crouchT * 1.5f - hitKick * 0.4f
         liftNow = ps[11]
@@ -1709,6 +1738,27 @@ object Ichigo3D {
 
         buildModel(phase, mvs, crouchT, vzN, breath)
         flushZ(c)
+
+        // ── andar no céu: marolas de reiatsu onde cada pé pisa e fagulhas subindo dos pés ──
+        for (i in 0 until NRP) {
+            if (rpL[i] <= 0f) continue
+            rpL[i] -= dt
+            val tt = (1f - rpL[i] / 0.55f).coerceIn(0f, 1f)
+            val rr = (3f + 15f * tt) * rs
+            Glow.ring(c, p, rpX[i], rpY[i], rr, rr * SINP, max(1.2f, rs * 0.9f), RED, RED_L, 0.85f * (1f - tt))
+            Glow.glow(c, p, rpX[i], rpY[i], rr * 0.6f, RED_L, 0.35f * (1f - tt))
+        }
+        if (skyW > 0.5f) {
+            skyT -= dt
+            if (skyT <= 0f) {
+                skyT = 0.07f
+                emitSpark(
+                    fx + (rnd.nextFloat() - 0.5f) * 10f * rs, fy + (rnd.nextFloat() - 0.3f) * 2f * rs,
+                    (rnd.nextFloat() - 0.5f) * rs * 8f, -rs * (8f + rnd.nextFloat() * 14f),
+                    0.45f + rnd.nextFloat() * 0.3f, -rs * 2f, if (rnd.nextBoolean()) RED_L else DARKFX, 0.9f
+                )
+            }
+        }
 
         // ── fita do golpe ──
         val tpx = if (hol) mkX[tipId] else mkX[2]

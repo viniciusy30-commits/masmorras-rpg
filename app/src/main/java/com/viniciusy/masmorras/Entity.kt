@@ -259,6 +259,7 @@ class Player(
     var ichiKind = 0               // 1 = dash (botão de rolar), 2 = avanço de skill
     var lastIchiDash = 0L
     var sky = false                // andando no céu (segurar pular)
+    private val skyOval = RectF()
 
     // explorador: pendurado no chicote (apertar pular no ar e segurar). O ponto de ancoragem fica no céu; o corpo é um pêndulo
     var swinging = false
@@ -989,20 +990,41 @@ class Player(
         paint.style = Paint.Style.FILL
 
         if (classe == Classe.ICHIGO && sky) {
-            // plataforma de reiatsu sob os pés: disco rubro-negro com anéis girando
-            val pr = radius * 1.35f
-            val pulse = 0.5f + 0.5f * sin(flyClock * 5f)
-            paint.color = 0x661A0610
-            canvas.drawOval(sx - pr * 1.25f, feet - pr * 0.42f, sx + pr * 1.25f, feet + pr * 0.52f, paint)
-            paint.color = (0x33 + (0x30 * pulse).toInt() shl 24) or 0xC8102E
-            canvas.drawOval(sx - pr, feet - pr * 0.34f, sx + pr, feet + pr * 0.42f, paint)
-            paint.color = 0x99FF4B5C.toInt()
+            // plataforma de reiatsu sob os pés: disco rubro-negro com brilho, anéis, glifos girando e fagulhas subindo
+            val pr = radius * 1.45f
+            val t = flyClock
+            val pulse = 0.5f + 0.5f * sin(t * 4.5f)
+            val fade = ((alt - ground) / ICHI_SKY_H).coerceIn(0f, 1f)
+            val red = 0xFFC8102E.toInt()
+            val redL = 0xFFFF4B5C.toInt()
+            val dark = 0xFF1A0610.toInt()
+            paint.style = Paint.Style.FILL
+            paint.color = (0x55 * fade).toInt() shl 24 or 0x1A0610
+            canvas.drawOval(sx - pr * 1.3f, feet - pr * 0.45f, sx + pr * 1.3f, feet + pr * 0.55f, paint)
+            Glow.glow(canvas, paint, sx, feet, pr * 1.5f, pr * 0.62f, red, (0.30f + 0.15f * pulse) * fade)
+            Glow.glow(canvas, paint, sx, feet, pr * 0.9f, pr * 0.36f, redL, 0.35f * fade)
+            Glow.ring(canvas, paint, sx, feet, pr, pr * 0.42f, 2.6f, red, redL, 0.9f * fade)
+            Glow.ring(canvas, paint, sx, feet, pr * 1.25f * (1f + 0.04f * pulse), pr * 0.52f * (1f + 0.04f * pulse), 1.6f, dark, red, 0.55f * fade)
+            // glifos: arcos curtos girando em sentidos opostos
             paint.style = Paint.Style.STROKE
-            paint.strokeWidth = 2.5f
-            canvas.drawOval(sx - pr, feet - pr * 0.34f, sx + pr, feet + pr * 0.42f, paint)
-            paint.color = 0xCCFFFFFF.toInt()
-            paint.strokeWidth = 1.5f
-            canvas.drawOval(sx - pr * 0.62f, feet - pr * 0.21f, sx + pr * 0.62f, feet + pr * 0.26f, paint)
+            paint.strokeCap = Paint.Cap.ROUND
+            paint.strokeWidth = 2f
+            paint.color = (0xCC * fade).toInt() shl 24 or 0xFFD0D6
+            skyOval.set(sx - pr * 0.74f, feet - pr * 0.31f, sx + pr * 0.74f, feet + pr * 0.31f)
+            for (i in 0..5) canvas.drawArc(skyOval, t * 70f + i * 60f, 26f, false, paint)
+            paint.strokeWidth = 1.4f
+            paint.color = (0x99 * fade).toInt() shl 24 or 0xFF4B5C
+            skyOval.set(sx - pr * 0.46f, feet - pr * 0.19f, sx + pr * 0.46f, feet + pr * 0.19f)
+            for (i in 0..3) canvas.drawArc(skyOval, -t * 95f + i * 90f, 40f, false, paint)
+            paint.style = Paint.Style.FILL
+            // fagulhas subindo da borda da plataforma
+            for (i in 0..7) {
+                val ph = (t * 0.9f + i * 0.125f) % 1f
+                val ang = i * 0.785f + t * 0.6f
+                val ex = sx + cos(ang) * pr * 0.9f
+                val ey = feet + sin(ang) * pr * 0.38f - ph * radius * 1.6f
+                Glow.ember(canvas, paint, ex, ey, 0.8f + 2.2f * (1f - ph), if (i % 2 == 0) redL else 0xFFFFFFFF.toInt(), (1f - ph) * fade)
+            }
             paint.style = Paint.Style.FILL
         }
 

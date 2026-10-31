@@ -1724,8 +1724,12 @@ class GameView @JvmOverloads constructor(
             ichiHit.clear()
         }
 
-        if (p.sky && Random.nextInt(5) == 0) {
-            burst(p.x + (Random.nextFloat() - 0.5f) * 30f, p.y + p.radius * 0.55f - p.alt + 2f, 1, if (Random.nextBoolean()) ICHI_RED else 0xFF1A0610.toInt())
+        if (p.sky && Random.nextInt(3) == 0) {
+            burst(p.x + (Random.nextFloat() - 0.5f) * 36f, p.y + p.radius * 0.55f - p.alt + 2f, 1, if (Random.nextBoolean()) ICHI_RED else 0xFF1A0610.toInt())
+        }
+        if (p.sky && kotlin.math.abs(p.vx) + kotlin.math.abs(p.vy) > 1f && Random.nextInt(3) == 0) {
+            // rastro de reiatsu atrás de quem corre no céu
+            burst(p.x - p.facingX * 12f + (Random.nextFloat() - 0.5f) * 8f, p.y + p.radius * 0.55f - p.alt - 2f, 1, 0xFFFF4B5C.toInt())
         }
         if (p.hollow && Random.nextInt(7) == 0) {
             burst(p.x + (Random.nextFloat() - 0.5f) * 14f, p.y - 22f - p.alt, 1, if (Random.nextBoolean()) ICHI_RED else 0xFF1A0610.toInt())

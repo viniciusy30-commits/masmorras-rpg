@@ -1,6 +1,7 @@
-Ichigo - katana nova + faixa/casaco corrigidos
-Arquivo: app/src/main/java/com/viniciusy/masmorras/Ichigo3D.kt
-- Katana: lamina fina e curva, fio azul visivel, tsuba octogonal pequena, cabo enrolado com correntinha.
-- Faixa branca so na frente (costas cobertas de preto).
-- Abas do casaco com pontas rasgadas para baixo e borda vinho; sem listra branca na frente.
+Ichigo - katana, gola, cor da espada e andar no ceu
+Arquivos (todos em app/src/main/java/com/viniciusy/masmorras/):
+- Ichigo3D.kt  : katana nova, gola sem branco no queixo, animacao de andar no ceu
+- Entity.kt    : nova plataforma de reiatsu sob os pes (so o bloco do Ichigo no ceu foi trocado)
+- GameView.kt  : particulas e rastro de reiatsu ao andar no ceu
+ATENCAO: Entity.kt e GameView.kt sao os da pasta app do projeto enviado; substituem os atuais.
 NAO FOI COMPILADO. Se o build falhar, mande o log.
