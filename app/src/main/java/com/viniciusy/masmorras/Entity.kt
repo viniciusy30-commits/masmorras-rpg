@@ -121,7 +121,7 @@ class Player(
         const val LUFFY_GAT_CD = 8000L     // recarga (ms)
         const val LUFFY_GAT_LEN = 240f     // comprimento do retângulo à frente do Luffy (px)
         const val LUFFY_GAT_HALFW = 64f    // meia largura do retângulo (px)
-        const val LUFFY_GAT_DMG = 0.5f     // dano de cada soco (x dano do herói); são Luffy3D.GAT_N socos
+        const val LUFFY_GAT_DMG = 0.16f    // dano de cada soco (x dano do herói); são Luffy3D.GAT_N = 60 socos (total 9,6x; antes 16 x 0,5 = 8x)
         const val EXPL_RATE_1 = 1.55f      // velocidade dos 2 primeiros estalos do chicote do Explorador
         const val EXPL_RATE_3 = 1.2f       // velocidade da chicotada por cima
         const val EXPL_REACH = 165f        // alcance do estalo do chicote

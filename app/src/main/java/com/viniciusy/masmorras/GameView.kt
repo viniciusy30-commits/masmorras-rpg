@@ -1501,15 +1501,15 @@ class GameView @JvmOverloads constructor(
             val side = abs(ex * fy - ey * fx)
             if (along > -10f && along < Player.LUFFY_GAT_LEN + e.radius && side < Player.LUFFY_GAT_HALFW + e.radius * 0.6f) {
                 val hp0 = e.hp
-                damageEnemy(e, p.danoH * Player.LUFFY_GAT_DMG, p.x, p.y, if (last) 2.2f else 0.12f, "", true)
+                damageEnemy(e, p.danoH * Player.LUFFY_GAT_DMG, p.x, p.y, if (last) 2.2f else 0.04f, "", true)
                 gatAcc[e] = (gatAcc[e] ?: 0f) + (hp0 - e.hp)
                 e.stunT = max(e.stunT, 0.35f)
-                if (idx % 2 == 0) sndAt("hit_heavy", e.x, e.y, 0.5f, vary() * 1.1f)
+                if (idx % 3 == 0) sndAt("hit_heavy", e.x, e.y, 0.5f, vary() * 1.1f)
             }
         }
-        snd("heavy_swing", 0.3f, (1.5f + 0.4f * (idx % 2)) * vary())
-        shake = max(shake, if (last) 0.14f else 0.035f)
-        if (idx % 4 == 3 || last) {
+        if (idx % 2 == 0 || last) snd("heavy_swing", 0.3f, (1.5f + 0.4f * ((idx / 2) % 2)) * vary())
+        shake = max(shake, if (last) 0.14f else 0.02f)
+        if (idx % 10 == 9 || last) {
             for ((e, v) in gatAcc) {
                 if (v > 0.5f) texts.add(DmgText(e.x, e.y - e.radius - 30f - e.alt, v.toInt().toString(), 0.9f, 0xFFFFD54F.toInt()))
             }
@@ -1555,8 +1555,8 @@ class GameView @JvmOverloads constructor(
         canvas.drawPath(gatPath, paint)
         // faixas que correm para a frente (sensação de velocidade)
         paint.strokeWidth = 2f
-        for (i in 0..3) {
-            val f = ((time * (if (barrage) 340f else 120f) + i * len / 4f) % len)
+        for (i in 0..7) {
+            val f = ((time * (if (barrage) 720f else 120f) + i * len / 8f) % len)
             val fade = kotlin.math.sin(3.14159f * f / len)
             paint.color = (((0x66 * a * fade).toInt()) shl 24) or 0xFFFFFF
             canvas.drawLine(cx + fx * f - lx * w * 0.9f, cy + fy * f - ly * w * 0.9f, cx + fx * f + lx * w * 0.9f, cy + fy * f + ly * w * 0.9f, paint)

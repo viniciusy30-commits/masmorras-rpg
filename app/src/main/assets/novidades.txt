@@ -1,3 +1,12 @@
+#id 2026-10-31-luffy-gatling-2
+#titulo Luffy: Gatling bem mais longo, rápido e cobrindo o retângulo todo
+- A barragem agora dura 3 s (antes 1,6 s): são 60 socos em vez de 16, e a skill inteira dura cerca de 4 s
+- Socos 2x mais rápidos: 20 impactos por segundo, cada braço dispara um soco novo a cada 0,1 s
+- Os punhos agora cobrem o retângulo inteiro, da frente do Luffy até o fim e de um lado ao outro, em vez de repetir poucos pontos. Com inimigos dentro, 1 soco em cada 3 mira neles e o resto continua varrendo a área
+- Enxame de braços esticados saindo dos ombros e socando pontos espalhados por toda a área ao mesmo tempo, como no anime (só visual)
+- Dano total um pouco maior (60 socos x 0,16 = 9,6x o dano, antes 8x) e os inimigos são empurrados bem menos a cada soco, para não escaparem do retângulo no meio da barragem
+- Faixas de velocidade no chão do retângulo mais densas e rápidas; tremor e sons ajustados para a cadência nova
+
 #id 2026-10-31-luffy-gatling
 #titulo Luffy: Gomu Gomu no Gatling e soco mais fluido
 - Skill nova: Gomu Gomu no Gatling (botão de skill, recarga de 8 s). O Luffy se planta no chão e despeja 16 socos com os dois braços, alternando, numa área retangular à frente dele; o retângulo aparece no chão e quem estiver dentro leva todos os socos e fica atordoado. O último soco joga os inimigos para longe

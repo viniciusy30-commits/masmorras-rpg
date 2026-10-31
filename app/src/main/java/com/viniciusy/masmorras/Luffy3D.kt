@@ -1061,11 +1061,14 @@ object Luffy3D {
     // Linha do tempo (s): preparação até GAT_WIND; socos alternados, um impacto a cada GAT_DT a partir de GAT_T0
     // (cada braço soca a cada GAT_CYC = 2 * GAT_DT); o último soco de cada braço volta direto ao repouso (GAT_RET),
     // em etapas (comprimento primeiro, ombro depois), enquanto o corpo relaxa: nada corta de repente.
-    const val GAT_DUR = 2.58f
+    // Barragem: GAT_N socos * GAT_DT = 3,0 s (antes 1,6 s), 20 impactos por segundo (antes 10).
+    // GAT_DUR = último impacto (GAT_T0 + (GAT_N - 1) * GAT_DT = 3,45 s) + 0,58 s de volta ao repouso.
+    const val GAT_DUR = 4.03f
     const val GAT_T0 = 0.50f
-    const val GAT_DT = 0.10f
-    const val GAT_N = 16
-    private const val GAT_CYC = 0.20f
+    const val GAT_DT = 0.05f
+    const val GAT_N = 60
+    private const val GAT_CYC = 2f * GAT_DT
+    private const val GAT_GHOST_RATE = 120f   // braços-fantasma por segundo espalhados no retângulo (só visual)
     private const val GAT_HF = 0.34f     // fração do ciclo até o punho chegar ao alvo
     private const val GAT_HOLD = 0.08f   // fração do ciclo segurando no alvo
     private const val GAT_WIND = 0.36f
@@ -1103,36 +1106,45 @@ object Luffy3D {
     private var gaExt = 1f
 
     // efeitos 2D: estrela de impacto (0) e punho-fantasma (1), em px relativos ao pé
-    private const val NG = 48
+    private const val NG = 160
     private val gfX = FloatArray(NG)
     private val gfY = FloatArray(NG)
+    private val gfSX = FloatArray(NG)   // ombro de onde sai o braço-fantasma (tipo 2), em px relativos ao pé
+    private val gfSY = FloatArray(NG)
+    private var gatGhAcc = 0f           // acumulador do enxame (braços-fantasma por quadro, independente do FPS)
     private val gfL = FloatArray(NG)
     private val gfM = FloatArray(NG)
     private val gfK = IntArray(NG)
     private val gfR = FloatArray(NG)
     private var gfNext = 0
 
-    private fun emitG(kind: Int, x: Float, y: Float, life: Float, rot: Float) {
+    private fun emitG(kind: Int, x: Float, y: Float, life: Float, rot: Float, sx: Float = 0f, sy: Float = 0f) {
         val i = gfNext
         gfNext = (gfNext + 1) % NG
         gfX[i] = x
         gfY[i] = y
+        gfSX[i] = sx
+        gfSY[i] = sy
         gfL[i] = life
         gfM[i] = life
         gfK[i] = kind
         gfR[i] = rot
     }
 
-    /** Escolhe e trava o alvo do soco [i]: um inimigo dentro do retângulo (se houver) ou um ponto que varre a área. */
+    /**
+     * Escolhe e trava o alvo do soco [i]. Com inimigos no retângulo, 1 soco em cada 3 mira neles; todos os outros (e todos,
+     * se não houver ninguém) caem numa sequência R2 de baixa discrepância: cada soco vai para um ponto novo e, juntos,
+     * os socos cobrem o retângulo inteiro (da frente do Luffy até o fim, de um lado ao outro), sem formar buracos.
+     */
     private fun gatLock(a: Int, i: Int, rsE: Float) {
         val f: Float
         var u: Float
-        if (gatPtN > 0) {
-            val j = i % gatPtN
+        if (gatPtN > 0 && i % 3 == 0) {
+            val j = (i / 3) % gatPtN
             f = gatPtF[j] + (rn(3 * i + 4) - 0.5f) * 10f
             u = gatPtU[j] + (rn(3 * i + 5) - 0.5f) * 10f
         } else {
-            f = gatLen * (0.34f + 0.66f * frac(0.5f + i * 0.7548777f))
+            f = gatLen * (0.20f + 0.80f * frac(0.5f + i * 0.7548777f))
             u = gatHalfW * 0.92f * (2f * frac(0.3f + i * 0.5698403f) - 1f)
             u += (if (a == 0) -0.15f else 0.15f) * gatHalfW
             u = u.coerceIn(-0.92f * gatHalfW, 0.92f * gatHalfW)
@@ -1885,8 +1897,8 @@ object Luffy3D {
             val lEl0 = lel
             lean = lerp(lean, 0.26f + 0.04f * pump * env, wB) - 0.14f * ant
             crouch = lerp(crouch, 0.55f + 0.05f * pump * env, wB) + 0.18f * ant
-            bodyZ = lerp(bodyZ, 1.5f + 1.2f * pump * env, wB) - 1.5f * ant
-            chestTw = chestTw * (1f - wB) + wB * env * 0.30f * wave
+            bodyZ = lerp(bodyZ, 1.5f + 0.8f * pump * env, wB) - 1.5f * ant
+            chestTw = chestTw * (1f - wB) + wB * env * 0.22f * wave
             hipTw *= (1f - wB)
             tilt = lerp(tilt, 0.1f, wB)
             shout = max(shout, 0.95f * wB)
@@ -1908,19 +1920,41 @@ object Luffy3D {
                     gatFxD[a] = ti
                     val rx = (gatDX * gatTF[a] + gatDY * gatTU[a]) / gatSqX
                     val ry = (gatDY * gatTF[a] - gatDX * gatTU[a]) / gatSqY - 15f * rs0(s)
-                    emitG(0, rx, ry, 0.24f, rnd.nextFloat() * 1.0472f)
-                    for (q in 0..1) emitG(1, rx + (rnd.nextFloat() - 0.5f) * 22f * rs0(s), ry + (rnd.nextFloat() - 0.5f) * 14f * rs0(s), 0.2f, 0f)
-                    for (q in 0..3) {
+                    emitG(0, rx, ry, 0.18f, rnd.nextFloat() * 1.0472f)
+                    for (q in 0..2) {
                         val ang = rnd.nextFloat() * TWO_PI
                         val sp0 = (14f + rnd.nextFloat() * 30f) * rs0(s)
-                        emitSpark(fx + rx, fy + ry, cos(ang) * sp0, sin(ang) * sp0, 0.26f, rs0(s) * 36f, if (q % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+                        emitSpark(fx + rx, fy + ry, cos(ang) * sp0, sin(ang) * sp0, 0.22f, rs0(s) * 36f, if (q % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
                     }
                 }
+            }
+            // enxame: como no anime, vários braços esticados saem dos ombros e socam pontos espalhados por TODO o
+            // retângulo ao mesmo tempo (só visual; o dano é de gatTick). A quantidade é por segundo, não por quadro.
+            gatGhAcc += dt * GAT_GHOST_RATE * env
+            var gn = 0
+            while (gatGhAcc >= 1f && gn < 8) {
+                gatGhAcc -= 1f
+                gn++
+                val ga = if (rnd.nextBoolean()) 1 else 0
+                val gf: Float
+                val gu: Float
+                if (gatPtN > 0 && rnd.nextFloat() < 0.3f) {
+                    val j = rnd.nextInt(gatPtN)
+                    gf = (gatPtF[j] + (rnd.nextFloat() - 0.5f) * 16f).coerceIn(0.1f * gatLen, gatLen)
+                    gu = (gatPtU[j] + (rnd.nextFloat() - 0.5f) * 16f).coerceIn(-0.95f * gatHalfW, 0.95f * gatHalfW)
+                } else {
+                    gf = gatLen * (0.1f + 0.9f * rnd.nextFloat())
+                    gu = gatHalfW * 0.95f * (2f * rnd.nextFloat() - 1f)
+                }
+                val gx = (gatDX * gf + gatDY * gu) / gatSqX
+                val gy = (gatDY * gf - gatDX * gu) / gatSqY - 15f * rs0(s)
+                emitG(2, gx, gy, 0.07f + 0.05f * rnd.nextFloat(), 0f, mkX[4 + ga] - ox, mkY[4 + ga] - oy)
             }
         } else {
             gatTI[0] = -1; gatTI[1] = -1
             gatFxD[0] = -1; gatFxD[1] = -1
             gatR[0] = 0f; gatR[1] = 0f
+            gatGhAcc = 0f
         }
 
         // suaviza a pose (o golpe mantém o ritmo; transições entre estados não dão tranco)
@@ -2241,7 +2275,29 @@ object Luffy3D {
             val a = (gfL[i] / gfM[i]).coerceIn(0f, 1f)
             val cx = fx + gfX[i]
             val cy = fy + gfY[i]
-            if (gfK[i] == 1) {
+            if (gfK[i] == 2) {
+                // braço-fantasma: braço de borracha esticado do ombro até o punho, com contorno, sumindo rápido
+                val sx = fx + gfSX[i]
+                val sy = fy + gfSY[i]
+                p.strokeCap = Paint.Cap.ROUND
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(2.2f, rs * 3.8f)
+                p.color = VoxelArt.alpha(0xFF8A4A2A.toInt(), 0.55f * a)
+                c.drawLine(sx, sy, cx, cy, p)
+                p.strokeWidth = max(1.4f, rs * 2.3f)
+                p.color = VoxelArt.alpha(0xFFF2BF8C.toInt(), 0.7f * a)
+                c.drawLine(sx, sy, cx, cy, p)
+                p.strokeCap = Paint.Cap.BUTT
+                val h = rs * 3.6f
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFF2BF8C.toInt(), 0.85f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.STROKE
+                p.strokeWidth = max(1f, rs * 0.9f)
+                p.color = VoxelArt.alpha(0xFF8A4A2A.toInt(), 0.9f * a)
+                c.drawRect(cx - h, cy - h, cx + h, cy + h, p)
+                p.style = Paint.Style.FILL
+            } else if (gfK[i] == 1) {
                 // punho-fantasma: quadradinho de pele com contorno que some rápido
                 val h = rs * 4.2f
                 p.style = Paint.Style.FILL
