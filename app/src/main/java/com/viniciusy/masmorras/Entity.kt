@@ -838,7 +838,7 @@ class Player(
         luffyT = 0f
         if (luffyFlip) {
             // cai de pé: se está andando, o pouso é curto e já emenda no passo; parado, assenta um pouco
-            luffyLandT = if (hypot(inX, inY) > 0.3f) 0.2f else 0.32f
+            luffyLandT = if (hypot(inX, inY) > 0.3f) 0.34f else 0.5f
             luffyVl = luffyVh * 0.9f
             landed = max(landed, 0.6f)
         } else {
@@ -895,14 +895,16 @@ class Player(
             }
             2 -> {
                 // voo: sai um pouco mais devagar e ganha velocidade suave (sem arrancada seca)
-                val acc = 0.55f + 0.45f * lfSmooth(luffyT / 0.14f)
+                var acc = 0.55f + 0.45f * lfSmooth(luffyT / 0.14f)
+                // mortal: perde velocidade nos últimos 30% do voo para pousar sem escorregar
+                if (luffyFlip) acc *= 1f - 0.5f * lfSmooth((luffyT / luffyAirT - 0.7f) / 0.3f)
                 vx = rollDX * luffyVh * acc
                 vy = rollDY * luffyVh * acc
             }
             else -> {
                 if (luffyFlip) {
                     // pouso do mortal: a velocidade do voo vira a velocidade de caminhada (sem freada seca)
-                    val k = lfSmooth(luffyT / (luffyLandT * 0.7f))
+                    val k = lfSmooth(luffyT / (luffyLandT * 0.55f))
                     vx = rollDX * luffyVl * (1f - k) + inX * velH * 60f * spdMul * k
                     vy = rollDY * luffyVl * (1f - k) + inY * velH * 60f * spdMul * k
                 } else {
