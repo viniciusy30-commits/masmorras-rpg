@@ -1093,8 +1093,8 @@ object Luffy3D {
     // ───────────── Gomu Gomu no Bazooka ─────────────
     // 0 a BAZ_HIT: abaixa e puxa os dois braços esticados para trás (o corpo treme, faíscas) | BAZ_HIT: estalo, os dois
     // braços disparam juntos à frente, palmas unidas | segura um instante e volta como elástico até BAZ_DUR.
-    const val BAZ_DUR = 1.15f
-    const val BAZ_HIT = 0.62f
+    const val BAZ_DUR = 1.3f
+    const val BAZ_HIT = 0.72f
 
     const val G2_DUR = 2.8f
     const val G2_P0 = 0.5f
@@ -1455,6 +1455,7 @@ object Luffy3D {
         val tAtk = if (attack > 0.001f) 1f - attack else -1f
         if (tAtk < 0.03f) pmOk = false
         val gatOn = skillP >= 0f && gatActive && rollP < 0f && !heli && heliCharge < 0f
+        val bazOn = bazP >= 0f && rollP < 0f && !heli && heliCharge < 0f && !gatOn
         var aimOn = false
         var aimPunch = false
         var aimX = 0f
@@ -1472,6 +1473,11 @@ object Luffy3D {
             aimOn = true
             aimX = gatDX * 0.6f * gatLen / gatSqX / rsE
             aimZ = gatDY * 0.6f * gatLen / gatSqY / (rsE * SINP)
+        } else if (bazOn) {
+            // Bazooka: o corpo se vira para o ponto exato à frente, onde as duas palmas vão bater (mesma conversão tela -> modelo)
+            aimOn = true
+            aimX = gatDX * 0.95f * bazLen / gatSqX / rsE
+            aimZ = gatDY * 0.95f * bazLen / gatSqY / (rsE * SINP)
         } else if (tAtk >= 0f && !heli && heliCharge < 0f) {
             if (tAtk < T_HIT && punchOn) {
                 // até o impacto o punho persegue o alvo; guarda o ponto a cada quadro
@@ -2132,61 +2138,94 @@ object Luffy3D {
         }
 
         // ── Gomu Gomu no Bazooka ──
+        // armando: agacha fundo, o peito torce e os dois braços esticam para trás tremendo, com energia nas mãos |
+        // estalo: o corpo destorce e se lança, os dois braços disparam por IK até o ponto exato à frente, palmas juntas |
+        // volta: segura no impacto e os braços encolhem como elástico
         var bazIK = false
-        if (bazP >= 0f && rollW < 0.5f && !gatOn && heliCharge < 0f && !heli) {
+        if (bazOn && rollW < 0.5f) {
             bazIK = true
             val tb = bazP * BAZ_DUR
-            val bzIn = ease(tb / 0.16f)
-            val bzOut = 1f - smoother((tb - (BAZ_DUR - 0.28f)) / 0.28f)
-            val wB = bzIn * bzOut
+            val wB = ease(tb / 0.2f) * (1f - smoother((tb - (BAZ_DUR - 0.3f)) / 0.3f))
             val bzWind = ease(tb / BAZ_HIT)
-            val bzSnap = ease((tb - BAZ_HIT) / 0.045f)
-            val bzRet = smoother((tb - (BAZ_HIT + 0.32f)) / (BAZ_DUR - BAZ_HIT - 0.32f))
+            val bzSnap = ease((tb - BAZ_HIT) / 0.04f)
+            val bzRet = smoother((tb - (BAZ_HIT + 0.38f)) / (BAZ_DUR - BAZ_HIT - 0.38f))
             val bzBack = bzWind * (1f - bzSnap)
             val bzFwd = bzSnap * (1f - bzRet)
+            val bzRest = max(0f, 1f - bzBack - bzFwd)
             val bzTrm = sin(clock * 85f) * bzBack * bzBack
-            lean = lerp(lean, -0.30f * bzBack + 0.58f * bzFwd, wB)
-            crouch = lerp(crouch, 0.8f * bzBack + 0.4f * bzFwd, wB)
-            bodyZ = lerp(bodyZ, -3.5f * bzBack + 6.5f * bzFwd, wB)
-            chestTw = lerp(chestTw, 0.10f * bzTrm, wB)
-            hipTw = lerp(hipTw, 0.04f * bzTrm, wB)
+            lean = lerp(lean, -0.34f * bzBack + 0.62f * bzFwd, wB)
+            crouch = lerp(crouch, 0.9f * bzBack + 0.45f * bzFwd, wB)
+            bodyZ = lerp(bodyZ, -4f * bzBack + 8f * bzFwd, wB)
+            chestTw = lerp(chestTw, 0.28f * bzBack + 0.10f * bzTrm, wB)
+            hipTw = lerp(hipTw, 0.12f * bzBack + 0.04f * bzTrm, wB)
             tilt = lerp(tilt, 0.12f * bzBack - 0.14f * bzFwd + 0.03f * bzTrm, wB)
             shout = max(shout, wB * (0.7f * bzBack + bzFwd))
             legB = lerp(legB, 0f, wB)
-            gatSplay = (0.34f * bzBack + 0.26f * bzFwd) * wB
-            // os dois braços: esticados para trás, depois juntos à frente, estendidos até o alcance do golpe
-            val armSh = 1.25f * bzBack - 1.55f * bzFwd
-            val armZ = 0.5f * bzBack + 0.02f * bzFwd
-            val armEl = -0.25f * bzBack - 0.04f * bzFwd
-            val bzExt = 1f + 0.9f * bzBack + (extFor(bazLen * 0.92f / rsNow) - 1f) * bzFwd
-            rsh = lerp(rsh, armSh, wB)
-            lsh = lerp(lsh, armSh, wB)
-            rshZ = lerp(rshZ, armZ, wB)
-            lshZ = lerp(lshZ, armZ, wB)
-            rel = lerp(rel, armEl, wB)
-            lel = lerp(lel, armEl, wB)
-            extR = lerp(1f, bzExt, wB)
-            extL = lerp(1f, bzExt, wB)
-            // armando: faíscas e vapor saindo das mãos esticadas atrás do corpo
-            if (tb < BAZ_HIT && rnd.nextFloat() < dt * (14f + 40f * bzWind)) {
-                val kk = rnd.nextInt(2)
-                val ang = rnd.nextFloat() * TWO_PI
-                val sp0 = (10f + rnd.nextFloat() * 22f) * rs
-                emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.25f, rs * 30f, if (rnd.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+            gatSplay = (0.36f * bzBack + 0.30f * bzFwd) * wB
+            // pose exata do corpo neste quadro: a IK acerta as duas palmas no ponto à frente
+            val crG = max(crouch, ease(landDip) * 0.5f * (if (landSoft) 1.7f else 1f))
+            val hipG = 14.8f + bob - crG * 3f - hitKick * 0.4f
+            val leanG = lean - hitKick * 0.3f
+            val zG = bodyZ - hitKick * 1.2f
+            val dM = hypot(aimX, aimZ)
+            val fwx = sin(yaw)
+            val fwz = cos(yaw)
+            val lx = cos(yaw)
+            val lz = -sin(yaw)
+            solveArmT(-1f, fwx * dM - lx * 1.8f, 19f, fwz * dM - lz * 1.8f, hipG, leanG, zG, yaw, chestTw)
+            val rIkSh = ikSh
+            val rIkZ = ikShZ
+            val rIkE = ikExt
+            solveArmT(1f, fwx * dM + lx * 1.8f, 19f, fwz * dM + lz * 1.8f, hipG, leanG, zG, yaw, chestTw)
+            val lIkSh = ikSh
+            val lIkZ = ikShZ
+            val lIkE = ikExt
+            val bkSh = 1.3f + 0.07f * bzTrm
+            rsh = rsh * bzRest + bkSh * bzBack + rIkSh * bzFwd
+            lsh = lsh * bzRest + bkSh * bzBack + lIkSh * bzFwd
+            rshZ = rshZ * bzRest + 0.55f * bzBack + rIkZ * bzFwd
+            lshZ = lshZ * bzRest + 0.55f * bzBack + lIkZ * bzFwd
+            rel = rel * bzRest - 0.2f * bzBack
+            lel = lel * bzRest - 0.2f * bzBack
+            extR = bzRest + 2.3f * bzBack + rIkE * bzFwd
+            extL = bzRest + 2.3f * bzBack + lIkE * bzFwd
+            // armando: faíscas saindo das mãos esticadas atrás do corpo
+            if (tb < BAZ_HIT) {
+                for (q in 0..1) {
+                    if (rnd.nextFloat() < dt * (16f + 50f * bzWind)) {
+                        val kk = rnd.nextInt(2)
+                        val ang = rnd.nextFloat() * TWO_PI
+                        val sp0 = (10f + rnd.nextFloat() * 24f) * rs
+                        emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.25f, rs * 30f, if (rnd.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 0.9f)
+                    }
+                }
             }
-            // estalo: explosão nas duas mãos
+            // estalo: explosão nas mãos
             if (tb >= BAZ_HIT && !bazRel) {
                 bazRel = true
                 for (kk in 0..1) {
-                    for (i in 0..9) {
+                    for (i in 0..11) {
                         val ang = rnd.nextFloat() * TWO_PI
-                        val sp0 = (18f + rnd.nextFloat() * 50f) * rs
-                        emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.35f, rs * 46f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
+                        val sp0 = (18f + rnd.nextFloat() * 56f) * rs
+                        emitSpark(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0, 0.38f, rs * 50f, if (i % 2 == 0) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt(), 1.0f)
                     }
                     for (i in 0..5) {
                         val ang = rnd.nextFloat() * TWO_PI
                         val sp0 = (24f + rnd.nextFloat() * 46f) * rs
                         emitSteam(mkX[kk], mkY[kk], cos(ang) * sp0, sin(ang) * sp0 - 10f * rs, 0.45f + rnd.nextFloat() * 0.3f, (2.6f + rnd.nextFloat() * 2.2f) * rs)
+                    }
+                }
+            }
+            // logo após o estalo: braços-fantasma disparam pelo cone (eco do golpe)
+            if (tb >= BAZ_HIT && tb < BAZ_HIT + 0.18f) {
+                for (q in 0..2) {
+                    if (rnd.nextFloat() < dt * 45f) {
+                        val ga = rnd.nextInt(2)
+                        val gf = bazLen * (0.45f + 0.55f * rnd.nextFloat())
+                        val gu = (rnd.nextFloat() - 0.5f) * 44f
+                        val gx = (gatDX * gf + gatDY * gu) / gatSqX
+                        val gy = (gatDY * gf - gatDX * gu) / gatSqY - 15f * rs0(s)
+                        emitG(2, gx, gy, 0.08f + 0.05f * rnd.nextFloat(), 0f, mkX[4 + ga] - ox, mkY[4 + ga] - oy)
                     }
                 }
             }
@@ -2460,6 +2499,40 @@ object Luffy3D {
             p.color = VoxelArt.alpha(0xFFFF8A94.toInt(), 0.5f * g2W)
             c.drawOval(heliRect, p)
             p.style = Paint.Style.FILL
+        }
+        // ── Bazooka: energia nas mãos, anéis que se fecham no chão e clarão do estalo ──
+        if (bazP >= 0f) {
+            val tbF = bazP * BAZ_DUR
+            if (tbF < BAZ_HIT) {
+                val bw = ease(tbF / BAZ_HIT)
+                p.style = Paint.Style.FILL
+                for (k in 0..1) {
+                    val pl = 1f + 0.18f * sin(clock * 30f + k * 2f)
+                    p.color = VoxelArt.alpha(0xFFFFC23A.toInt(), 0.30f * bw)
+                    c.drawCircle(mkX[k], mkY[k], (4f + 11f * bw) * rs * pl, p)
+                    p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.85f * bw)
+                    c.drawCircle(mkX[k], mkY[k], (1.5f + 4.5f * bw) * rs * pl, p)
+                }
+                p.style = Paint.Style.STROKE
+                for (i in 0..1) {
+                    val fr = (clock * 2.4f + i * 0.5f) % 1f
+                    val r2 = (8f + 40f * (1f - fr)) * rs
+                    heliRect.set(fx - r2, fy - r2 * SINP, fx + r2, fy + r2 * SINP)
+                    p.strokeWidth = max(1.5f, 2.2f * rs)
+                    p.color = VoxelArt.alpha(0xFFFFC23A.toInt(), 0.65f * bw * fr)
+                    c.drawOval(heliRect, p)
+                }
+                p.style = Paint.Style.FILL
+            } else if (tbF < BAZ_HIT + 0.2f) {
+                val q = (tbF - BAZ_HIT) / 0.2f
+                val mxm = (mkX[0] + mkX[1]) * 0.5f
+                val mym = (mkY[0] + mkY[1]) * 0.5f
+                p.style = Paint.Style.FILL
+                p.color = VoxelArt.alpha(0xFFFFFFFF.toInt(), 0.9f * (1f - q))
+                c.drawCircle(mxm, mym, (6f + 26f * q) * rs, p)
+                p.color = VoxelArt.alpha(0xFFFFC23A.toInt(), 0.5f * (1f - q))
+                c.drawCircle(mxm, mym, (10f + 38f * q) * rs, p)
+            }
         }
         if (g2Ring >= 0f) {
             g2Ring += dt

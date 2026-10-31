@@ -1,3 +1,14 @@
+#id 2026-10-31-luffy-bazooka-2
+#titulo Luffy: Bazooka com mira certeira e animação nova
+- As mãos agora vão exatamente na direção do inimigo: o corpo gira para o ponto do golpe e os dois braços esticam retos, palmas juntas, até lá
+- Preparação mais longa e dramática: ele agacha fundo, o peito torce, os braços esticam para trás tremendo com orbes de energia dourada nas mãos, anéis se fechando no chão e a área do golpe marcada e enchendo de dourado
+- No estalo: o corpo destorce e se lança, clarão nas mãos, braços-fantasma disparando pelo cone, poeira e faíscas por toda a área e tremor de tela bem mais forte
+
+#id 2026-10-31-luffy-g2-soco-velocidade
+#titulo Luffy: soco do Gear Second com velocidade de verdade
+- O rastro do soco ficou animado: riscos afilados disparam do punho até o inimigo e convergem no ponto de impacto, com cauda que some atrás deles
+- Punhos-fantasma aparecem pelo caminho, como vários socos de uma vez, e na chegada abrem anéis e espículas de impacto
+
 #id 2026-10-31-luffy-bazooka
 #titulo Luffy: Gomu Gomu no Bazooka
 - Skill nova (botão de skill 3, recarga de 9 s, vale em qualquer forma): o Luffy abaixa, estica os dois braços para trás tremendo e soltando faíscas, e então dispara os dois juntos para a frente, palmas unidas, num estalo

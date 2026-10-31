@@ -1505,6 +1505,7 @@ class GameView @JvmOverloads constructor(
     // Soru: rastro (x0, y0, x1, y1, idade) e impactos instantâneos do soco do Gear Second (x, y, idade, rotação)
     private val soruTr = ArrayList<FloatArray>()
     private val g2Hits = ArrayList<FloatArray>()
+    private val fxPath = Path()
     private val punchTr = ArrayList<FloatArray>()   // rastro de velocidade do soco do Gear Second (x0, y0, x1, y1, idade)
     private var soruWas = false
     private var soruLX = 0f
@@ -1570,7 +1571,7 @@ class GameView @JvmOverloads constructor(
         while (it3.hasNext()) {
             val sg = it3.next()
             sg[4] += dt
-            if (sg[4] > 0.2f) it3.remove()
+            if (sg[4] > 0.32f) it3.remove()
         }
         val it2 = g2Hits.iterator()
         while (it2.hasNext()) {
@@ -1588,6 +1589,7 @@ class GameView @JvmOverloads constructor(
     private var bazDX = 1f
     private var bazDY = 0f
     private var bazBig = false
+    private var bazWindQ = -1f
 
     /** Todo quadro: faíscas da preparação, o golpe no instante do estalo (área à frente) e envelhecimento do efeito. */
     private fun luffyBazUpdate(p: Player, dt: Float) {
@@ -1597,12 +1599,14 @@ class GameView @JvmOverloads constructor(
         }
         if (p.skillK != 3 || !p.alive) {
             bazFired = false
+            bazWindQ = -1f
             return
         }
         val el = p.skillDur - p.skillT
         val cy = p.y - p.alt - 20f
         if (el < Luffy3D.BAZ_HIT) {
             val q = (el / Luffy3D.BAZ_HIT).coerceIn(0f, 1f)
+            bazWindQ = q
             if (Random.nextFloat() < dt * (16f + 50f * q)) {
                 val ang = Random.nextFloat() * 6.2832f
                 burst(p.x - p.facingX * 22f + cos(ang) * 20f, cy - p.facingY * 12f + sin(ang) * 14f, 1, if (Random.nextBoolean()) 0xFFFFFFFF.toInt() else 0xFFFFC23A.toInt())
@@ -1610,6 +1614,7 @@ class GameView @JvmOverloads constructor(
             shake = max(shake, 0.01f + 0.03f * q)
         } else if (!bazFired) {
             bazFired = true
+            bazWindQ = -1f
             val big = p.g2T > 0f
             bazBig = big
             bazDX = p.facingX
@@ -1634,9 +1639,16 @@ class GameView @JvmOverloads constructor(
                     g2Hits.add(floatArrayOf(e.x, hy, 0f, Random.nextFloat() * 1.0472f))
                 }
             }
-            burst(bazOX, bazOY, 14, 0xFFFFFFFF.toInt())
-            burst(bazOX, bazOY, 10, 0xFFFFC23A.toInt())
-            shake = max(shake, 0.34f)
+            burst(bazOX, bazOY, 18, 0xFFFFFFFF.toInt())
+            burst(bazOX, bazOY, 14, 0xFFFFC23A.toInt())
+            // poeira e faíscas estourando ao longo de toda a área
+            for (i in 0..9) {
+                val dd = 30f + i * 22f
+                burst(bazOX + bazDX * dd, bazOY + bazDY * dd + 14f, 2, 0xFFDDD0B0.toInt())
+                if (i % 2 == 0) burst(bazOX + bazDX * dd, bazOY + bazDY * dd, 2, 0xFFFFC23A.toInt())
+            }
+            g2Hits.add(floatArrayOf(bazOX, bazOY, 0f, 0f))
+            shake = max(shake, 0.5f)
             snd("hit_heavy", 1f, 0.75f)
             snd("thunder_cast", 0.8f, 1.35f)
             texts.add(DmgText(p.x, p.y - 92f - p.alt, if (big) "JET BAZOOKA!" else "BAZOOKA!", 1.3f, 0xFFFFC23A.toInt()))
@@ -1645,6 +1657,43 @@ class GameView @JvmOverloads constructor(
 
     /** Efeito do Bazooka: cone de choque, riscos de velocidade e anéis que correm à frente. */
     private fun drawBazFx(canvas: Canvas) {
+        val pl = player
+        if (bazWindQ >= 0f && pl != null) {
+            val w = bazWindQ
+            val fxv = pl.facingX
+            val fyv = pl.facingY
+            val nxv = -fyv
+            val nyv = fxv
+            val L = Player.LUFFY_BAZ_LEN
+            val H = Player.LUFFY_BAZ_HALFW
+            val bx = pl.x - camX
+            val by = pl.y - camY + pl.radius * 0.55f - pl.alt
+            // zona do golpe marcada no chão, enchendo de dourado conforme ele arma
+            fxPath.reset()
+            fxPath.moveTo(bx + nxv * 14f, by + nyv * 14f)
+            fxPath.lineTo(bx + fxv * L + nxv * H, by + fyv * L + nyv * H)
+            fxPath.lineTo(bx + fxv * L - nxv * H, by + fyv * L - nyv * H)
+            fxPath.lineTo(bx - nxv * 14f, by - nyv * 14f)
+            fxPath.close()
+            paint.style = Paint.Style.FILL
+            paint.color = (((0.05f + 0.16f * w) * 255f).toInt() shl 24) or 0xFFC23A
+            canvas.drawPath(fxPath, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = 2.5f
+            paint.color = (((0.25f + 0.55f * w) * 255f).toInt() shl 24) or 0xFFE08A
+            canvas.drawPath(fxPath, paint)
+            // anéis que se fecham em volta dele e aura que cresce
+            for (i in 0..1) {
+                val fr = (time * 2.4f + i * 0.5f) % 1f
+                val rr = 16f + 54f * (1f - fr)
+                paint.strokeWidth = 2.5f
+                paint.color = (((0.6f * w * fr * 255f).toInt()) shl 24) or 0xFFC23A
+                canvas.drawOval(bx - rr, by - rr * 0.62f, bx + rr, by + rr * 0.62f, paint)
+            }
+            paint.style = Paint.Style.FILL
+            paint.color = (((0.14f * w * 255f).toInt()) shl 24) or 0xFFC23A
+            canvas.drawCircle(bx, by - 22f, 22f + 18f * w, paint)
+        }
         if (bazAge < 0f) return
         val q = (bazAge / 0.6f).coerceIn(0f, 1f)
         val a = 1f - q
@@ -1720,23 +1769,109 @@ class GameView @JvmOverloads constructor(
                 canvas.drawLine(sg[0] + nx * offs[k] - camX, sg[1] + ny * offs[k] - camY, sg[2] + nx * offs[k] - camX, sg[3] + ny * offs[k] - camY, paint)
             }
         }
-        // soco do Gear Second: riscos de velocidade do punho até o alvo
+        // soco do Gear Second: riscos que DISPARAM do punho até o alvo (cabeça rápida + cauda afilada), punhos-fantasma
+        // ao longo do caminho e, na chegada, anéis e espículas de impacto que se abrem
+        paint.style = Paint.Style.FILL
         for (sg in punchTr) {
-            val a = (1f - sg[4] / 0.2f).coerceIn(0f, 1f)
+            val age = sg[4]
             val ddx = sg[2] - sg[0]
             val ddy = sg[3] - sg[1]
             val dl = hypot(ddx, ddy)
-            if (dl < 1f) continue
-            val nx = -ddy / dl
-            val ny = ddx / dl
-            for (k in 0..4) {
-                val o = (k - 2) * 5f
-                val st = 0.15f * k % 0.45f
-                paint.strokeWidth = 1.2f + 1.8f * a * (if (k == 2) 1f else 0.55f)
-                paint.color = (((0.9f * a * 255f).toInt()) shl 24) or 0xFFFFFF
-                canvas.drawLine(sg[0] + ddx * st + nx * o - camX, sg[1] + ddy * st + ny * o - camY, sg[2] + nx * o * 0.4f - camX, sg[3] + ny * o * 0.4f - camY, paint)
+            if (dl < 4f) continue
+            val ux = ddx / dl
+            val uy = ddy / dl
+            val nx = -uy
+            val ny = ux
+            val fade = (1f - age / 0.3f).coerceIn(0f, 1f)
+            // 1) riscos: cada um com atraso e velocidade próprios; convergem para o ponto de impacto
+            for (k in 0..6) {
+                val o0 = (k - 3) * 6.5f
+                val dly = 0.012f * ((k * 5) % 7)
+                val tt = ((age - dly) / (0.075f + 0.012f * (k % 3))).coerceIn(0f, 1f)
+                if (tt <= 0f) continue
+                val head = 1f - (1f - tt) * (1f - tt) * (1f - tt)
+                val tail = ((age - dly - 0.035f) / 0.2f).coerceIn(0f, 1f)
+                val tl = tail * tail * head
+                val hx0 = sg[0] + ux * dl * head
+                val hy0 = sg[1] + uy * dl * head
+                val tx0 = sg[0] + ux * dl * tl
+                val ty0 = sg[1] + uy * dl * tl
+                val ho = o0 * (1f - 0.75f * head)
+                val to = o0 * (1f - 0.75f * tl)
+                val w = (if (k == 3) 4.2f else 2.4f - 0.2f * kotlin.math.abs(k - 3)) * (0.35f + 0.65f * fade)
+                fxPath.reset()
+                fxPath.moveTo(tx0 + nx * to - camX, ty0 + ny * to - camY)
+                fxPath.lineTo(hx0 + nx * (ho + w) - camX, hy0 + ny * (ho + w) - camY)
+                fxPath.lineTo(hx0 + ux * 5f + nx * ho - camX, hy0 + uy * 5f + ny * ho - camY)
+                fxPath.lineTo(hx0 + nx * (ho - w) - camX, hy0 + ny * (ho - w) - camY)
+                fxPath.close()
+                paint.color = (((0.28f * (0.4f + 0.6f * fade) * 255f).toInt()) shl 24) or 0x9AD8FF
+                canvas.drawPath(fxPath, paint)
+                // miolo branco mais fino, só no trecho final da cauda
+                val mx = tx0 + (hx0 - tx0) * 0.45f
+                val my = ty0 + (hy0 - ty0) * 0.45f
+                val mo = to + (ho - to) * 0.45f
+                fxPath.reset()
+                fxPath.moveTo(mx + nx * mo - camX, my + ny * mo - camY)
+                fxPath.lineTo(hx0 + nx * (ho + w * 0.45f) - camX, hy0 + ny * (ho + w * 0.45f) - camY)
+                fxPath.lineTo(hx0 + ux * 5f + nx * ho - camX, hy0 + uy * 5f + ny * ho - camY)
+                fxPath.lineTo(hx0 + nx * (ho - w * 0.45f) - camX, hy0 + ny * (ho - w * 0.45f) - camY)
+                fxPath.close()
+                paint.color = (((0.95f * fade * 255f).toInt()) shl 24) or 0xFFFFFF
+                canvas.drawPath(fxPath, paint)
+            }
+            // 2) punhos-fantasma espalhados pelo caminho (efeito de vários socos de uma vez)
+            for (g in 0..3) {
+                val fr = 0.22f + 0.24f * g
+                val appear = 0.05f * g
+                if (age < appear) continue
+                val ga = (1f - (age - appear) / 0.17f).coerceIn(0f, 1f)
+                if (ga <= 0f) continue
+                val gx = sg[0] + ux * dl * fr + nx * (g - 1.5f) * 4f - camX
+                val gy = sg[1] + uy * dl * fr + ny * (g - 1.5f) * 4f - camY
+                paint.color = (((0.38f * ga * 255f).toInt()) shl 24) or 0xFFFFFF
+                canvas.drawCircle(gx, gy, 5f + 2.5f * g, paint)
+                paint.color = (((0.5f * ga * 255f).toInt()) shl 24) or 0xFFD36A
+                canvas.drawCircle(gx - ux * 5f, gy - uy * 5f, 3f + 1.5f * g, paint)
+            }
+            // 3) chegada: anéis que se abrem + espículas que voam para fora + riscos que seguem na direção do soco
+            if (age > 0.06f) {
+                val q = ((age - 0.06f) / 0.22f).coerceIn(0f, 1f)
+                val ia = 1f - q
+                val cx = sg[2] - camX
+                val cy = sg[3] - camY
+                paint.style = Paint.Style.FILL
+                paint.color = (((0.5f * ia * ia * 255f).toInt()) shl 24) or 0xFFFFFF
+                canvas.drawCircle(cx, cy, 6f + 16f * q, paint)
+                paint.style = Paint.Style.STROKE
+                paint.strokeCap = Paint.Cap.ROUND
+                for (r in 0..1) {
+                    val rad = 6f + (30f + 14f * r) * q
+                    paint.strokeWidth = (1f + (4.5f - 2f * r) * ia)
+                    paint.color = (((0.95f * ia * 255f).toInt()) shl 24) or (if (r == 0) 0xFFFFFF else 0xFFC23A)
+                    canvas.drawOval(cx - rad, cy - rad * 0.7f, cx + rad, cy + rad * 0.7f, paint)
+                }
+                for (k in 0..9) {
+                    val ang = k * 0.6283f + sg[5] * 6.28f
+                    val ca = cos(ang)
+                    val sa = sin(ang)
+                    val r0 = 8f + 30f * q
+                    val r1 = r0 + 6f + 18f * ia
+                    paint.strokeWidth = 1f + 2.6f * ia
+                    paint.color = (((0.95f * ia * 255f).toInt()) shl 24) or (if (k % 2 == 0) 0xFFFFFF else 0xFFD36A)
+                    canvas.drawLine(cx + ca * r0, cy + sa * r0 * 0.8f, cx + ca * r1, cy + sa * r1 * 0.8f, paint)
+                }
+                for (k in -1..1) {
+                    val st = 10f + 60f * q
+                    paint.strokeWidth = 1.5f + 1.5f * ia
+                    paint.color = (((0.8f * ia * 255f).toInt()) shl 24) or 0xFFFFFF
+                    canvas.drawLine(cx + ux * st + nx * k * 7f, cy + uy * st + ny * k * 7f, cx + ux * (st + 22f * ia) + nx * k * 7f, cy + uy * (st + 22f * ia) + ny * k * 7f, paint)
+                }
+                paint.style = Paint.Style.FILL
             }
         }
+        paint.style = Paint.Style.STROKE
+        paint.strokeCap = Paint.Cap.ROUND
         paint.strokeCap = Paint.Cap.BUTT
         // impactos instantâneos do soco do Gear Second: clarão + estrela no inimigo
         for (h in g2Hits) {
@@ -1910,7 +2045,7 @@ class GameView @JvmOverloads constructor(
         shake = max(shake, 0.07f)
         if (p.g2T > 0f) {
             // rastro de velocidade do punho até o inimigo
-            punchTr.add(floatArrayOf(p.x + p.facingX * 14f, p.y - p.alt - 20f + p.facingY * 6f, e.x, hy, 0f))
+            punchTr.add(floatArrayOf(p.x + p.facingX * 14f, p.y - p.alt - 20f + p.facingY * 6f, e.x, hy, 0f, Random.nextFloat()))
             // Gear Second: o braço mal se mexe, mas o impacto estoura direto no inimigo (vários clarões espalhados)
             for (i in 0..2) {
                 val ox = (Random.nextFloat() - 0.5f) * e.radius * 1.1f
